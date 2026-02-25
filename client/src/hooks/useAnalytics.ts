@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Hook to send heartbeat to analytics server
@@ -92,5 +92,3 @@ export function useRealTimeStats(refreshInterval: number = 10000) {
   return { stats, loading };
 }
 
-// Helper to import useState
-import { useState } from 'react';

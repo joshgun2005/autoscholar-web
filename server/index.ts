@@ -12,7 +12,10 @@ import { logger } from "./utils/logger";
 const app = express();
 
 // ─── CORS ─────────────────────────────────────────────────
+const port = parseInt(process.env.PORT || '5000', 10);
 const allowedOrigins = [
+  `http://localhost:${port}`,
+  `http://127.0.0.1:${port}`,
   'http://localhost:3001',
   'http://localhost:5000',
   'http://127.0.0.1:3001',
@@ -135,7 +138,6 @@ app.use((req, res, next) => {
     logger.success('Static file serving ready');
   }
 
-  const port = parseInt(process.env.PORT || '5000', 10);
   server.listen(port, "0.0.0.0", () => {
     logger.banner('SERVER READY', `Listening on http://0.0.0.0:${port}`);
   });
