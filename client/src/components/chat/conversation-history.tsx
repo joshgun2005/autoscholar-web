@@ -4,7 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { StreamingAnswer } from "./streaming-answer";
+import { StreamingAnswer } from "@/components/streaming-answer";
 
 interface ConversationMessage {
   question: string;

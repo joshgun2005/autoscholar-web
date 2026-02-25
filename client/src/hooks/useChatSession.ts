@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useChatMutation } from "./useChatMutation";
 import { useAnalytics } from "./useAnalytics";
 import type { SearchResult } from "@shared/types";
-import type { AgentStep } from "@/components/agent-steps";
+import type { AgentStep } from "@/components/chat/agent-steps";
 
 export interface SearchQuery {
   query: string;

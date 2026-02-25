@@ -2,13 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
 import { StreamingAnswer } from "@/components/streaming-answer";
-import { ToolResults } from "@/components/tool-results";
-import { ResultCard } from "@/components/result-card";
+import { ToolResults } from "@/components/chat/tool-results";
+import { ResultCard } from "@/components/chat/result-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ThemeColorPicker } from "@/components/theme-color-picker";
 import { Button } from "@/components/ui/button";
-import { DownloadButtons } from "@/components/download-buttons";
-import { CustomPythonFigure } from "@/components/custom-python-figure";
+import { DownloadButtons } from "@/components/chat/download-buttons";
+import { CustomPythonFigure } from "@/components/chat/custom-python-figure";
 import type { SearchResult } from "@shared/types";
 import { useRef, useMemo } from "react";
 
