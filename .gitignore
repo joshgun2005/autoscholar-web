@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+local.db
+local.db-shm
+local.db-wal
+
+# Logs
+logs/
+
+# Temp & caches
+temp/
+__pycache__/
+*.pyc
+
+# Backups
+backups/
+
+# Generated images
+/*.png
+public/plots/
+public/figures/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Lock files (keep package-lock.json, ignore uv.lock)
+uv.lock
+
+# Misc artifacts
+downloads/
+attached_assets/

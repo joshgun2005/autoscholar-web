@@ -1,0 +1,136 @@
+import { FileText, FileDown, Loader2, Presentation } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+
+interface DownloadButtonsProps {
+  question: string;
+  answer: string;
+  contentRef?: React.RefObject<HTMLElement>;
+  figureUrls?: string[];
+}
+
+export function DownloadButtons({ question, answer, contentRef, figureUrls = [] }: DownloadButtonsProps) {
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const handleDownloadMarkdown = () => {
+    const content = answer;
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vibequant-${Date.now()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Téléchargement réussi",
+      description: "Le fichier Markdown a été téléchargé avec succès.",
+    });
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPDF(true);
+
+    try {
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question,
+          answer
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vibequant-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "PDF généré avec succès",
+        description: "Le rapport PDF a été téléchargé.",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Erreur de génération",
+        description: "Une erreur s'est produite lors de la génération du PDF. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  const handleConvertToSlides = () => {
+    // Store content in sessionStorage to pass to slides generator page
+    sessionStorage.setItem('slidesContent', JSON.stringify({ question, answer, figureUrls }));
+    setLocation('/slides-generator');
+
+    toast({
+      title: "Redirection...",
+      description: "Ouverture du générateur de slides",
+    });
+  };
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownloadMarkdown}
+        className="gap-2 rounded-2xl hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-cyan-500/20 hover:scale-105 transition-all duration-300 border-2"
+        disabled={isGeneratingPDF}
+      >
+        <FileText className="w-4 h-4" />
+        <span className="hidden sm:inline">Télécharger MD</span>
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownloadPDF}
+        className="gap-2 rounded-2xl hover:bg-gradient-to-br hover:from-red-500/20 hover:to-pink-500/20 hover:scale-105 transition-all duration-300 border-2"
+        disabled={isGeneratingPDF}
+      >
+        {isGeneratingPDF ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="hidden sm:inline">Génération...</span>
+          </>
+        ) : (
+          <>
+            <FileDown className="w-4 h-4" />
+            <span className="hidden sm:inline">Télécharger PDF</span>
+          </>
+        )}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleConvertToSlides}
+        className="gap-2 rounded-2xl hover:bg-gradient-to-br hover:from-purple-500/20 hover:to-indigo-500/20 hover:scale-105 transition-all duration-300 border-2"
+        disabled={isGeneratingPDF || !question || !answer}
+      >
+        <Presentation className="w-4 h-4" />
+        <span className="hidden sm:inline">Convertir en Slides</span>
+      </Button>
+    </>
+  );
+}

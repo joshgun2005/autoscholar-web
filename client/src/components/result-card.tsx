@@ -1,0 +1,62 @@
+import { motion } from "framer-motion";
+import { ExternalLink } from "lucide-react";
+import type { SearchResult } from "@shared/schema";
+
+interface ResultCardProps {
+  result: SearchResult;
+  index: number;
+}
+
+export function ResultCard({ result, index }: ResultCardProps) {
+  return (
+    <motion.a
+      href={result.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      initial={{ opacity: 0, y: 12, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: index * 0.05, duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className="group block card-premium rounded-3xl p-8 transition-all duration-500"
+      data-testid={`link-result-${index}`}
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 mt-1">
+          {result.favicon ? (
+            <img
+              src={result.favicon}
+              alt=""
+              className="w-6 h-6 rounded"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-xl bg-primary/10 flex items-center justify-center">
+              <span className="text-xs font-mono font-semibold text-primary">
+                {new URL(result.url).hostname[0].toUpperCase()}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <h3 className="text-xl font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors" data-testid={`text-result-title-${index}`}>
+              {result.title}
+            </h3>
+            <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`icon-external-link-${index}`} />
+          </div>
+
+          <p className="text-sm text-muted-foreground font-mono mb-3 truncate" data-testid={`text-result-domain-${index}`}>
+            {new URL(result.url).hostname}
+          </p>
+
+          <p className="text-base text-muted-foreground line-clamp-3 leading-relaxed" data-testid={`text-result-snippet-${index}`}>
+            {result.snippet}
+          </p>
+        </div>
+      </div>
+    </motion.a>
+  );
+}

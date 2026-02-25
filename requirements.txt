@@ -1,0 +1,71 @@
+# ==================== CORE SCIENTIFIC COMPUTING ====================
+numpy>=2.0.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# ==================== VISUALIZATION ====================
+matplotlib>=3.8.0
+seaborn>=0.13.0
+plotly>=5.18.0
+bokeh>=3.3.0
+
+# ==================== FINANCIAL DATA & APIs ====================
+yfinance>=0.2.35
+pandas-datareader>=0.10.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# ==================== FINANCIAL ANALYSIS ====================
+# Volatility modeling
+arch>=7.0.0
+# Technical indicators
+ta>=0.11.0
+ta-lib>=0.4.0  # Note: Might need system dependencies
+# Financial metrics
+pyfolio>=0.9.2
+empyrical>=0.5.5
+quantstats>=0.0.62
+
+# ==================== STATISTICS & ECONOMETRICS ====================
+statsmodels>=0.14.0
+scikit-learn>=1.4.0
+pmdarima>=2.0.4  # ARIMA models
+
+# ==================== MACHINE LEARNING ====================
+scikit-learn>=1.4.0
+xgboost>=2.0.3
+lightgbm>=4.3.0
+catboost>=1.2.2
+
+# ==================== OPTIMIZATION ====================
+cvxpy>=1.4.0  # Convex optimization (for portfolio optimization)
+pulp>=2.8.0  # Linear programming
+
+# ==================== TIME SERIES ====================
+prophet>=1.1.5  # Facebook Prophet for forecasting
+statsforecast>=1.6.0
+
+# ==================== BACKTESTING ====================
+backtrader>=1.9.78
+vectorbt>=0.26.0
+bt>=0.2.9
+
+# ==================== RISK ANALYSIS ====================
+riskfolio-lib>=5.0.0  # Portfolio optimization & risk
+pyportfolioopt>=1.5.5
+
+# ==================== UTILITIES ====================
+openpyxl>=3.1.2  # Excel files
+xlrd>=2.0.1  # Excel files (older format)
+python-dateutil>=2.8.2
+pytz>=2024.1
+
+# ==================== ADVANCED ANALYTICS ====================
+networkx>=3.2  # Graph analysis
+sympy>=1.12  # Symbolic mathematics
+numba>=0.59.0  # JIT compilation for speed
+
+# ==================== DATA PROCESSING ====================
+polars>=0.20.0  # Fast DataFrame library
+dask>=2024.1.0  # Parallel computing
