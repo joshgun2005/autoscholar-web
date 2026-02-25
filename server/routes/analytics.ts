@@ -1,16 +1,18 @@
 import type { Express, Request, Response } from "express";
 import { storage } from "../storage";
 import { requireAdmin } from "./admin";
+import { logger } from "../utils/logger";
+import { heartbeatBodySchema } from "./validation";
 
 export function registerAnalyticsRoutes(app: Express) {
   // Heartbeat - Update user activity
   app.post("/api/analytics/heartbeat", async (req: Request, res: Response) => {
     try {
-      const { sessionId, status, currentQuery, userId } = req.body;
-
-      if (!sessionId) {
-        return res.status(400).json({ error: "sessionId is required" });
+      const parsed = heartbeatBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
       }
+      const { sessionId, status, currentQuery, userId } = parsed.data;
 
       const userAgent = req.headers['user-agent'] || 'Unknown';
       const ipAddress = req.ip || req.socket.remoteAddress || 'Unknown';
@@ -27,7 +29,7 @@ export function registerAnalyticsRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
-      console.error("Heartbeat error:", error);
+      logger.error("Heartbeat error:", error);
       res.status(500).json({ error: "Failed to update heartbeat" });
     }
   });
@@ -58,7 +60,7 @@ export function registerAnalyticsRoutes(app: Express) {
         })),
       });
     } catch (error) {
-      console.error("Get active users error:", error);
+      logger.error("Get active users error:", error);
       res.status(500).json({ error: "Failed to get active users" });
     }
   });
@@ -105,7 +107,7 @@ export function registerAnalyticsRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error("Get real-time stats error:", error);
+      logger.error("Get real-time stats error:", error);
       res.status(500).json({ error: "Failed to get stats" });
     }
   });
@@ -120,7 +122,7 @@ export function registerAnalyticsRoutes(app: Express) {
       );
       res.json({ metrics });
     } catch (error) {
-      console.error("Get metrics error:", error);
+      logger.error("Get metrics error:", error);
       res.status(500).json({ error: "Failed to get metrics" });
     }
   });

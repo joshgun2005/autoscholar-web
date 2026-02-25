@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
+import { logger } from "../utils/logger";
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   (req.session as any).isAdmin = true;
@@ -13,7 +14,7 @@ export function registerAdminRoutes(app: Express) {
       (req.session as any).isAdmin = true;
       res.json({ success: true });
     } catch (error) {
-      console.error("Admin login error:", error);
+      logger.error("Admin login error:", error);
       res.status(500).json({ error: "Failed to login" });
     }
   });
@@ -79,7 +80,7 @@ export function registerAdminRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error("Get database error:", error);
+      logger.error("Get database error:", error);
       res.status(500).json({ error: "Failed to get database data" });
     }
   });
@@ -90,7 +91,7 @@ export function registerAdminRoutes(app: Express) {
       await storage.deleteUser(req.params.id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Delete user error:", error);
+      logger.error("Delete user error:", error);
       res.status(500).json({ error: "Failed to delete user" });
     }
   });
@@ -101,7 +102,7 @@ export function registerAdminRoutes(app: Express) {
       await storage.deleteConversationSessionById(req.params.id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Delete session error:", error);
+      logger.error("Delete session error:", error);
       res.status(500).json({ error: "Failed to delete session" });
     }
   });
@@ -112,7 +113,7 @@ export function registerAdminRoutes(app: Express) {
       await storage.deleteSharedReport(req.params.id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Delete report error:", error);
+      logger.error("Delete report error:", error);
       res.status(500).json({ error: "Failed to delete report" });
     }
   });

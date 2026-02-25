@@ -9,6 +9,7 @@ import { registerAdminRoutes } from "./routes/admin";
 import { registerAnalyticsRoutes } from "./routes/analytics";
 import { registerFmpRoutes } from "./routes/fmp";
 import { registerReportRoutes } from "./routes/reports";
+import { chatBodySchema } from "./routes/validation";
 import { searchImages, getMapDirections, searchGoogleShopping, searchFinance, searchJobs, searchFlights, searchHotels, searchVideos, searchGoogleTrends, searchGoogleScholar, searchAppStore } from "./services/serpapiService";
 import { searchExa, getContentsExa } from "./services/exaService";
 import { searchFirecrawl, scrapeFirecrawl, crawlFirecrawl, extractFirecrawl, mapFirecrawl, agentFirecrawl, batchScrapeFirecrawl } from "./services/firecrawlService";
@@ -312,17 +313,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let sseStarted = false;
 
     try {
-      const { query, history = [], sessionId = randomUUID(), imageData, imageMimeType } = req.body;
+      const parsed = chatBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+      const { query, history, sessionId: reqSessionId, imageData, imageMimeType } = parsed.data;
+      const sessionId = reqSessionId || randomUUID();
 
       logger.section('CHAT REQUEST');
       logger.request('POST', '/api/chat');
       logger.kv('Session ID', sessionId);
       logger.kv('Query', query.substring(0, 100) + (query.length > 100 ? '...' : ''));
       logger.kv('History length', history.length);
-
-      if (!query) {
-        return res.status(400).json({ error: "Query is required" });
-      }
 
       // Set up SSE (Server-Sent Events) for streaming
       res.setHeader('Content-Type', 'text/event-stream');
@@ -502,13 +504,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 result = await getCompanyProfile(toolCall.input.symbol);
                 logger.success('Company profile retrieved');
               } else if (toolCall.name === 'get_income_statement') {
-                console.log(`   → Getting income statement: ${toolCall.input.symbol} (${toolCall.input.period || 'annual'})`);
+                logger.debug(`   → Getting income statement: ${toolCall.input.symbol} (${toolCall.input.period || 'annual'})`);
                 result = await getIncomeStatement(
                   toolCall.input.symbol,
                   toolCall.input.period || 'annual',
                   toolCall.input.limit || 5
                 );
-                console.log('   ✓ Income statement retrieved');
+                logger.debug('   ✓ Income statement retrieved');
               } else if (toolCall.name === 'get_balance_sheet') {
                 result = await getBalanceSheet(
                   toolCall.input.symbol,
@@ -738,10 +740,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   toolCall.input.quarter
                 );
               } else if (toolCall.name === 'run_monte_carlo_simulation') {
-                console.log('   → Running Monte Carlo simulation...');
-                console.log('      Simulations:', toolCall.input.num_simulations || 10000);
-                console.log('      Time horizon:', toolCall.input.time_horizon || 252);
-                console.log('      Initial investment:', toolCall.input.initial_investment || 10000);
+                logger.debug('   → Running Monte Carlo simulation...');
+                logger.debug('      Simulations:', toolCall.input.num_simulations || 10000);
+                logger.debug('      Time horizon:', toolCall.input.time_horizon || 252);
+                logger.debug('      Initial investment:', toolCall.input.initial_investment || 10000);
 
                 // NEW: Support symbol-based mode (recommended) or manual historical_prices mode
                 let simulationInput: any = {
@@ -751,10 +753,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 };
 
                 if (toolCall.input.symbol) {
-                  console.log('      📊 Mode: API-based (fetching data for symbol:', toolCall.input.symbol + ')');
+                  logger.debug('      📊 Mode: API-based (fetching data for symbol:', toolCall.input.symbol + ')');
                   simulationInput.symbol = toolCall.input.symbol;
                 } else if (toolCall.input.historical_prices && Array.isArray(toolCall.input.historical_prices)) {
-                  console.log('      📊 Mode: Manual (using provided historical prices)');
+                  logger.debug('      📊 Mode: Manual (using provided historical prices)');
                   simulationInput.historical_prices = toolCall.input.historical_prices;
                 } else {
                   throw new Error('Either symbol or historical_prices parameter is required');
@@ -762,7 +764,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 const simulationResult = await executeMonteCarloSimulation(simulationInput);
 
-                console.log('   ✓ Monte Carlo simulation complete:', {
+                logger.debug('   ✓ Monte Carlo simulation complete:', {
                   success: simulationResult.success,
                   hasResult: !!simulationResult.result,
                   error: simulationResult.error
@@ -780,15 +782,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 monteCarloData = result;
 
                 // Send Python code separately
-                console.log('   📊 Sending Python code to client (length:', simulationResult.code?.length || 0, 'chars)');
+                logger.debug('   📊 Sending Python code to client (length:', simulationResult.code?.length || 0, 'chars)');
                 res.write(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: simulationResult.code
                 })}\n\n`);
               } else if (toolCall.name === 'calculate_options_price') {
-                console.log('   → Calculating options prices...');
-                console.log('      Strike price:', toolCall.input.strike_price);
-                console.log('      Time to maturity:', toolCall.input.time_to_maturity);
+                logger.debug('   → Calculating options prices...');
+                logger.debug('      Strike price:', toolCall.input.strike_price);
+                logger.debug('      Time to maturity:', toolCall.input.time_to_maturity);
 
                 // NEW: Support symbol-based mode (recommended) or manual mode
                 let optionsInput: any = {
@@ -799,17 +801,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 };
 
                 if (toolCall.input.symbol) {
-                  console.log('      📊 Mode: API-based (fetching data for symbol:', toolCall.input.symbol + ')');
+                  logger.debug('      📊 Mode: API-based (fetching data for symbol:', toolCall.input.symbol + ')');
                   optionsInput.symbol = toolCall.input.symbol;
                   if (toolCall.input.volatility) {
-                    console.log('      Using provided volatility:', toolCall.input.volatility);
+                    logger.debug('      Using provided volatility:', toolCall.input.volatility);
                     optionsInput.volatility = toolCall.input.volatility;
                   } else {
-                    console.log('      Will calculate historical volatility automatically');
+                    logger.debug('      Will calculate historical volatility automatically');
                   }
                 } else if (toolCall.input.stock_price) {
-                  console.log('      📊 Mode: Manual');
-                  console.log('      Stock price:', toolCall.input.stock_price);
+                  logger.debug('      📊 Mode: Manual');
+                  logger.debug('      Stock price:', toolCall.input.stock_price);
                   optionsInput.stock_price = toolCall.input.stock_price;
                   optionsInput.volatility = toolCall.input.volatility;
                 } else {
@@ -818,7 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 const optionsResult = await executeOptionsPricing(optionsInput);
 
-                console.log('   ✓ Options pricing complete:', {
+                logger.debug('   ✓ Options pricing complete:', {
                   success: optionsResult.success,
                   hasResult: !!optionsResult.result,
                   error: optionsResult.error
@@ -832,15 +834,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 result = optionsResult.result;
 
                 // Send Python code separately
-                console.log('   📊 Sending Python code to client (length:', optionsResult.code?.length || 0, 'chars)');
+                logger.debug('   📊 Sending Python code to client (length:', optionsResult.code?.length || 0, 'chars)');
                 res.write(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: optionsResult.code
                 })}\n\n`);
               } else if (toolCall.name === 'estimate_garch_volatility') {
-                console.log('   → Estimating GARCH volatility model...');
-                console.log('      Symbol:', toolCall.input.symbol);
-                console.log('      GARCH order: p=' + (toolCall.input.p || 1) + ', q=' + (toolCall.input.q || 1));
+                logger.debug('   → Estimating GARCH volatility model...');
+                logger.debug('      Symbol:', toolCall.input.symbol);
+                logger.debug('      GARCH order: p=' + (toolCall.input.p || 1) + ', q=' + (toolCall.input.q || 1));
 
                 const garchInput: any = {
                   symbol: toolCall.input.symbol,
@@ -850,12 +852,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   data_period: toolCall.input.data_period || 504
                 };
 
-                console.log('      Forecast horizon:', garchInput.forecast_horizon, 'days');
-                console.log('      Data period:', garchInput.data_period, 'days');
+                logger.debug('      Forecast horizon:', garchInput.forecast_horizon, 'days');
+                logger.debug('      Data period:', garchInput.data_period, 'days');
 
                 const garchResult = await executeGarchModel(garchInput);
 
-                console.log('   ✓ GARCH model estimation complete:', {
+                logger.debug('   ✓ GARCH model estimation complete:', {
                   success: garchResult.success,
                   hasResult: !!garchResult.result,
                   error: garchResult.error
@@ -869,15 +871,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 result = garchResult.result;
 
                 // Send Python code separately
-                console.log('   📊 Sending Python code to client (length:', garchResult.code?.length || 0, 'chars)');
+                logger.debug('   📊 Sending Python code to client (length:', garchResult.code?.length || 0, 'chars)');
                 res.write(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: garchResult.code
                 })}\n\n`);
               } else if (toolCall.name === 'calculate_var') {
-                console.log('   → Calculating Value at Risk (VaR)...');
-                console.log('      Symbol:', toolCall.input.symbol);
-                console.log('      Portfolio value:', toolCall.input.portfolio_value || 100000);
+                logger.debug('   → Calculating Value at Risk (VaR)...');
+                logger.debug('      Symbol:', toolCall.input.symbol);
+                logger.debug('      Portfolio value:', toolCall.input.portfolio_value || 100000);
 
                 const varInput: any = {
                   symbol: toolCall.input.symbol,
@@ -888,13 +890,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   data_period: toolCall.input.data_period || 504
                 };
 
-                console.log('      Confidence levels:', varInput.confidence_levels);
-                console.log('      Time horizon:', varInput.time_horizon, 'days');
-                console.log('      Monte Carlo simulations:', varInput.num_simulations);
+                logger.debug('      Confidence levels:', varInput.confidence_levels);
+                logger.debug('      Time horizon:', varInput.time_horizon, 'days');
+                logger.debug('      Monte Carlo simulations:', varInput.num_simulations);
 
                 const varResult = await executeVarCalculation(varInput);
 
-                console.log('   ✓ VaR calculation complete:', {
+                logger.debug('   ✓ VaR calculation complete:', {
                   success: varResult.success,
                   hasResult: !!varResult.result,
                   error: varResult.error
@@ -908,14 +910,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 result = varResult.result;
 
                 // Send Python code separately
-                console.log('   📊 Sending Python code to client (length:', varResult.code?.length || 0, 'chars)');
+                logger.debug('   📊 Sending Python code to client (length:', varResult.code?.length || 0, 'chars)');
                 res.write(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: varResult.code
                 })}\n\n`);
               } else if (toolCall.name === 'optimize_portfolio') {
-                console.log('   → Optimizing portfolio allocation...');
-                console.log('      Symbols:', toolCall.input.symbols?.join(', '));
+                logger.debug('   → Optimizing portfolio allocation...');
+                logger.debug('      Symbols:', toolCall.input.symbols?.join(', '));
 
                 if (!toolCall.input.symbols || !Array.isArray(toolCall.input.symbols) || toolCall.input.symbols.length < 2) {
                   throw new Error('At least 2 symbols are required for portfolio optimization');
@@ -931,13 +933,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   frontier_points: toolCall.input.frontier_points || 50
                 };
 
-                console.log('      Risk-free rate:', portfolioInput.risk_free_rate);
-                console.log('      Weight constraints: [' + portfolioInput.min_weight + ', ' + portfolioInput.max_weight + ']');
-                console.log('      Generate efficient frontier:', portfolioInput.generate_frontier);
+                logger.debug('      Risk-free rate:', portfolioInput.risk_free_rate);
+                logger.debug('      Weight constraints: [' + portfolioInput.min_weight + ', ' + portfolioInput.max_weight + ']');
+                logger.debug('      Generate efficient frontier:', portfolioInput.generate_frontier);
 
                 const portfolioResult = await executePortfolioOptimization(portfolioInput);
 
-                console.log('   ✓ Portfolio optimization complete:', {
+                logger.debug('   ✓ Portfolio optimization complete:', {
                   success: portfolioResult.success,
                   hasResult: !!portfolioResult.result,
                   error: portfolioResult.error
@@ -951,15 +953,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 result = portfolioResult.result;
 
                 // Send Python code separately
-                console.log('   📊 Sending Python code to client (length:', portfolioResult.code?.length || 0, 'chars)');
+                logger.debug('   📊 Sending Python code to client (length:', portfolioResult.code?.length || 0, 'chars)');
                 res.write(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: portfolioResult.code
                 })}\n\n`);
               } else if (toolCall.name === 'analyze_risk_metrics') {
-                console.log('   → Analyzing risk metrics...');
-                console.log('      Symbol:', toolCall.input.symbol);
-                console.log('      Benchmark:', toolCall.input.benchmark_symbol || 'SPY');
+                logger.debug('   → Analyzing risk metrics...');
+                logger.debug('      Symbol:', toolCall.input.symbol);
+                logger.debug('      Benchmark:', toolCall.input.benchmark_symbol || 'SPY');
 
                 const riskMetricsInput: any = {
                   symbol: toolCall.input.symbol,
@@ -968,12 +970,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   data_period: toolCall.input.data_period || 504
                 };
 
-                console.log('      Risk-free rate:', riskMetricsInput.risk_free_rate);
-                console.log('      Data period:', riskMetricsInput.data_period, 'days');
+                logger.debug('      Risk-free rate:', riskMetricsInput.risk_free_rate);
+                logger.debug('      Data period:', riskMetricsInput.data_period, 'days');
 
                 const riskMetricsResult = await executeRiskMetricsAnalysis(riskMetricsInput);
 
-                console.log('   ✓ Risk metrics analysis complete:', {
+                logger.debug('   ✓ Risk metrics analysis complete:', {
                   success: riskMetricsResult.success,
                   hasResult: !!riskMetricsResult.result,
                   error: riskMetricsResult.error
@@ -987,15 +989,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 result = riskMetricsResult.result;
 
                 // Send Python code separately
-                console.log('   📊 Sending Python code to client (length:', riskMetricsResult.code?.length || 0, 'chars)');
+                logger.debug('   📊 Sending Python code to client (length:', riskMetricsResult.code?.length || 0, 'chars)');
                 res.write(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: riskMetricsResult.code
                 })}\n\n`);
               } else if (toolCall.name === 'create_plot') {
-                console.log('   → Creating custom plot...');
-                console.log('      Plot type:', toolCall.input.plot_type);
-                console.log('      Title:', toolCall.input.title || 'Financial Chart');
+                logger.debug('   → Creating custom plot...');
+                logger.debug('      Plot type:', toolCall.input.plot_type);
+                logger.debug('      Title:', toolCall.input.title || 'Financial Chart');
 
                 const plotInput: any = {
                   plot_type: toolCall.input.plot_type || 'line',
@@ -1015,14 +1017,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Log if data is a symbol (string) or custom data
                 if (typeof plotInput.data === 'string') {
-                  console.log('      Data source: Symbol', plotInput.data);
+                  logger.debug('      Data source: Symbol', plotInput.data);
                 } else {
-                  console.log('      Data source: Custom data');
+                  logger.debug('      Data source: Custom data');
                 }
 
                 const plotResult = await executePlot(plotInput);
 
-                console.log('   ✓ Plot creation complete:', {
+                logger.debug('   ✓ Plot creation complete:', {
                   success: plotResult.success,
                   hasResult: !!plotResult.result,
                   error: plotResult.error
@@ -1036,7 +1038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 result = plotResult.result;
 
                 // Send Python code separately
-                console.log('   📊 Sending Python code to client (length:', plotResult.code?.length || 0, 'chars)');
+                logger.debug('   📊 Sending Python code to client (length:', plotResult.code?.length || 0, 'chars)');
                 res.write(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: plotResult.code
@@ -1045,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Send plot URL to client so frontend can correct figure references
                 if (result.image_url) {
                   const plotUrl = result.image_url;
-                  console.log('   🖼️  Sending plot URL to client:', plotUrl);
+                  logger.debug('   🖼️  Sending plot URL to client:', plotUrl);
                   res.write(`data: ${JSON.stringify({
                     type: 'custom_python_figures',
                     figureId: `plot-${Date.now()}`,
@@ -1056,9 +1058,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   })}\n\n`);
                 }
               } else if (toolCall.name === 'execute_custom_python_analysis') {
-                console.log('   → Executing custom Python code...');
-                console.log('      Description:', toolCall.input.description || 'Custom analysis');
-                console.log('      Code length:', toolCall.input.code?.length || 0, 'chars');
+                logger.debug('   → Executing custom Python code...');
+                logger.debug('      Description:', toolCall.input.description || 'Custom analysis');
+                logger.debug('      Code length:', toolCall.input.code?.length || 0, 'chars');
 
                 const customPythonResult = await executeCustomPython({
                   code: toolCall.input.code,
@@ -1066,7 +1068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   description: toolCall.input.description
                 });
 
-                console.log('   ✓ Custom Python execution complete:', {
+                logger.debug('   ✓ Custom Python execution complete:', {
                   success: customPythonResult.success,
                   hasOutput: !!customPythonResult.result?.output,
                   figuresCount: customPythonResult.result?.figures?.length || 0,
@@ -1081,14 +1083,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 result = customPythonResult.result;
 
                 // Don't send Python code to client (too slow to stream)
-                console.log('   📊 Python code generated (length:', customPythonResult.code?.length || 0, 'chars) - not streaming to client for speed');
+                logger.debug('   📊 Python code generated (length:', customPythonResult.code?.length || 0, 'chars) - not streaming to client for speed');
 
                 // Send figures if any were generated
                 if (result.figures && result.figures.length > 0) {
                   // Generate unique ID for this figure batch
                   const figureId = `fig-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-                  console.log('   🖼️  Saving', result.figures.length, 'figure(s) with ID:', figureId);
+                  logger.debug('   🖼️  Saving', result.figures.length, 'figure(s) with ID:', figureId);
 
                   // Store the original figures array
                   const originalFigures = result.figures;
@@ -1115,7 +1117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     const figureUrl = `/figures/${figureFilename}`;
                     figureUrls.push(figureUrl);
 
-                    console.log(`   💾 Saved figure: ${figureFilename}`);
+                    logger.debug(`   💾 Saved figure: ${figureFilename}`);
                   }
 
                   // Send figure URLs to client (no base64 — use file URLs to avoid SSE truncation)
@@ -1144,7 +1146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                   result.output = formattedOutput;
 
-                  console.log('   ✅ Figure URLs:', figureUrls);
+                  logger.debug('   ✅ Figure URLs:', figureUrls);
 
                   // Remove base64 data from result sent to Claude
                   delete result.figures;
@@ -1159,7 +1161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                 }
               } else if (toolCall.name === 'web_search_exa') {
-                console.log('   → Web search (Exa):', toolCall.input.query);
+                logger.debug('   → Web search (Exa):', toolCall.input.query);
                 const searchResponse = await searchExa(
                   toolCall.input.query,
                   {
@@ -1175,7 +1177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 );
                 result = searchResponse.results;
-                console.log('   ✓ Search completed:', result.length, 'results');
+                logger.debug('   ✓ Search completed:', result.length, 'results');
               } else if (toolCall.name === 'get_contents_exa') {
                 result = await getContentsExa(
                   toolCall.input.urls,

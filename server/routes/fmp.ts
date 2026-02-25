@@ -33,7 +33,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getMarketHours());
     } catch (error) {
-      console.error("Get market hours error:", error);
+      logger.error("Get market hours error:", error);
       res.status(500).json({ error: "Failed to fetch market hours" });
     }
   });
@@ -42,7 +42,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getGainers());
     } catch (error) {
-      console.error("Get gainers error:", error);
+      logger.error("Get gainers error:", error);
       res.status(500).json({ error: "Failed to fetch gainers" });
     }
   });
@@ -51,7 +51,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getLosers());
     } catch (error) {
-      console.error("Get losers error:", error);
+      logger.error("Get losers error:", error);
       res.status(500).json({ error: "Failed to fetch losers" });
     }
   });
@@ -60,7 +60,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getActives());
     } catch (error) {
-      console.error("Get actives error:", error);
+      logger.error("Get actives error:", error);
       res.status(500).json({ error: "Failed to fetch most active stocks" });
     }
   });
@@ -71,7 +71,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getStockQuote(req.params.symbol));
     } catch (error) {
-      console.error("Get quote error:", error);
+      logger.error("Get quote error:", error);
       res.status(500).json({ error: "Failed to fetch stock quote" });
     }
   });
@@ -80,7 +80,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getCompanyProfile(req.params.symbol));
     } catch (error) {
-      console.error("Get company profile error:", error);
+      logger.error("Get company profile error:", error);
       res.status(500).json({ error: "Failed to fetch company profile" });
     }
   });
@@ -89,7 +89,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getStockQuote(req.params.symbol));
     } catch (error) {
-      console.error("Get stock quote error:", error);
+      logger.error("Get stock quote error:", error);
       res.status(500).json({ error: "Failed to fetch stock quote" });
     }
   });
@@ -98,7 +98,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getHistoricalPrice(req.params.symbol));
     } catch (error) {
-      console.error("Get historical price error:", error);
+      logger.error("Get historical price error:", error);
       res.status(500).json({ error: "Failed to fetch historical price" });
     }
   });
@@ -109,7 +109,7 @@ export function registerFmpRoutes(app: Express) {
       logger.info(`Fetching intraday data for ${req.params.symbol} with interval ${interval}`);
       res.json(await getIntradayPrice(req.params.symbol, interval));
     } catch (error) {
-      console.error("Get intraday price error:", error);
+      logger.error("Get intraday price error:", error);
       res.status(500).json({ error: "Failed to fetch intraday price data" });
     }
   });
@@ -122,7 +122,7 @@ export function registerFmpRoutes(app: Express) {
       const limit = parseInt(req.query.limit as string) || 5;
       res.json(await getIncomeStatement(req.params.symbol, period, limit));
     } catch (error) {
-      console.error("Get income statement error:", error);
+      logger.error("Get income statement error:", error);
       res.status(500).json({ error: "Failed to fetch income statement" });
     }
   });
@@ -133,7 +133,7 @@ export function registerFmpRoutes(app: Express) {
       const limit = parseInt(req.query.limit as string) || 5;
       res.json(await getBalanceSheet(req.params.symbol, period, limit));
     } catch (error) {
-      console.error("Get balance sheet error:", error);
+      logger.error("Get balance sheet error:", error);
       res.status(500).json({ error: "Failed to fetch balance sheet" });
     }
   });
@@ -144,7 +144,7 @@ export function registerFmpRoutes(app: Express) {
       const limit = parseInt(req.query.limit as string) || 5;
       res.json(await getCashFlowStatement(req.params.symbol, period, limit));
     } catch (error) {
-      console.error("Get cash flow error:", error);
+      logger.error("Get cash flow error:", error);
       res.status(500).json({ error: "Failed to fetch cash flow statement" });
     }
   });
@@ -155,7 +155,7 @@ export function registerFmpRoutes(app: Express) {
       const limit = parseInt(req.query.limit as string) || 5;
       res.json(await getKeyMetrics(req.params.symbol, period, limit));
     } catch (error) {
-      console.error("Get key metrics error:", error);
+      logger.error("Get key metrics error:", error);
       res.status(500).json({ error: "Failed to fetch key metrics" });
     }
   });
@@ -166,7 +166,7 @@ export function registerFmpRoutes(app: Express) {
       const limit = parseInt(req.query.limit as string) || 5;
       res.json(await getFinancialRatios(req.params.symbol, period, limit));
     } catch (error) {
-      console.error("Get financial ratios error:", error);
+      logger.error("Get financial ratios error:", error);
       res.status(500).json({ error: "Failed to fetch financial ratios" });
     }
   });
@@ -178,7 +178,7 @@ export function registerFmpRoutes(app: Express) {
       const period = (req.query.period as 'annual' | 'quarter') || 'annual';
       res.json(await getAnalystEstimates(req.params.symbol, period));
     } catch (error) {
-      console.error("Get analyst estimates error:", error);
+      logger.error("Get analyst estimates error:", error);
       res.status(500).json({ error: "Failed to fetch analyst estimates" });
     }
   });
@@ -187,7 +187,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getPriceTarget(req.params.symbol));
     } catch (error) {
-      console.error("Get price target error:", error);
+      logger.error("Get price target error:", error);
       res.status(500).json({ error: "Failed to fetch price targets" });
     }
   });
@@ -196,7 +196,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getPriceTargetSummary(req.params.symbol));
     } catch (error) {
-      console.error("Get price target summary error:", error);
+      logger.error("Get price target summary error:", error);
       res.status(500).json({ error: "Failed to fetch price target summary" });
     }
   });
@@ -205,7 +205,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getUpgradesDowngrades(req.params.symbol));
     } catch (error) {
-      console.error("Get upgrades downgrades error:", error);
+      logger.error("Get upgrades downgrades error:", error);
       res.status(500).json({ error: "Failed to fetch upgrades downgrades" });
     }
   });
@@ -214,7 +214,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getEarningsSurprises(req.params.symbol));
     } catch (error) {
-      console.error("Get earnings surprises error:", error);
+      logger.error("Get earnings surprises error:", error);
       res.status(500).json({ error: "Failed to fetch earnings surprises" });
     }
   });
@@ -225,7 +225,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getDividendHistory(req.params.symbol));
     } catch (error) {
-      console.error("Get dividend history error:", error);
+      logger.error("Get dividend history error:", error);
       res.status(500).json({ error: "Failed to fetch dividend history" });
     }
   });
@@ -234,7 +234,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getInstitutionalHolders(req.params.symbol));
     } catch (error) {
-      console.error("Get institutional holders error:", error);
+      logger.error("Get institutional holders error:", error);
       res.status(500).json({ error: "Failed to fetch institutional holders" });
     }
   });
@@ -244,7 +244,7 @@ export function registerFmpRoutes(app: Express) {
       const limit = parseInt(req.query.limit as string) || 10;
       res.json(await getFinancialNews(req.params.symbol, limit));
     } catch (error) {
-      console.error("Get financial news error:", error);
+      logger.error("Get financial news error:", error);
       res.status(500).json({ error: "Failed to fetch financial news" });
     }
   });
@@ -254,7 +254,7 @@ export function registerFmpRoutes(app: Express) {
       const limit = parseInt(req.query.limit as string) || 20;
       res.json(await getInsiderTrading(req.params.symbol, limit));
     } catch (error) {
-      console.error("Get insider trading error:", error);
+      logger.error("Get insider trading error:", error);
       res.status(500).json({ error: "Failed to fetch insider trading" });
     }
   });
@@ -263,7 +263,7 @@ export function registerFmpRoutes(app: Express) {
     try {
       res.json(await getESGScore(req.params.symbol));
     } catch (error) {
-      console.error("Get ESG score error:", error);
+      logger.error("Get ESG score error:", error);
       res.status(500).json({ error: "Failed to fetch ESG score" });
     }
   });
@@ -278,7 +278,7 @@ export function registerFmpRoutes(app: Express) {
       );
       res.json(result);
     } catch (error) {
-      console.error("Get chart light error:", error);
+      logger.error("Get chart light error:", error);
       res.status(500).json({ error: "Failed to fetch chart data" });
     }
   });
@@ -291,7 +291,7 @@ export function registerFmpRoutes(app: Express) {
       );
       res.json(result);
     } catch (error) {
-      console.error("Get chart full error:", error);
+      logger.error("Get chart full error:", error);
       res.status(500).json({ error: "Failed to fetch chart data" });
     }
   });
@@ -310,7 +310,7 @@ export function registerFmpRoutes(app: Express) {
       );
       res.json(result);
     } catch (error) {
-      console.error("Get chart intraday error:", error);
+      logger.error("Get chart intraday error:", error);
       res.status(500).json({ error: "Failed to fetch intraday chart data" });
     }
   });

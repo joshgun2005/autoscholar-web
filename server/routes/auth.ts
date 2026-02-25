@@ -1,15 +1,16 @@
 import type { Express, Request, Response } from "express";
 import { randomBytes } from "crypto";
 import { storage } from "../storage";
+import { logger } from "../utils/logger";
+import { registerBodySchema, loginBodySchema } from "./validation";
 
 export function registerAuthRoutes(app: Express) {
-  // Register - Create new user account with generated token
+  // Register
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { name } = req.body;
-
-      if (!name || typeof name !== 'string' || name.trim().length < 2) {
-        return res.status(400).json({ error: "Le nom doit contenir au moins 2 caractères" });
+      const parsed = registerBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
       }
 
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -21,7 +22,7 @@ export function registerAuthRoutes(app: Express) {
       const token = `vquant-${tokenSuffix}`;
 
       const user = await storage.createUser({
-        displayName: name.trim(),
+        displayName: parsed.data.name.trim(),
         token,
       });
 
@@ -32,21 +33,20 @@ export function registerAuthRoutes(app: Express) {
         token,
       });
     } catch (error) {
-      console.error("Register error:", error);
+      logger.error(`Register error: ${(error as Error).message}`);
       res.status(500).json({ error: "Failed to create account" });
     }
   });
 
-  // Login - Authenticate with token
+  // Login
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { token } = req.body;
-
-      if (!token || typeof token !== 'string') {
-        return res.status(400).json({ error: "Le token est requis" });
+      const parsed = loginBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
       }
 
-      const user = await storage.getUserByToken(token.trim());
+      const user = await storage.getUserByToken(parsed.data.token.trim());
       if (!user) {
         return res.status(401).json({ error: "Token invalide" });
       }
@@ -57,7 +57,7 @@ export function registerAuthRoutes(app: Express) {
         user: { id: user.id, displayName: user.displayName },
       });
     } catch (error) {
-      console.error("Login error:", error);
+      logger.error(`Login error: ${(error as Error).message}`);
       res.status(500).json({ error: "Failed to login" });
     }
   });
@@ -66,7 +66,7 @@ export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/logout", async (req: Request, res: Response) => {
     req.session.destroy((err) => {
       if (err) {
-        console.error("Logout error:", err);
+        logger.error(`Logout error: ${err.message}`);
         return res.status(500).json({ error: "Failed to logout" });
       }
       res.json({ success: true });
@@ -86,7 +86,7 @@ export function registerAuthRoutes(app: Express) {
         user: { id: user.id, displayName: user.displayName },
       });
     } catch (error) {
-      console.error("Get user error:", error);
+      logger.error(`Get user error: ${(error as Error).message}`);
       res.status(500).json({ error: "Failed to get user" });
     }
   });

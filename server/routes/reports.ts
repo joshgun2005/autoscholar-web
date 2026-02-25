@@ -26,7 +26,7 @@ export function registerReportRoutes(app: Express) {
 
       res.json(simplifiedReports);
     } catch (error) {
-      console.error("Get all shared reports error:", error);
+      logger.error("Get all shared reports error:", error);
       res.status(500).json({ error: "Failed to get shared reports" });
     }
   });
@@ -53,7 +53,7 @@ export function registerReportRoutes(app: Express) {
 
       res.json({ shareId: report.shareId });
     } catch (error) {
-      console.error("Share error:", error);
+      logger.error("Share error:", error);
       res.status(500).json({ error: "Failed to create shared report" });
     }
   });
@@ -75,7 +75,7 @@ export function registerReportRoutes(app: Express) {
         createdAt: report.createdAt,
       });
     } catch (error) {
-      console.error("Get shared report error:", error);
+      logger.error("Get shared report error:", error);
       res.status(500).json({ error: "Failed to get shared report" });
     }
   });
@@ -95,7 +95,7 @@ export function registerReportRoutes(app: Express) {
         updatedAt: session.updatedAt,
       })));
     } catch (error) {
-      console.error("Get sessions error:", error);
+      logger.error("Get sessions error:", error);
       res.status(500).json({ error: "Failed to get sessions" });
     }
   });
@@ -125,7 +125,7 @@ export function registerReportRoutes(app: Express) {
         updatedAt: session.updatedAt,
       });
     } catch (error) {
-      console.error("Get session error:", error);
+      logger.error("Get session error:", error);
       res.status(500).json({ error: "Failed to get session" });
     }
   });
