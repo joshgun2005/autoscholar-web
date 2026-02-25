@@ -1,21 +1,17 @@
-// Python Executor - Modular version
-// Original file split into 4 modules for better maintainability
-// See server/services/python/ for implementation details
+// Python Executor - Modular re-exports
+// Implementations are in server/services/python/
 
-// Export refactored modules
 export * from './python/index';
 
-// Export legacy functions not yet refactored
 export {
   executePortfolioOptimization,
   executeRiskMetricsAnalysis,
   executePlot,
   executeVolatilitySurface,
   executeDataDownload,
-  executeCustomPython
-} from './pythonExecutor.legacy';
+  executeCustomPython,
+} from './python/var';
 
-// Export types from legacy
 export type {
   PortfolioOptimizerInput,
   PortfolioOptimizerResult,
@@ -34,5 +30,4 @@ export type {
   DataDownloadExecutionResult,
   CustomPythonInput,
   CustomPythonResult,
-  CustomPythonExecutionResult
-} from './pythonExecutor.legacy';
+} from './python/var';

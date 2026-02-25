@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import type { SearchResult } from '@shared/schema';
+import type { SearchResult } from '@shared/types';
 
 interface ConversationMessage {
   question: string;

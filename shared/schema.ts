@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, vector } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, real, vector } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Re-export shared API types
+export type { SearchResult, ClaudeMessage, ClaudeToolCall, ClaudeToolResult, ChatRequest, ChatResponse, ConversationMessage } from "./types";
 
 // Users table with token-based authentication
 export const users = pgTable("users", {
@@ -26,7 +29,7 @@ export const crawledPages = pgTable("crawled_pages", {
 export const embeddings = pgTable("embeddings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   pageId: varchar("page_id").notNull().unique().references(() => crawledPages.id, { onDelete: "cascade" }),
-  embedding: vector("embedding", { dimensions: 3072 }), // text-embedding-3-large dimensions
+  embedding: vector("embedding", { dimensions: 3072 }),
   tokenCount: integer("token_count").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -35,66 +38,98 @@ export const embeddings = pgTable("embeddings", {
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
-  role: text("role").notNull(), // 'user' or 'assistant'
+  role: text("role").notNull(),
   content: text("content").notNull(),
-  sources: text("sources").array(), // URLs of sources used
+  sources: text("sources").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Shared reports table - stores crystallized reports with unique links
+// Shared reports table
 export const sharedReports = pgTable("shared_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  shareId: varchar("share_id").notNull().unique(), // Unique short ID for the share link
+  shareId: varchar("share_id").notNull().unique(),
   question: text("question").notNull(),
   answer: text("answer").notNull(),
-  toolResults: text("tool_results"), // JSON string of tool results
-  sources: text("sources"), // JSON string of complete SearchResult objects
-  customPythonFigures: text("custom_python_figures"), // JSON string of Python figures batches
+  toolResults: text("tool_results"),
+  sources: text("sources"),
+  customPythonFigures: text("custom_python_figures"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Conversation sessions table - stores complete conversation sessions with all data
+// Conversation sessions table
 export const conversationSessions = pgTable("conversation_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sessionId: varchar("session_id").notNull().unique(), // Session identifier
-  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // Owner of the session (null for anonymous)
-  title: text("title").notNull(), // First question or custom title
-  messages: text("messages").notNull(), // JSON array of { question, answer, toolResults, sources, searchQueries, pythonCode, monteCarloResults }
+  sessionId: varchar("session_id").notNull().unique(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  messages: text("messages").notNull(),
+  inputTokens: integer("input_tokens").default(0),
+  outputTokens: integer("output_tokens").default(0),
+  totalCost: real("total_cost").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Active users tracking
+export const activeUsers = pgTable("active_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().unique(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("idle"),
+  currentQuery: text("current_query"),
+  lastHeartbeat: timestamp("last_heartbeat").notNull().defaultNow(),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Analytics metrics
+export const analyticsMetrics = pgTable("analytics_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  totalRequests: integer("total_requests").default(0),
+  successfulRequests: integer("successful_requests").default(0),
+  failedRequests: integer("failed_requests").default(0),
+  activeUsers: integer("active_users").default(0),
+  uniqueVisitors: integer("unique_visitors").default(0),
+  averageResponseTime: real("average_response_time").default(0),
+  peakResponseTime: real("peak_response_time").default(0),
+  tokensGenerated: integer("tokens_generated").default(0),
+  estimatedCost: real("estimated_cost").default(0),
+  toolCallsCount: integer("tool_calls_count").default(0),
+  pythonExecutions: integer("python_executions").default(0),
+  searchQueries: integer("search_queries").default(0),
+  errorCount: integer("error_count").default(0),
+  errorRate: real("error_rate").default(0),
+  periodType: text("period_type").notNull().default("minute"),
+});
+
+// Request logs
+export const requestLogs = pgTable("request_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  query: text("query").notNull(),
+  responseTime: real("response_time"),
+  inputTokens: integer("input_tokens").default(0),
+  outputTokens: integer("output_tokens").default(0),
+  totalCost: real("total_cost").default(0),
+  toolsCalled: text("tools_called"),
+  status: text("status").notNull(),
+  errorMessage: text("error_message"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+});
+
 // Zod schemas for validation
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertCrawledPageSchema = createInsertSchema(crawledPages).omit({
-  id: true,
-  crawledAt: true,
-});
-
-export const insertEmbeddingSchema = createInsertSchema(embeddings).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertMessageSchema = createInsertSchema(messages).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertSharedReportSchema = createInsertSchema(sharedReports).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertConversationSessionSchema = createInsertSchema(conversationSessions).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertCrawledPageSchema = createInsertSchema(crawledPages).omit({ id: true, crawledAt: true });
+export const insertEmbeddingSchema = createInsertSchema(embeddings).omit({ id: true, createdAt: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
+export const insertSharedReportSchema = createInsertSchema(sharedReports).omit({ id: true, createdAt: true });
+export const insertConversationSessionSchema = createInsertSchema(conversationSessions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertActiveUserSchema = createInsertSchema(activeUsers).omit({ id: true, createdAt: true });
+export const insertAnalyticsMetricSchema = createInsertSchema(analyticsMetrics).omit({ id: true, timestamp: true });
+export const insertRequestLogSchema = createInsertSchema(requestLogs).omit({ id: true, timestamp: true });
 
 // TypeScript types
 export type User = typeof users.$inferSelect;
@@ -115,37 +150,11 @@ export type InsertSharedReport = z.infer<typeof insertSharedReportSchema>;
 export type ConversationSession = typeof conversationSessions.$inferSelect;
 export type InsertConversationSession = z.infer<typeof insertConversationSessionSchema>;
 
-// Additional types for API responses
-export interface SearchResult {
-  title: string;
-  url: string;
-  snippet: string;
-  favicon?: string;
-  rank: number;
-}
+export type ActiveUser = typeof activeUsers.$inferSelect;
+export type InsertActiveUser = z.infer<typeof insertActiveUserSchema>;
 
-export interface ClaudeMessage {
-  role: "user" | "assistant";
-  content: string;
-}
+export type AnalyticsMetric = typeof analyticsMetrics.$inferSelect;
+export type InsertAnalyticsMetric = z.infer<typeof insertAnalyticsMetricSchema>;
 
-export interface ClaudeToolCall {
-  name: string;
-  input: Record<string, any>;
-}
-
-export interface ClaudeToolResult {
-  tool_use_id: string;
-  content: string;
-}
-
-export interface ChatRequest {
-  query: string;
-  sessionId?: string;
-}
-
-export interface ChatResponse {
-  answer: string;
-  sources: SearchResult[];
-  sessionId: string;
-}
+export type RequestLog = typeof requestLogs.$inferSelect;
+export type InsertRequestLog = z.infer<typeof insertRequestLogSchema>;

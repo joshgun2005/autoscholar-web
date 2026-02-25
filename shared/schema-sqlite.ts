@@ -1,7 +1,9 @@
-import { sql } from "drizzle-orm";
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Re-export shared API types
+export type { SearchResult, ClaudeMessage, ClaudeToolCall, ClaudeToolResult, ChatRequest, ChatResponse, ConversationMessage } from "./types";
 
 // Users table with token-based authentication
 export const users = sqliteTable("users", {
@@ -48,8 +50,9 @@ export const sharedReports = sqliteTable("shared_reports", {
   shareId: text("share_id").notNull().unique(), // Unique short ID for the share link
   question: text("question").notNull(),
   answer: text("answer").notNull(),
-  toolResults: text("tool_results"), // JSON string of tool results
-  sources: text("sources"), // JSON string of complete SearchResult objects
+  toolResults: text("tool_results"),
+  sources: text("sources"),
+  customPythonFigures: text("custom_python_figures"),
   createdAt: integer("created_at", { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
@@ -211,37 +214,3 @@ export type InsertAnalyticsMetric = z.infer<typeof insertAnalyticsMetricSchema>;
 export type RequestLog = typeof requestLogs.$inferSelect;
 export type InsertRequestLog = z.infer<typeof insertRequestLogSchema>;
 
-// Additional types for API responses
-export interface SearchResult {
-  title: string;
-  url: string;
-  snippet: string;
-  favicon?: string;
-  rank: number;
-}
-
-export interface ClaudeMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-export interface ClaudeToolCall {
-  name: string;
-  input: Record<string, any>;
-}
-
-export interface ClaudeToolResult {
-  tool_use_id: string;
-  content: string;
-}
-
-export interface ChatRequest {
-  query: string;
-  sessionId?: string;
-}
-
-export interface ChatResponse {
-  answer: string;
-  sources: SearchResult[];
-  sessionId: string;
-}

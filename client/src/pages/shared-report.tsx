@@ -9,7 +9,7 @@ import { ThemeColorPicker } from "@/components/theme-color-picker";
 import { Button } from "@/components/ui/button";
 import { DownloadButtons } from "@/components/download-buttons";
 import { CustomPythonFigure } from "@/components/custom-python-figure";
-import type { SearchResult } from "@shared/schema";
+import type { SearchResult } from "@shared/types";
 import { useRef, useMemo } from "react";
 
 interface SharedReportData {

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { encode } from 'gpt-tokenizer';
-import type { SearchResult } from '@shared/schema';
+import type { SearchResult } from '@shared/types';
 import { AVAILABLE_TOOLS } from './claude/toolDefinitions';
 import {
   estimateTokens,

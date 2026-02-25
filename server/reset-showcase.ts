@@ -8,12 +8,11 @@ async function resetShowcase() {
     console.log('');
 
     // Compter les rapports avant suppression
-    const reportsBefore = await db.select().from(sharedReports);
-    console.log(`📊 Nombre de rapports actuels: ${reportsBefore.length}`);
+    const reportsBefore = await (db as any).select().from(sharedReports);
+    console.log(`Nombre de rapports actuels: ${reportsBefore.length}`);
     console.log('');
 
-    // Supprimer tous les rapports partagés
-    await db.delete(sharedReports);
+    await (db as any).delete(sharedReports);
 
     console.log('✅ Showcase réinitialisé avec succès !');
     console.log(`   ${reportsBefore.length} analyses publiques ont été supprimées.`);

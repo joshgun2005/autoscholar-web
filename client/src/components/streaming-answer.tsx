@@ -4,7 +4,7 @@ import { ExternalLink, Check, Search, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { SearchResult } from "@shared/schema";
+import type { SearchResult } from "@shared/types";
 
 interface SearchQuery {
   query: string;

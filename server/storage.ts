@@ -1,27 +1,42 @@
 import { db, schema } from "./db";
-import { eq, desc, and, lt, gte, sql } from "drizzle-orm";
+import { eq, desc, and, lt, gte } from "drizzle-orm";
+import { logger } from "./utils/logger";
 
-// Types will be inferred from schema
+// Infer types from the active schema
 type User = typeof schema.users.$inferSelect;
-type InsertUser = any;
-type CrawledPage = typeof schema.crawledPages.$inferSelect;
-type InsertCrawledPage = any;
-type Embedding = typeof schema.embeddings.$inferSelect;
-type InsertEmbedding = any;
-type Message = typeof schema.messages.$inferSelect;
-type InsertMessage = any;
-type SharedReport = typeof schema.sharedReports.$inferSelect;
-type InsertSharedReport = any;
-type ConversationSession = typeof schema.conversationSessions.$inferSelect;
-type InsertConversationSession = any;
-type ActiveUser = typeof schema.activeUsers.$inferSelect;
-type InsertActiveUser = any;
-type AnalyticsMetric = typeof schema.analyticsMetrics.$inferSelect;
-type InsertAnalyticsMetric = any;
-type RequestLog = typeof schema.requestLogs.$inferSelect;
-type InsertRequestLog = any;
+type InsertUser = Omit<User, "id" | "createdAt">;
 
-const { users, crawledPages, embeddings, messages, sharedReports, conversationSessions, activeUsers, analyticsMetrics, requestLogs } = schema;
+type CrawledPage = typeof schema.crawledPages.$inferSelect;
+type InsertCrawledPage = Omit<CrawledPage, "id" | "crawledAt">;
+
+type Message = typeof schema.messages.$inferSelect;
+type InsertMessage = Omit<Message, "id" | "createdAt">;
+
+type SharedReport = typeof schema.sharedReports.$inferSelect;
+type InsertSharedReport = Omit<SharedReport, "id" | "createdAt">;
+
+type ConversationSession = typeof schema.conversationSessions.$inferSelect;
+type InsertConversationSession = Omit<ConversationSession, "id" | "createdAt" | "updatedAt">;
+
+type ActiveUser = typeof schema.activeUsers.$inferSelect;
+type InsertActiveUser = Omit<ActiveUser, "id" | "createdAt">;
+
+type AnalyticsMetric = typeof schema.analyticsMetrics.$inferSelect;
+type InsertAnalyticsMetric = Omit<AnalyticsMetric, "id" | "timestamp">;
+
+type RequestLog = typeof schema.requestLogs.$inferSelect;
+type InsertRequestLog = Omit<RequestLog, "id" | "timestamp">;
+
+const {
+  users,
+  crawledPages,
+  messages,
+  sharedReports,
+  conversationSessions,
+  activeUsers,
+  analyticsMetrics,
+  requestLogs,
+} = schema;
 
 export interface IStorage {
   // Users
@@ -29,7 +44,7 @@ export interface IStorage {
   getUserByToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
-  deleteUser(id: number): Promise<void>;
+  deleteUser(id: string): Promise<void>;
 
   // Crawled Pages
   getCrawledPage(id: string): Promise<CrawledPage | undefined>;
@@ -45,7 +60,7 @@ export interface IStorage {
   getSharedReportByShareId(shareId: string): Promise<SharedReport | undefined>;
   createSharedReport(report: InsertSharedReport): Promise<SharedReport>;
   getAllSharedReports(): Promise<SharedReport[]>;
-  deleteSharedReport(id: number): Promise<void>;
+  deleteSharedReport(id: string): Promise<void>;
 
   // Conversation Sessions
   getConversationSessions(userId?: string): Promise<ConversationSession[]>;
@@ -54,7 +69,7 @@ export interface IStorage {
   createConversationSession(session: InsertConversationSession): Promise<ConversationSession>;
   updateConversationSession(sessionId: string, updates: Partial<InsertConversationSession>): Promise<ConversationSession>;
   getAllConversationSessions(): Promise<ConversationSession[]>;
-  deleteConversationSessionById(id: number): Promise<void>;
+  deleteConversationSessionById(id: string): Promise<void>;
 
   // Active Users
   getActiveUserBySessionId(sessionId: string): Promise<ActiveUser | undefined>;
@@ -75,301 +90,233 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // Users
+  // ─── Users ──────────────────────────────────────────────
+
   async getUser(id: string): Promise<User | undefined> {
-    console.log('🗄️  DB: getUser', id);
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    console.log('   Result:', user ? 'Found' : 'Not found');
-    return user || undefined;
+    const [user] = await (db as any).select().from(users).where(eq(users.id, id));
+    return user ?? undefined;
   }
 
   async getUserByToken(token: string): Promise<User | undefined> {
-    console.log('🗄️  DB: getUserByToken', token.substring(0, 12) + '...');
-    const [user] = await db.select().from(users).where(eq(users.token, token));
-    console.log('   Result:', user ? 'Found' : 'Not found');
-    return user || undefined;
+    const [user] = await (db as any).select().from(users).where(eq(users.token, token));
+    return user ?? undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    console.log('🗄️  DB: createUser', insertUser.displayName);
-    const userWithId = {
-      id: crypto.randomUUID(),
-      ...insertUser,
-      createdAt: new Date(),
-    };
-    const [user] = await db
+    const [user] = await (db as any)
       .insert(users)
-      .values(userWithId as any)
+      .values({ id: crypto.randomUUID(), ...insertUser, createdAt: new Date() })
       .returning();
-    console.log('   Result: Created user with ID', user.id);
     return user;
   }
 
   async getAllUsers(): Promise<User[]> {
-    console.log('🗄️  DB: getAllUsers');
-    const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
-    console.log('   Result:', allUsers.length, 'users');
-    return allUsers;
+    return await (db as any).select().from(users).orderBy(desc(users.createdAt));
   }
 
-  async deleteUser(id: number): Promise<void> {
-    console.log('🗄️  DB: deleteUser', id);
-    // First check if it's a string UUID or numeric ID
-    const userIdField = typeof id === 'number' ? 'id' : 'id';
-
-    // Delete user's sessions first
-    await db.delete(conversationSessions).where(eq(conversationSessions.userId, id.toString()));
-
-    // Then delete the user
-    await db.delete(users).where(eq(users.id, id.toString()));
-    console.log('   Result: User deleted');
+  async deleteUser(id: string): Promise<void> {
+    await (db as any).delete(conversationSessions).where(eq(conversationSessions.userId, id));
+    await (db as any).delete(users).where(eq(users.id, id));
   }
 
-  // Crawled Pages
+  // ─── Crawled Pages ──────────────────────────────────────
+
   async getCrawledPage(id: string): Promise<CrawledPage | undefined> {
-    const [page] = await db.select().from(crawledPages).where(eq(crawledPages.id, id));
-    return page || undefined;
+    const [page] = await (db as any).select().from(crawledPages).where(eq(crawledPages.id, id));
+    return page ?? undefined;
   }
-  
+
   async getCrawledPageByUrl(url: string): Promise<CrawledPage | undefined> {
-    const [page] = await db.select().from(crawledPages).where(eq(crawledPages.url, url));
-    return page || undefined;
+    const [page] = await (db as any).select().from(crawledPages).where(eq(crawledPages.url, url));
+    return page ?? undefined;
   }
-  
+
   async createCrawledPage(page: InsertCrawledPage): Promise<CrawledPage> {
-    const pageWithId = {
-      id: crypto.randomUUID(),
-      ...page,
-      crawledAt: new Date(),
-    };
-    const [crawledPage] = await db
+    const [created] = await (db as any)
       .insert(crawledPages)
-      .values(pageWithId as any)
+      .values({ id: crypto.randomUUID(), ...page, crawledAt: new Date() })
       .returning();
-    return crawledPage;
+    return created;
   }
-  
+
   async updateCrawledPage(id: string, page: Partial<InsertCrawledPage>): Promise<CrawledPage> {
-    const [updated] = await db
+    const [updated] = await (db as any)
       .update(crawledPages)
       .set(page)
       .where(eq(crawledPages.id, id))
       .returning();
     return updated;
   }
-  
-  // Messages
+
+  // ─── Messages ───────────────────────────────────────────
+
   async getMessagesBySession(sessionId: string): Promise<Message[]> {
-    console.log('🗄️  DB: getMessagesBySession', sessionId);
-    const msgs = await db
+    const msgs = await (db as any)
       .select()
       .from(messages)
       .where(eq(messages.sessionId, sessionId))
       .orderBy(desc(messages.createdAt));
 
-    console.log('   Result:', msgs.length, 'messages');
-    // Convert sources from JSON string back to array
-    return msgs.map(msg => ({
+    return msgs.map((msg: Message) => ({
       ...msg,
-      sources: msg.sources ? JSON.parse(msg.sources as string) : null,
-    })) as Message[];
+      sources: typeof msg.sources === "string" ? JSON.parse(msg.sources) : msg.sources,
+    }));
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    console.log('🗄️  DB: createMessage');
-    console.log('   Role:', message.role);
-    console.log('   Content length:', message.content.length);
-    const messageWithId = {
-      id: crypto.randomUUID(),
-      ...message,
-      // Convert sources array to JSON string for SQLite
-      sources: message.sources ? JSON.stringify(message.sources) : null,
-      createdAt: new Date(),
-    };
-    const [msg] = await db
+    const [msg] = await (db as any)
       .insert(messages)
-      .values(messageWithId as any)
+      .values({
+        id: crypto.randomUUID(),
+        ...message,
+        sources: Array.isArray(message.sources) ? JSON.stringify(message.sources) : message.sources,
+        createdAt: new Date(),
+      })
       .returning();
 
-    console.log('   Result: Message created with ID', msg.id);
-    // Convert sources back to array for the return value
     return {
       ...msg,
-      sources: msg.sources ? JSON.parse(msg.sources as string) : null,
-    } as Message;
+      sources: typeof msg.sources === "string" ? JSON.parse(msg.sources) : msg.sources,
+    };
   }
-  
-  // Shared Reports
+
+  // ─── Shared Reports ─────────────────────────────────────
+
   async getSharedReportByShareId(shareId: string): Promise<SharedReport | undefined> {
-    const [report] = await db
+    const [report] = await (db as any)
       .select()
       .from(sharedReports)
       .where(eq(sharedReports.shareId, shareId));
-    return report || undefined;
+    return report ?? undefined;
   }
 
   async createSharedReport(report: InsertSharedReport): Promise<SharedReport> {
-    const reportWithId = {
-      id: crypto.randomUUID(),
-      ...report,
-      createdAt: new Date(),
-    };
-    const [sharedReport] = await db
+    const [created] = await (db as any)
       .insert(sharedReports)
-      .values(reportWithId as any)
+      .values({ id: crypto.randomUUID(), ...report, createdAt: new Date() })
       .returning();
-    return sharedReport;
+    return created;
   }
 
   async getAllSharedReports(): Promise<SharedReport[]> {
-    console.log('🗄️  DB: getAllSharedReports');
-    const reports = await db.select().from(sharedReports).orderBy(desc(sharedReports.createdAt));
-    console.log('   Result:', reports.length, 'reports');
-    return reports;
+    return await (db as any).select().from(sharedReports).orderBy(desc(sharedReports.createdAt));
   }
 
-  async deleteSharedReport(id: number): Promise<void> {
-    console.log('🗄️  DB: deleteSharedReport', id);
-    await db.delete(sharedReports).where(eq(sharedReports.id, id.toString()));
-    console.log('   Result: Report deleted');
+  async deleteSharedReport(id: string): Promise<void> {
+    await (db as any).delete(sharedReports).where(eq(sharedReports.id, id));
   }
 
-  // Conversation Sessions
+  // ─── Conversation Sessions ──────────────────────────────
+
   async getConversationSessions(userId?: string): Promise<ConversationSession[]> {
-    console.log('🗄️  DB: getConversationSessions', userId ? `for user ${userId}` : 'all');
-    const result = userId
-      ? await db
-          .select()
-          .from(conversationSessions)
-          .where(eq(conversationSessions.userId, userId))
-          .orderBy(desc(conversationSessions.updatedAt))
-      : await db
-          .select()
-          .from(conversationSessions)
-          .orderBy(desc(conversationSessions.updatedAt));
-    console.log('   Result:', result.length, 'sessions');
-    return result;
+    if (userId) {
+      return await (db as any)
+        .select()
+        .from(conversationSessions)
+        .where(eq(conversationSessions.userId, userId))
+        .orderBy(desc(conversationSessions.updatedAt));
+    }
+    return await (db as any)
+      .select()
+      .from(conversationSessions)
+      .orderBy(desc(conversationSessions.updatedAt));
   }
 
   async getConversationSession(sessionId: string): Promise<ConversationSession | undefined> {
-    console.log('🗄️  DB: getConversationSession', sessionId);
-    const [session] = await db
+    const [session] = await (db as any)
       .select()
       .from(conversationSessions)
       .where(eq(conversationSessions.sessionId, sessionId));
-    console.log('   Result:', session ? 'Found' : 'Not found');
-    return session || undefined;
+    return session ?? undefined;
   }
 
-  async getConversationSessionByUserAndSessionId(sessionId: string, userId: string): Promise<ConversationSession | undefined> {
-    console.log('🗄️  DB: getConversationSessionByUserAndSessionId');
-    console.log('   Session ID:', sessionId);
-    console.log('   User ID:', userId);
-    const [session] = await db
+  async getConversationSessionByUserAndSessionId(
+    sessionId: string,
+    userId: string,
+  ): Promise<ConversationSession | undefined> {
+    const [session] = await (db as any)
       .select()
       .from(conversationSessions)
       .where(
         and(
           eq(conversationSessions.sessionId, sessionId),
-          eq(conversationSessions.userId, userId)
-        )
+          eq(conversationSessions.userId, userId),
+        ),
       );
-    console.log('   Result:', session ? 'Found' : 'Not found');
-    return session || undefined;
+    return session ?? undefined;
   }
 
   async createConversationSession(session: InsertConversationSession): Promise<ConversationSession> {
-    console.log('🗄️  DB: createConversationSession');
-    console.log('   Session ID:', session.sessionId);
-    console.log('   Title:', session.title);
     const now = new Date();
-    const sessionWithId = {
-      id: crypto.randomUUID(),
-      ...session,
-      createdAt: now,
-      updatedAt: now,
-    };
-    const [conversationSession] = await db
+    const [created] = await (db as any)
       .insert(conversationSessions)
-      .values(sessionWithId as any)
+      .values({ id: crypto.randomUUID(), ...session, createdAt: now, updatedAt: now })
       .returning();
-    console.log('   Result: Session created with ID', conversationSession.id);
-    return conversationSession;
+    return created;
   }
 
-  async updateConversationSession(sessionId: string, updates: Partial<InsertConversationSession>): Promise<ConversationSession> {
-    console.log('🗄️  DB: updateConversationSession', sessionId);
-    const [updated] = await db
+  async updateConversationSession(
+    sessionId: string,
+    updates: Partial<InsertConversationSession>,
+  ): Promise<ConversationSession> {
+    const [updated] = await (db as any)
       .update(conversationSessions)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(conversationSessions.sessionId, sessionId))
       .returning();
-    console.log('   Result: Session updated');
     return updated;
   }
 
   async getAllConversationSessions(): Promise<ConversationSession[]> {
-    console.log('🗄️  DB: getAllConversationSessions');
-    const sessions = await db.select().from(conversationSessions).orderBy(desc(conversationSessions.updatedAt));
-    console.log('   Result:', sessions.length, 'sessions');
-    return sessions;
+    return await (db as any)
+      .select()
+      .from(conversationSessions)
+      .orderBy(desc(conversationSessions.updatedAt));
   }
 
-  async deleteConversationSessionById(id: number): Promise<void> {
-    console.log('🗄️  DB: deleteConversationSessionById', id);
-    await db.delete(conversationSessions).where(eq(conversationSessions.id, id.toString()));
-    console.log('   Result: Session deleted');
+  async deleteConversationSessionById(id: string): Promise<void> {
+    await (db as any).delete(conversationSessions).where(eq(conversationSessions.id, id));
   }
 
-  // Active Users
+  // ─── Active Users ───────────────────────────────────────
+
   async getActiveUserBySessionId(sessionId: string): Promise<ActiveUser | undefined> {
-    const [user] = await db.select().from(activeUsers).where(eq(activeUsers.sessionId, sessionId));
-    return user || undefined;
+    const [user] = await (db as any)
+      .select()
+      .from(activeUsers)
+      .where(eq(activeUsers.sessionId, sessionId));
+    return user ?? undefined;
   }
 
   async upsertActiveUser(user: InsertActiveUser): Promise<ActiveUser> {
     const existing = await this.getActiveUserBySessionId(user.sessionId);
 
     if (existing) {
-      const [updated] = await db
+      const [updated] = await (db as any)
         .update(activeUsers)
-        .set({
-          ...user,
-          lastHeartbeat: new Date(),
-        })
+        .set({ ...user, lastHeartbeat: new Date() })
         .where(eq(activeUsers.sessionId, user.sessionId))
         .returning();
       return updated;
-    } else {
-      const userWithId = {
-        id: crypto.randomUUID(),
-        ...user,
-        lastHeartbeat: new Date(),
-        createdAt: new Date(),
-      };
-      const [created] = await db
-        .insert(activeUsers)
-        .values(userWithId as any)
-        .returning();
-      return created;
     }
+
+    const [created] = await (db as any)
+      .insert(activeUsers)
+      .values({ id: crypto.randomUUID(), ...user, lastHeartbeat: new Date(), createdAt: new Date() })
+      .returning();
+    return created;
   }
 
   async updateActiveUserHeartbeat(sessionId: string, status: string, currentQuery?: string): Promise<void> {
-    await db
+    await (db as any)
       .update(activeUsers)
-      .set({
-        lastHeartbeat: new Date(),
-        status,
-        currentQuery: currentQuery || null,
-      })
+      .set({ lastHeartbeat: new Date(), status, currentQuery: currentQuery ?? null })
       .where(eq(activeUsers.sessionId, sessionId));
   }
 
   async getActiveUsers(): Promise<ActiveUser[]> {
-    // Get users with heartbeat in last 2 minutes
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-    return await db
+    return await (db as any)
       .select()
       .from(activeUsers)
       .where(gte(activeUsers.lastHeartbeat, twoMinutesAgo))
@@ -378,25 +325,21 @@ export class DatabaseStorage implements IStorage {
 
   async cleanupStaleUsers(timeoutMinutes: number = 5): Promise<void> {
     const cutoffTime = new Date(Date.now() - timeoutMinutes * 60 * 1000);
-    await db.delete(activeUsers).where(lt(activeUsers.lastHeartbeat, cutoffTime));
+    await (db as any).delete(activeUsers).where(lt(activeUsers.lastHeartbeat, cutoffTime));
   }
 
-  // Analytics Metrics
+  // ─── Analytics Metrics ──────────────────────────────────
+
   async createAnalyticsMetric(metric: InsertAnalyticsMetric): Promise<AnalyticsMetric> {
-    const metricWithId = {
-      id: crypto.randomUUID(),
-      ...metric,
-      timestamp: new Date(),
-    };
-    const [created] = await db
+    const [created] = await (db as any)
       .insert(analyticsMetrics)
-      .values(metricWithId as any)
+      .values({ id: crypto.randomUUID(), ...metric, timestamp: new Date() })
       .returning();
     return created;
   }
 
   async getLatestMetrics(periodType: string, limit: number = 60): Promise<AnalyticsMetric[]> {
-    return await db
+    return await (db as any)
       .select()
       .from(analyticsMetrics)
       .where(eq(analyticsMetrics.periodType, periodType))
@@ -405,34 +348,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMetricsInTimeRange(startTime: Date, endTime: Date): Promise<AnalyticsMetric[]> {
-    return await db
+    return await (db as any)
       .select()
       .from(analyticsMetrics)
-      .where(
-        and(
-          gte(analyticsMetrics.timestamp, startTime),
-          lt(analyticsMetrics.timestamp, endTime)
-        )
-      )
+      .where(and(gte(analyticsMetrics.timestamp, startTime), lt(analyticsMetrics.timestamp, endTime)))
       .orderBy(desc(analyticsMetrics.timestamp));
   }
 
-  // Request Logs
+  // ─── Request Logs ───────────────────────────────────────
+
   async createRequestLog(log: InsertRequestLog): Promise<RequestLog> {
-    const logWithId = {
-      id: crypto.randomUUID(),
-      ...log,
-      timestamp: new Date(),
-    };
-    const [created] = await db
+    const [created] = await (db as any)
       .insert(requestLogs)
-      .values(logWithId as any)
+      .values({ id: crypto.randomUUID(), ...log, timestamp: new Date() })
       .returning();
     return created;
   }
 
   async getRecentRequestLogs(limit: number = 100): Promise<RequestLog[]> {
-    return await db
+    return await (db as any)
       .select()
       .from(requestLogs)
       .orderBy(desc(requestLogs.timestamp))
@@ -440,7 +374,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRequestLogsByStatus(status: string, limit: number = 100): Promise<RequestLog[]> {
-    return await db
+    return await (db as any)
       .select()
       .from(requestLogs)
       .where(eq(requestLogs.status, status))

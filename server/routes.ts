@@ -233,7 +233,7 @@ import {
 import { getOptionChain, getOptionPrices, getOptionGreeks } from "./services/financialDataService";
 import { executeMonteCarloSimulation, executeOptionsPricing, executeGarchModel, executeVarCalculation, executePortfolioOptimization, executeRiskMetricsAnalysis, executePlot, executeDataDownload, executeCustomPython } from "./services/pythonExecutor";
 import { randomUUID } from "crypto";
-import type { SearchResult } from "@shared/schema";
+import type { SearchResult } from "@shared/types";
 import { logger } from "./utils/logger";
 import multer from "multer";
 import FormData from "form-data";
@@ -349,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionId,
         role: 'user',
         content: query,
-        sources: [],
+        sources: null,
       });
       logger.success('User message saved');
 
@@ -1838,7 +1838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sessionId,
             role: 'assistant',
             content: fullAnswer,
-            sources: sources.map(s => s.url),
+            sources: JSON.stringify(sources.map(s => s.url)),
           });
           logger.success('Assistant message saved');
 
@@ -1906,6 +1906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 answer: fullAnswer,
                 toolResults: allToolResults.length > 0 ? JSON.stringify(allToolResults) : null,
                 sources: sources.length > 0 ? JSON.stringify(sources) : null,
+                customPythonFigures: customPythonFiguresData.length > 0 ? JSON.stringify(customPythonFiguresData) : null,
               });
               logger.success(`Shared report created with ID: ${shareId}`);
             } catch (shareError) {
@@ -2292,8 +2293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete user
   app.delete("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const userId = parseInt(req.params.id);
-      await storage.deleteUser(userId);
+      await storage.deleteUser(req.params.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Delete user error:", error);
@@ -2304,8 +2304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete session
   app.delete("/api/admin/sessions/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const sessionId = parseInt(req.params.id);
-      await storage.deleteConversationSessionById(sessionId);
+      await storage.deleteConversationSessionById(req.params.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Delete session error:", error);
@@ -2316,8 +2315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete shared report
   app.delete("/api/admin/reports/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const reportId = parseInt(req.params.id);
-      await storage.deleteSharedReport(reportId);
+      await storage.deleteSharedReport(req.params.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Delete report error:", error);
@@ -2345,6 +2343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: userId || null,
         status: status || 'idle',
         currentQuery: currentQuery || null,
+        lastHeartbeat: new Date(),
         userAgent,
         ipAddress,
       });

@@ -22,7 +22,7 @@ import { Sparkles, BookOpen, Plus, Users, User, History, LogOut } from "lucide-r
 import { useChatMutation } from "@/hooks/useChatMutation";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SearchResult } from "@shared/schema";
+import type { SearchResult } from "@shared/types";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {

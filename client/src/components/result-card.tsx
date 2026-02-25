@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
-import type { SearchResult } from "@shared/schema";
+import type { SearchResult } from "@shared/types";
 
 interface ResultCardProps {
   result: SearchResult;
