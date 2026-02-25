@@ -495,6 +495,23 @@ vquant/
 
 ---
 
+## Documentation
+
+Exhaustive documentation is available in the [`docs/`](./docs) directory:
+
+| Document | Description |
+|----------|-------------|
+| **[Getting Started](./docs/GETTING_STARTED.md)** | Prerequisites, installation, Python setup, env vars, first run, troubleshooting |
+| **[Architecture](./docs/ARCHITECTURE.md)** | System diagram, directory structure, data flow, design decisions |
+| **[API Reference](./docs/API_REFERENCE.md)** | All 44 endpoints with request/response schemas, SSE event types, query params |
+| **[Python Analysis](./docs/PYTHON_ANALYSIS.md)** | 8 built-in models (Monte Carlo, Black-Scholes, GARCH, VaR, portfolio, risk, plots, custom), all 17 libraries |
+| **[Database Schema](./docs/DATABASE.md)** | All 9 tables with columns, types, constraints, relationships |
+| **[Deployment](./docs/DEPLOYMENT.md)** | Production build, env vars, Docker example, CORS, security checklist |
+| **[Contributing](./docs/CONTRIBUTING.md)** | Dev setup, code conventions, commit format, how to add endpoints/tools |
+| **[`.env.example`](./.env.example)** | All environment variables with categories |
+
+---
+
 ## Testing
 
 [![Tests](https://img.shields.io/badge/Tests-41_passing-22c55e?style=flat-square&logo=vitest&logoColor=white)](./)
