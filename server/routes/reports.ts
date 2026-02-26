@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { randomUUID } from "crypto";
 import path from "path";
+import fs from "fs";
 import { storage } from "../storage";
 import { convertToBeamerPDF } from "../services/beamerSlidesService";
 import { logger } from "../utils/logger";
@@ -40,6 +41,29 @@ export function registerReportRoutes(app: Express) {
         return res.status(400).json({ error: "Question and answer are required" });
       }
 
+      // Convert file-based figure URLs to base64 for persistence across deployments.
+      // Figure files on disk (dist/public/figures/) are ephemeral and lost on redeploy,
+      // so we read them now and store the base64 data directly in the database.
+      let persistedFigures = customPythonFigures;
+      if (Array.isArray(customPythonFigures)) {
+        persistedFigures = customPythonFigures.map((batch: any) => {
+          if (!Array.isArray(batch.figures)) return batch;
+          const convertedFigures = batch.figures.map((fig: string) => {
+            // Already base64 or data URI — keep as-is
+            if (!fig.startsWith('/figures/') && !fig.startsWith('/plots/')) return fig;
+            try {
+              const filePath = path.join(process.cwd(), 'dist', 'public', fig);
+              const buffer = fs.readFileSync(filePath);
+              return buffer.toString('base64');
+            } catch {
+              logger.warn(`Could not read figure file for persistence: ${fig}`);
+              return fig; // Keep URL as fallback
+            }
+          });
+          return { ...batch, figures: convertedFigures };
+        });
+      }
+
       const shareId = randomUUID().replace(/-/g, '').substring(0, 8);
 
       const report = await storage.createSharedReport({
@@ -48,7 +72,7 @@ export function registerReportRoutes(app: Express) {
         answer,
         toolResults: toolResults ? JSON.stringify(toolResults) : null,
         sources: sources ? JSON.stringify(sources) : null,
-        customPythonFigures: customPythonFigures ? JSON.stringify(customPythonFigures) : null,
+        customPythonFigures: persistedFigures ? JSON.stringify(persistedFigures) : null,
       });
 
       res.json({ shareId: report.shareId });

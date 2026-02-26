@@ -46,6 +46,20 @@ export default function SharedReport() {
     return registry;
   }, [data?.customPythonFigures]);
 
+  // Extract flat list of figure data URIs for markdown image resolution
+  // Figures are stored as base64 in the DB — convert to data URIs so they
+  // survive redeployments (file-based /figures/ URLs are ephemeral on disk).
+  const figureUrls = useMemo(() => {
+    if (!data?.customPythonFigures) return [];
+    return data.customPythonFigures.flatMap(batch =>
+      batch.figures.map(fig =>
+        fig.startsWith('/') || fig.startsWith('http') || fig.startsWith('data:')
+          ? fig
+          : `data:image/png;base64,${fig}`
+      )
+    );
+  }, [data?.customPythonFigures]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -158,6 +172,7 @@ export default function SharedReport() {
               question={data.question}
               answer={data.answer}
               contentRef={contentRef}
+              figureUrls={figureUrls}
             />
           </div>
 
@@ -171,6 +186,7 @@ export default function SharedReport() {
               statusMessage=""
               currentSearchIndex={0}
               figureRegistry={figureRegistry}
+              figureUrls={figureUrls}
             />
 
             <ToolResults toolResults={data.toolResults} />

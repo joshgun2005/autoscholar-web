@@ -34,57 +34,57 @@ export function StreamingAnswer({
 }: StreamingAnswerProps) {
   const streamingCursorRef = useRef<HTMLSpanElement>(null);
 
-  // Process content to replace figure references with actual URLs or base64 images
-  // This handles cases where Claude generates different IDs than the server
-  const processedContent = useMemo(() => {
-    let processed = content;
+  // Build an ordered list of resolved figure sources (data URIs or URLs)
+  // This is the single source of truth for all figure rendering
+  const resolvedFigures = useMemo(() => {
+    const sources: string[] = [];
 
+    // Priority 1: figureUrls (may be data URIs from shared reports or file URLs from live session)
     if (figureUrls.length > 0) {
-      // Build a Set of known valid figure/plot URLs for fast lookup
-      const knownUrls = new Set(figureUrls);
-
-      // Single pass: fix ALL image references with unknown/hallucinated URLs
-      // This catches any ![alt](url) pattern — no matter what alt text Claude uses
-      const allImagePattern = /!\[([^\]]*)\]\(([^)]+)\)/gi;
-      let sequentialCounter = 0;
-
-      processed = processed.replace(allImagePattern, (match, alt, url) => {
-        // External URLs, data URIs, fig:// — keep as-is
-        if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('fig://')) {
-          return match;
-        }
-
-        // Already a known valid figure URL — keep it and advance counter
-        if (knownUrls.has(url)) {
-          sequentialCounter++;
-          return match;
-        }
-
-        // Unknown URL (hallucinated by Claude) — replace with next available figure URL
-        if (sequentialCounter < figureUrls.length) {
-          const correctUrl = figureUrls[sequentialCounter];
-          sequentialCounter++;
-          return `![${alt}](${correctUrl})`;
-        }
-        return match;
-      });
+      sources.push(...figureUrls);
     }
-    // Fallback to figureRegistry with fig:// protocol
+    // Priority 2: figureRegistry values
     else if (figureRegistry.size > 0) {
-      const figureEntries = Array.from(figureRegistry.entries());
-      const figurePattern = /!\[(?:Figure|Graphique|Fig\.?)\s*(\d+)[^\]]*\]\([^)]+\)/gi;
-      processed = processed.replace(figurePattern, (match, figNum) => {
-        const idx = parseInt(figNum, 10) - 1;
-        if (idx >= 0 && idx < figureEntries.length) {
-          const [figId] = figureEntries[idx];
-          return `![Figure ${figNum}](fig://${figId})`;
+      figureRegistry.forEach((value) => {
+        if (!value) return;
+        if (value.startsWith('data:') || value.startsWith('/') || value.startsWith('http')) {
+          sources.push(value);
+        } else {
+          // Raw base64 — wrap as data URI
+          sources.push(`data:image/png;base64,${value}`);
         }
-        return match;
       });
     }
+
+    return sources;
+  }, [figureRegistry, figureUrls]);
+
+  // Replace ALL markdown image references with resolved figure sources
+  const processedContent = useMemo(() => {
+    if (resolvedFigures.length === 0) return content;
+
+    let processed = content;
+    const allImagePattern = /!\[([^\]]*)\]\(([^)]+)\)/gi;
+    let counter = 0;
+
+    processed = processed.replace(allImagePattern, (match, alt, url) => {
+      // Keep external URLs (http) and already-working data URIs
+      if (url.startsWith('http') || url.startsWith('data:')) {
+        return match;
+      }
+
+      // Any local path (/figures/, /plots/, fig://, hallucinated, etc.)
+      // → replace with next resolved figure source
+      if (counter < resolvedFigures.length) {
+        const resolved = resolvedFigures[counter];
+        counter++;
+        return `![${alt}](${resolved})`;
+      }
+      return match;
+    });
 
     return processed;
-  }, [content, figureRegistry, figureUrls]);
+  }, [content, resolvedFigures]);
 
   // Display content directly without artificial delay - streaming is already real-time from server
   const displayedContent = processedContent;
@@ -232,22 +232,37 @@ export function StreamingAnswer({
                   </blockquote>
                 ),
                 img: ({ src, alt }) => {
-                  // Determine the actual image source
                   let imgSrc = src || '';
 
-                  // Handle fig:// protocol — resolve from registry
+                  // Step 1: Resolve fig:// from registry
                   if (imgSrc.startsWith('fig://')) {
                     const figureId = imgSrc.replace('fig://', '');
-                    const registryValue = figureRegistry.get(figureId);
-                    if (registryValue) {
-                      // Registry may contain a URL or base64
-                      imgSrc = registryValue.startsWith('/') || registryValue.startsWith('http')
-                        ? registryValue
-                        : `data:image/png;base64,${registryValue}`;
+                    const val = figureRegistry.get(figureId);
+                    if (val) {
+                      imgSrc = val.startsWith('/') || val.startsWith('http') || val.startsWith('data:')
+                        ? val
+                        : `data:image/png;base64,${val}`;
                     }
                   }
 
-                  // Valid image source — render it
+                  // Step 2: If still unresolved (empty, fig://, or broken local path),
+                  // try resolvedFigures by figure number in alt text
+                  if (!imgSrc || imgSrc.startsWith('fig://') || (imgSrc.startsWith('/') && resolvedFigures.length > 0)) {
+                    const figMatch = (alt || '').match(/(\d+)/);
+                    if (figMatch) {
+                      const idx = parseInt(figMatch[1], 10) - 1;
+                      if (idx >= 0 && idx < resolvedFigures.length) {
+                        imgSrc = resolvedFigures[idx];
+                      }
+                    }
+                  }
+
+                  // Step 3: Still nothing? Take first available resolved figure
+                  if ((!imgSrc || imgSrc.startsWith('fig://')) && resolvedFigures.length > 0) {
+                    imgSrc = resolvedFigures[0];
+                  }
+
+                  // Render if we have a valid source
                   if (imgSrc && !imgSrc.startsWith('fig://')) {
                     return (
                       <div className="my-6 border-2 border-primary/20 rounded-xl overflow-hidden shadow-lg">
@@ -262,36 +277,25 @@ export function StreamingAnswer({
                             const img = e.currentTarget;
                             const retryCount = parseInt(img.dataset.retryCount || '0', 10);
 
-                            if (retryCount >= figureUrls.length || figureUrls.length === 0) {
-                              // Exhausted all figure URLs — show fallback
-                              img.style.display = 'none';
-                              const fallback = img.parentElement?.querySelector('.figure-fallback');
-                              if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                              return;
-                            }
-
-                            // Try figure URLs one by one until one works
-                            // First try: match by number in alt text
-                            if (retryCount === 0) {
-                              const figMatch = (alt || '').match(/(\d+)/);
-                              if (figMatch && figureUrls.length > 0) {
-                                const idx = parseInt(figMatch[1], 10) - 1;
-                                if (idx >= 0 && idx < figureUrls.length) {
-                                  img.dataset.retryCount = '1';
-                                  img.src = figureUrls[idx];
+                            // Try resolvedFigures one by one as fallback
+                            if (retryCount < resolvedFigures.length) {
+                              const candidate = resolvedFigures[retryCount];
+                              // Skip if it's the same URL that just failed
+                              if (candidate === img.src || candidate === imgSrc) {
+                                img.dataset.retryCount = String(retryCount + 1);
+                                if (retryCount + 1 < resolvedFigures.length) {
+                                  img.src = resolvedFigures[retryCount + 1];
+                                  img.dataset.retryCount = String(retryCount + 2);
                                   return;
                                 }
+                              } else {
+                                img.dataset.retryCount = String(retryCount + 1);
+                                img.src = candidate;
+                                return;
                               }
                             }
 
-                            // Sequential fallback: try the next figure URL
-                            if (retryCount < figureUrls.length) {
-                              img.dataset.retryCount = String(retryCount + 1);
-                              img.src = figureUrls[retryCount];
-                              return;
-                            }
-
-                            // Final fallback
+                            // Exhausted all options — hide image
                             img.style.display = 'none';
                             const fallback = img.parentElement?.querySelector('.figure-fallback');
                             if (fallback) (fallback as HTMLElement).style.display = 'flex';
@@ -309,14 +313,9 @@ export function StreamingAnswer({
                     );
                   }
 
-                  // Unresolved figure — show placeholder
-                  return (
-                    <div className="my-4 p-4 border-2 border-dashed border-muted rounded-lg text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Loading figure...
-                      </p>
-                    </div>
-                  );
+                  // Truly no figure data available — hide silently
+                  // (figures are shown in the Python Gallery section below)
+                  return null;
                 },
               }}
             >

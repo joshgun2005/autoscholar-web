@@ -1120,12 +1120,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     logger.debug(`   💾 Saved figure: ${figureFilename}`);
                   }
 
-                  // Send figure URLs to client (no base64 — use file URLs to avoid SSE truncation)
+                  // Send base64 figures + file URLs to client
+                  // base64 in `figures` ensures persistence when shared to DB
+                  // file URLs in `figureUrls` used for fast display during current session
                   res.write(`data: ${JSON.stringify({
                     type: 'custom_python_figures',
                     figureId: figureId,
-                    figures: figureUrls,        // URLs instead of base64 — lighter, no truncation
-                    figureUrls: figureUrls,
+                    figures: originalFigures,   // base64 data — persisted to DB via share
+                    figureUrls: figureUrls,     // file URLs — fast display during session
                     output: result.output,
                     description: toolCall.input.description
                   })}\n\n`);
@@ -1160,6 +1162,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     description: toolCall.input.description
                   });
                 }
+                // Handle generated files (Excel, etc.)
+                if (result.files && result.files.length > 0) {
+                  const fsFiles = await import('fs');
+                  const downloadsDir = path.resolve('downloads');
+                  if (!fsFiles.existsSync(downloadsDir)) {
+                    fsFiles.mkdirSync(downloadsDir, { recursive: true });
+                  }
+
+                  const fileLinks: Array<{ url: string; name: string }> = [];
+                  for (const file of result.files) {
+                    const uniqueName = `${Date.now()}_${file.filename}`;
+                    const destPath = path.join(downloadsDir, uniqueName);
+                    fsFiles.copyFileSync(file.filepath, destPath);
+                    // Cleanup temp file
+                    try { fsFiles.unlinkSync(file.filepath); } catch {}
+
+                    const downloadUrl = `/api/download/${uniqueName}`;
+                    fileLinks.push({ url: downloadUrl, name: file.filename });
+                  }
+
+                  // Add download links to output for Claude to include
+                  let fileOutput = '\n\n📥 **FICHIERS EXCEL GÉNÉRÉS:**\n';
+                  fileLinks.forEach(f => {
+                    fileOutput += `\n- [Télécharger ${f.name}](${f.url})\n`;
+                  });
+                  fileOutput += '\n⚠️ IMPORTANT: Tu DOIS inclure chaque lien de téléchargement dans ta réponse.';
+                  result.output = (result.output || '') + fileOutput;
+
+                  logger.debug('   📥 Excel files processed:', fileLinks.map(f => f.name));
+
+                  delete result.files;
+                }
+
               } else if (toolCall.name === 'web_search_exa') {
                 logger.debug('   → Web search (Exa):', toolCall.input.query);
                 const searchResponse = await searchExa(
