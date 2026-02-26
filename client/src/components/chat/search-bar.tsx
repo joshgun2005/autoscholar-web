@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, FormEvent } from "react";
 import { Send, Loader2, Paperclip, Mic, MicOff, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface SearchBarProps {
   onSearch: (query: string, imageData?: string, imageMimeType?: string) => void;
@@ -53,7 +53,6 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Extract base64 data (remove "data:image/png;base64," prefix)
       const base64 = result.split(",")[1];
       setAttachedImage(base64);
       setImageMimeType(file.type);
@@ -61,7 +60,6 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
     };
     reader.readAsDataURL(file);
 
-    // Reset the input so the same file can be selected again
     e.target.value = "";
   }, []);
 
@@ -141,7 +139,7 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
         }
       };
 
-      mediaRecorder.start(250); // collect chunks every 250ms
+      mediaRecorder.start(250);
       setIsRecording(true);
       console.log("[STT] Recording started, mimeType:", actualMime);
     } catch (err) {
@@ -167,13 +165,7 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
   const canSubmit = (query.trim() || attachedImage) && !isLoading && !isTranscribing;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      className="w-full"
-      data-testid="search-bar-container"
-    >
+    <div className="w-full" data-testid="search-bar-container">
       {/* Image preview */}
       <AnimatePresence>
         {imagePreviewUrl && (
@@ -187,12 +179,12 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
               <img
                 src={imagePreviewUrl}
                 alt="Attached"
-                className="h-16 w-16 rounded-xl object-cover border-2 border-primary/40 shadow-md"
+                className="h-16 w-16 rounded-lg object-cover border border-border"
               />
               <button
                 type="button"
                 onClick={removeImage}
-                className="absolute -top-2 -right-2 p-1 rounded-full bg-destructive text-destructive-foreground shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-2 -right-2 p-1 rounded-full bg-destructive text-destructive-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -203,24 +195,14 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
       </AnimatePresence>
 
       <form onSubmit={handleSubmit} className="relative" data-testid="form-search">
-        <motion.div
-          animate={isFocused ? {
-            scale: 1.01,
-            boxShadow: "0 0 0 4px rgba(59, 130, 246, 0.2), 0 20px 40px -12px rgba(59, 130, 246, 0.3)"
-          } : {
-            scale: 1,
-            boxShadow: "0 8px 16px -4px rgba(59, 130, 246, 0.15), 0 4px 8px -2px rgba(0, 0, 0, 0.1)"
-          }}
-          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        <div
           className={`
-            relative flex items-center gap-3 px-6 py-4
-            bg-background/80 backdrop-blur-xl
-            border-[3px] transition-all duration-300 overflow-hidden
+            relative flex items-center gap-3 px-4 py-3
+            bg-card border rounded-xl transition-colors
             ${isFocused
-              ? "border-primary shadow-2xl shadow-primary/30 ring-4 ring-primary/20"
-              : "border-primary/80 hover:border-primary shadow-lg shadow-primary/20"
+              ? "border-primary ring-2 ring-primary/10"
+              : "border-border hover:border-primary/40"
             }
-            rounded-3xl
           `}
           data-testid="search-input-wrapper"
         >
@@ -232,39 +214,35 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             onChange={handleFileChange}
             className="hidden"
           />
-          <motion.button
+          <button
             type="button"
             onClick={handleFileSelect}
             disabled={isLoading}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
             className={`
-              flex-shrink-0 p-2 rounded-xl transition-all duration-200
+              flex-shrink-0 p-2 rounded-lg transition-colors
               ${attachedImage
-                ? "bg-primary/20 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
             title="Joindre une image"
           >
             <Paperclip className="w-4 h-4" />
-          </motion.button>
+          </button>
 
           {/* Microphone button */}
-          <motion.button
+          <button
             type="button"
             onClick={toggleRecording}
             disabled={isLoading || isTranscribing}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
             className={`
-              flex-shrink-0 p-2 rounded-xl transition-all duration-200
+              flex-shrink-0 p-2 rounded-lg transition-colors
               ${isRecording
-                ? "bg-red-500/20 text-red-500 animate-pulse"
+                ? "bg-red-500/10 text-red-500 animate-pulse"
                 : isTranscribing
-                  ? "bg-amber-500/20 text-amber-500"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "bg-amber-500/10 text-amber-500"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
@@ -277,7 +255,7 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             ) : (
               <Mic className="w-4 h-4" />
             )}
-          </motion.button>
+          </button>
 
           {/* Text input */}
           <input
@@ -298,16 +276,14 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
           />
 
           {/* Submit button */}
-          <motion.button
+          <button
             type="submit"
             disabled={!canSubmit}
-            whileHover={canSubmit ? { scale: 1.08 } : {}}
-            whileTap={canSubmit ? { scale: 0.95 } : {}}
             className={`
-              flex-shrink-0 p-3 rounded-2xl transition-all duration-300 relative overflow-hidden
+              flex-shrink-0 p-2.5 rounded-lg transition-colors
               ${canSubmit
-                ? "bg-gradient-to-r from-primary to-blue-600 text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40"
-                : "bg-muted/50 text-muted-foreground cursor-not-allowed"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
               }
             `}
           >
@@ -316,9 +292,9 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             ) : (
               <Send className="w-4 h-4" />
             )}
-          </motion.button>
-        </motion.div>
+          </button>
+        </div>
       </form>
-    </motion.div>
+    </div>
   );
 }

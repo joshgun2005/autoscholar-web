@@ -105,27 +105,26 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex flex-col relative overflow-hidden">
-      {/* Decorative gradient blobs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      {/* Subtle Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.03),transparent_70%)]" />
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl">
-        <div className="container flex h-16 items-center justify-between px-4">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="container flex h-14 items-center justify-between px-4">
           <button
             onClick={() => setLocation('/')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-all duration-200 hover:bg-muted/50"
+            className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
           >
-            <Sparkles className="w-6 h-6 text-primary" />
-            <div className="hidden md:flex items-baseline gap-2">
-              <span className="text-xl font-semibold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <div className="hidden md:flex items-baseline gap-1.5">
+              <span className="text-base font-bold text-foreground">
                 VibeQuant
               </span>
-              <span className="text-sm text-muted-foreground">
-                by Agentilab.ai
+              <span className="text-[10px] text-muted-foreground leading-none">
+                AI Financial
               </span>
             </div>
           </button>
@@ -137,7 +136,7 @@ export default function Auth() {
         <div className="w-full max-w-md">
           {/* Welcome message */}
           <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-            <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold mb-3 text-foreground">
               Mon Compte
             </h1>
             <p className="text-muted-foreground">
@@ -232,7 +231,7 @@ export default function Auth() {
                           <Button
                             type="button"
                             onClick={handleGoHome}
-                            className="w-full mt-4 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white"
+                            className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground"
                           >
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Aller à l'accueil
@@ -244,7 +243,7 @@ export default function Auth() {
                     {!generatedToken && (
                       <Button
                         type="submit"
-                        className="w-full h-11 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                        className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
                         disabled={isLoading}
                       >
                         {isLoading ? "Création en cours..." : "Créer mon compte"}
@@ -302,7 +301,7 @@ export default function Auth() {
 
                     <Button
                       type="submit"
-                      className="w-full h-11 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                      className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
                       disabled={isLoading}
                     >
                       {isLoading ? "Connexion..." : "Se connecter"}

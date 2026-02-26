@@ -114,7 +114,7 @@ export function StreamingAnswer({
           initial={{ opacity: 0, y: 12, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-          className="card-premium rounded-3xl p-8"
+          className="bg-card border border-border rounded-xl p-6"
           data-testid="search-queries-section"
         >
           <div className="flex items-center gap-2 mb-4">
@@ -128,7 +128,7 @@ export function StreamingAnswer({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="flex items-start gap-3 p-5 glass rounded-2xl"
+                className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg border border-border/50"
                 data-testid={`search-query-${index}`}
               >
                 <div className="flex-shrink-0">
@@ -186,7 +186,7 @@ export function StreamingAnswer({
           initial={{ opacity: 0, y: 12, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1], delay: 0.1 }}
-          className="card-premium rounded-3xl p-10">
+          className="bg-card border border-border rounded-xl p-6 md:p-8">
           <div className="prose prose-lg max-w-none dark:prose-invert">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}

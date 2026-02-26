@@ -164,46 +164,36 @@ export default function Showcase() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden" data-testid="page-showcase">
-      {/* Animated Background */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-40 w-96 h-96 bg-gradient-to-br from-purple-500/15 to-pink-500/15 rounded-full blur-3xl animate-float" />
-        <div className="absolute top-1/4 right-0 w-80 h-80 bg-gradient-to-br from-blue-500/15 to-cyan-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-br from-primary/15 to-blue-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s' }} />
+      {/* Subtle Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.03),transparent_70%)]" />
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/20 backdrop-blur-xl bg-background/80 shadow-lg shadow-purple-500/5">
-        <div className="container flex h-20 items-center justify-between px-6">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="container flex h-14 items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation('/')}
-              className="rounded-2xl hover:bg-gradient-to-br hover:from-primary/20 hover:to-blue-500/20 hover:scale-105 transition-all duration-300 gap-2"
+              className="hover:bg-muted transition-colors gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline font-medium">Retour</span>
             </Button>
             <button
               onClick={() => setLocation('/')}
-              className="group hover:scale-105 transition-all duration-300"
+              className="flex items-center gap-2.5"
             >
-              <div className="relative flex items-center gap-3 px-3 md:px-4 py-2.5 rounded-2xl bg-gradient-to-br from-primary/20 via-blue-500/20 to-purple-500/20 backdrop-blur-md border-2 border-primary/40 shadow-lg shadow-primary/20 group-hover:border-primary/60 transition-all duration-300">
-                {/* Logo Icon */}
-                <div className="relative">
-                  <Sparkles className="w-7 h-7 text-primary animate-pulse-glow drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                  <div className="absolute inset-0 blur-xl bg-primary/60 -z-10" />
-                </div>
-                {/* Logo Text - Hidden on mobile, visible on desktop */}
-                <div className="hidden md:flex flex-col">
-                  <span className="text-lg font-bold bg-gradient-to-r from-primary via-blue-500 to-purple-500 bg-clip-text text-transparent leading-tight">
-                    VibeQuant
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/80 leading-none -mt-0.5">
-                    AI Financial
-                  </span>
-                </div>
-                <div className="absolute inset-0 blur-2xl bg-gradient-to-br from-primary/30 via-blue-500/30 to-purple-500/30 -z-10 rounded-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
+              <Sparkles className="w-5 h-5 text-primary" />
+              <div className="hidden md:flex items-baseline gap-1.5">
+                <span className="text-base font-bold text-foreground leading-tight">
+                  VibeQuant
+                </span>
+                <span className="text-[10px] text-muted-foreground leading-none">
+                  AI Financial
+                </span>
               </div>
             </button>
           </div>
@@ -219,16 +209,15 @@ export default function Showcase() {
       <main className="container mx-auto px-4 py-8 max-w-7xl relative z-10">
         {/* Page Header */}
         <div className="mb-10 space-y-6">
-          <div className="flex items-center gap-5">
-            <div className="relative p-4 rounded-3xl bg-gradient-to-br from-purple-500/20 via-pink-500/20 to-primary/20 backdrop-blur-md border border-purple-500/30 shadow-2xl shadow-purple-500/20">
-              <Users className="w-8 h-8 text-purple-500 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
-              <div className="absolute inset-0 blur-2xl bg-gradient-to-br from-purple-500/30 to-pink-500/30 -z-10 rounded-3xl" />
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <Users className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-4xl font-black bg-gradient-to-r from-purple-500 via-pink-500 to-primary bg-clip-text text-transparent tracking-tight">
+              <h1 className="text-3xl font-bold text-foreground tracking-tight">
                 Showcase Communautaire
               </h1>
-              <p className="text-muted-foreground text-lg mt-1">
+              <p className="text-muted-foreground text-base mt-1">
                 Découvrez toutes les analyses générées par la communauté VibeQuant
               </p>
             </div>
@@ -242,16 +231,16 @@ export default function Showcase() {
                 placeholder="Rechercher des analyses..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-4 h-14 rounded-2xl border-2 border-border/50 focus:border-purple-500/50 bg-background/50 backdrop-blur-sm shadow-lg shadow-purple-500/5 text-base transition-all duration-300"
+                className="pl-12 pr-4 h-11 border border-border focus:border-primary bg-card text-base transition-colors"
               />
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-500/70" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             </div>
             {toolFilter && (
               <Button
                 variant="outline"
                 size="lg"
                 onClick={() => setToolFilter(null)}
-                className="gap-2 rounded-2xl border-2 hover:bg-gradient-to-br hover:from-purple-500/20 hover:to-pink-500/20 hover:scale-105 transition-all duration-300"
+                className="gap-2 hover:bg-muted transition-colors"
               >
                 <Filter className="w-4 h-4" />
                 Effacer filtre
@@ -288,18 +277,17 @@ export default function Showcase() {
             {filteredReports.map((report) => (
               <Card
                 key={report.id}
-                className="group cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/20 border-2 border-border/50 hover:border-purple-500/50 rounded-3xl overflow-hidden bg-gradient-to-br from-background/80 to-background/40 backdrop-blur-sm"
+                className="group cursor-pointer border border-border hover:border-primary/40 transition-colors bg-card"
                 onClick={() => setLocation(`/share/${report.shareId}`)}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <CardHeader className="relative z-10 pb-4">
+                <CardHeader className="pb-4">
                   <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="text-xl font-bold line-clamp-2 group-hover:text-purple-500 transition-colors duration-300">
+                    <CardTitle className="text-lg font-bold line-clamp-2 group-hover:text-primary transition-colors">
                       {report.question}
                     </CardTitle>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
-                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                     <p className="text-xs text-muted-foreground font-medium">
                       {formatDistanceToNow(new Date(report.createdAt), {
                         addSuffix: true,
@@ -308,7 +296,7 @@ export default function Showcase() {
                     </p>
                   </div>
                 </CardHeader>
-                <CardContent className="relative z-10 space-y-4">
+                <CardContent className="space-y-4">
                   {/* Answer Preview */}
                   <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
                     {report.answer}
@@ -323,7 +311,7 @@ export default function Showcase() {
                           <Badge
                             key={tool}
                             variant="outline"
-                            className={`text-xs font-medium px-3 py-1 rounded-xl ${toolMeta.color} cursor-pointer hover:scale-110 transition-all duration-300 shadow-md`}
+                            className={`text-xs font-medium px-2.5 py-0.5 ${toolMeta.color} cursor-pointer transition-colors`}
                             onClick={(e) => {
                               e.stopPropagation();
                               setToolFilter(tool);

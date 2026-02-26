@@ -57,66 +57,53 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-background relative overflow-hidden" data-testid="page-home">
-      {/* Animated Background */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-40 w-96 h-96 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl animate-float" />
-        <div className="absolute top-1/4 right-0 w-80 h-80 bg-gradient-to-br from-slate-500/15 to-blue-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s', animationDuration: '8s' }} />
-        <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s', animationDuration: '10s' }} />
-        <div className="absolute bottom-1/4 right-1/3 w-64 h-64 bg-gradient-to-br from-blue-400/15 to-slate-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s', animationDuration: '12s' }} />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.03)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_80%)]" />
+      {/* Subtle Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.03),transparent_70%)]" />
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/20 backdrop-blur-xl bg-background/80 shadow-lg shadow-primary/5" data-testid="header-main">
-        <div className="container flex h-20 items-center justify-between px-6">
-          <div className="group cursor-pointer" data-testid="logo-container">
-            <div className="relative flex items-center gap-3 px-3 md:px-4 py-2.5 rounded-2xl bg-gradient-to-br from-primary/20 via-blue-500/20 to-purple-500/20 backdrop-blur-md border-2 border-primary/40 shadow-lg shadow-primary/20 group-hover:scale-105 group-hover:border-primary/60 transition-all duration-300">
-              <div className="relative">
-                <Sparkles className="w-7 h-7 text-primary animate-pulse-glow drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" data-testid="logo-icon" />
-                <div className="absolute inset-0 blur-xl bg-primary/60 -z-10" />
-              </div>
-              <div className="hidden md:flex flex-col">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-lg font-bold bg-gradient-to-r from-primary via-blue-500 to-purple-500 bg-clip-text text-transparent leading-tight">
-                    VibeQuant
-                  </span>
-                  <span className="text-[10px] font-medium text-muted-foreground/60 leading-none">
-                    v 2.2026.02.06
-                  </span>
-                </div>
-                <span className="text-[10px] text-muted-foreground/80 leading-none -mt-0.5">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm" data-testid="header-main">
+        <div className="container flex h-14 items-center justify-between px-6">
+          <div className="cursor-pointer" data-testid="logo-container">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-5 h-5 text-primary" data-testid="logo-icon" />
+              <div className="hidden md:flex items-baseline gap-1.5">
+                <span className="text-base font-bold text-foreground leading-tight">
+                  VibeQuant
+                </span>
+                <span className="text-[10px] font-medium text-muted-foreground leading-none">
                   AI Financial
                 </span>
               </div>
-              <div className="absolute inset-0 blur-2xl bg-gradient-to-br from-primary/30 via-blue-500/30 to-purple-500/30 -z-10 rounded-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
           <div className="flex items-center gap-3">
             {(conversationHistory.length > 0 || hasSearched) && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={handleNewConversation} data-testid="button-new-conversation" className="h-11 w-11 rounded-2xl hover:bg-gradient-to-br hover:from-primary/20 hover:to-blue-500/20 hover:scale-110 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 border border-transparent hover:border-primary/30">
+                  <Button variant="ghost" size="icon" onClick={handleNewConversation} data-testid="button-new-conversation" className="h-9 w-9 hover:bg-muted transition-colors">
                     <Plus className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="rounded-xl"><p>Nouvelle conversation</p></TooltipContent>
+                <TooltipContent><p>Nouvelle conversation</p></TooltipContent>
               </Tooltip>
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setLocation('/showcase')} data-testid="button-showcase" className="h-11 w-11 rounded-2xl hover:bg-gradient-to-br hover:from-purple-500/20 hover:to-pink-500/20 hover:scale-110 hover:shadow-lg hover:shadow-purple-500/30 transition-all duration-300 border border-transparent hover:border-purple-500/30">
+                <Button variant="ghost" size="icon" onClick={() => setLocation('/showcase')} data-testid="button-showcase" className="h-9 w-9 hover:bg-muted transition-colors">
                   <Users className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="rounded-xl"><p>Showcase Communautaire</p></TooltipContent>
+              <TooltipContent><p>Showcase Communautaire</p></TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setLocation('/docs')} data-testid="button-docs" className="h-11 w-11 rounded-2xl hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-cyan-500/20 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 border border-transparent hover:border-blue-500/30">
+                <Button variant="ghost" size="icon" onClick={() => setLocation('/docs')} data-testid="button-docs" className="h-9 w-9 hover:bg-muted transition-colors">
                   <BookOpen className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="rounded-xl"><p>Documentation</p></TooltipContent>
+              <TooltipContent><p>Documentation</p></TooltipContent>
             </Tooltip>
             <div className="h-8 w-px bg-border/50 mx-1" />
             {currentUser ? (
@@ -125,11 +112,11 @@ export default function Home() {
                   <SheetTrigger asChild>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-11 w-11 rounded-2xl hover:bg-gradient-to-br hover:from-indigo-500/20 hover:to-violet-500/20 hover:scale-110 hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 border border-transparent hover:border-indigo-500/30">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-muted transition-colors">
                           <History className="h-5 w-5" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent className="rounded-xl"><p>Mon historique</p></TooltipContent>
+                      <TooltipContent><p>Mon historique</p></TooltipContent>
                     </Tooltip>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-80 sm:w-96">
@@ -147,21 +134,21 @@ export default function Home() {
                 </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={handleLogout} className="h-11 w-11 rounded-2xl hover:bg-gradient-to-br hover:from-red-500/20 hover:to-orange-500/20 hover:scale-110 hover:shadow-lg hover:shadow-red-500/30 transition-all duration-300 border border-transparent hover:border-red-500/30">
+                    <Button variant="ghost" size="icon" onClick={handleLogout} className="h-9 w-9 hover:bg-muted transition-colors">
                       <LogOut className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="rounded-xl"><p>Deconnexion</p></TooltipContent>
+                  <TooltipContent><p>Deconnexion</p></TooltipContent>
                 </Tooltip>
               </>
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={() => setLocation('/auth')} className="h-11 w-11 rounded-2xl hover:bg-gradient-to-br hover:from-indigo-500/20 hover:to-violet-500/20 hover:scale-110 hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 border border-transparent hover:border-indigo-500/30">
+                  <Button variant="ghost" size="icon" onClick={() => setLocation('/auth')} className="h-9 w-9 hover:bg-muted transition-colors">
                     <User className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="rounded-xl"><p>Mon compte</p></TooltipContent>
+                <TooltipContent><p>Mon compte</p></TooltipContent>
               </Tooltip>
             )}
             <div className="h-8 w-px bg-border/50 mx-1" />
@@ -245,8 +232,8 @@ export default function Home() {
       </main>
 
       {/* Search Bar - Fixed at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/30 glass">
-        <div className="container mx-auto px-6 py-6 max-w-5xl">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-3 max-w-5xl">
           <SearchBar onSearch={handleSearch} isLoading={chatMutation.isPending} placeholder="Posez votre question sur les marches financiers..." />
         </div>
       </div>

@@ -84,44 +84,36 @@ export default function SharedReport() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden" data-testid="page-shared-report">
-      {/* Animated Background */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-40 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-teal-500/15 rounded-full blur-3xl animate-float" />
-        <div className="absolute top-1/4 right-0 w-80 h-80 bg-gradient-to-br from-primary/15 to-blue-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-br from-teal-500/15 to-cyan-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s' }} />
+      {/* Subtle Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.03),transparent_70%)]" />
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/20 backdrop-blur-xl bg-background/80 shadow-lg shadow-emerald-500/5" data-testid="header-main">
-        <div className="container flex h-20 items-center justify-between px-6">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm" data-testid="header-main">
+        <div className="container flex h-14 items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation('/')}
-              className="rounded-2xl hover:bg-gradient-to-br hover:from-emerald-500/20 hover:to-teal-500/20 hover:scale-105 transition-all duration-300 gap-2"
+              className="hover:bg-muted transition-colors gap-2"
               data-testid="button-back-to-home"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline font-medium">Retour</span>
             </Button>
-            <div className="group cursor-pointer" data-testid="logo-container" onClick={() => setLocation('/')}>
-              <div className="relative flex items-center gap-3 px-3 md:px-4 py-2.5 rounded-2xl bg-gradient-to-br from-primary/20 via-blue-500/20 to-purple-500/20 backdrop-blur-md border-2 border-primary/40 shadow-lg shadow-primary/20 group-hover:scale-105 group-hover:border-primary/60 transition-all duration-300">
-                {/* Logo Icon */}
-                <div className="relative">
-                  <Sparkles className="w-7 h-7 text-primary animate-pulse-glow drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" data-testid="logo-icon" />
-                  <div className="absolute inset-0 blur-xl bg-primary/60 -z-10" />
-                </div>
-                {/* Logo Text - Hidden on mobile, visible on desktop */}
-                <div className="hidden md:flex flex-col">
-                  <span className="text-lg font-bold bg-gradient-to-r from-primary via-blue-500 to-purple-500 bg-clip-text text-transparent leading-tight">
+            <div className="cursor-pointer" data-testid="logo-container" onClick={() => setLocation('/')}>
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-5 h-5 text-primary" data-testid="logo-icon" />
+                <div className="hidden md:flex items-baseline gap-1.5">
+                  <span className="text-base font-bold text-foreground leading-tight">
                     VibeQuant
                   </span>
-                  <span className="text-[10px] text-muted-foreground/80 leading-none -mt-0.5">
+                  <span className="text-[10px] text-muted-foreground leading-none">
                     AI Financial
                   </span>
                 </div>
-                <div className="absolute inset-0 blur-2xl bg-gradient-to-br from-primary/30 via-blue-500/30 to-purple-500/30 -z-10 rounded-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
           </div>
@@ -137,14 +129,14 @@ export default function SharedReport() {
       <main className="container mx-auto px-4 py-12 md:py-20 relative z-10" data-testid="main-content">
         <div className="max-w-7xl mx-auto">
           {/* Branding */}
-          <div className="mb-12 p-8 rounded-3xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-background/50 to-teal-500/10 backdrop-blur-sm shadow-2xl shadow-emerald-500/10" data-testid="branding-section">
+          <div className="mb-10 p-6 rounded-xl border border-border bg-card" data-testid="branding-section">
             <div className="flex items-center gap-4">
-              <div className="relative p-3 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30">
-                <Sparkles className="w-8 h-8 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+              <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20">
+                <Sparkles className="w-6 h-6 text-primary" />
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Rapport généré par</p>
-                <p className="text-2xl font-black bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 bg-clip-text text-transparent tracking-tight">
+                <p className="text-xl font-bold text-foreground tracking-tight">
                   VibeQuant AI
                 </p>
               </div>

@@ -96,7 +96,7 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
         variant="outline"
         size="sm"
         onClick={handleDownloadMarkdown}
-        className="gap-2 rounded-2xl hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-cyan-500/20 hover:scale-105 transition-all duration-300 border-2"
+        className="gap-2 hover:bg-muted transition-colors"
         disabled={isGeneratingPDF}
       >
         <FileText className="w-4 h-4" />
@@ -106,7 +106,7 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
         variant="outline"
         size="sm"
         onClick={handleDownloadPDF}
-        className="gap-2 rounded-2xl hover:bg-gradient-to-br hover:from-red-500/20 hover:to-pink-500/20 hover:scale-105 transition-all duration-300 border-2"
+        className="gap-2 hover:bg-muted transition-colors"
         disabled={isGeneratingPDF}
       >
         {isGeneratingPDF ? (
@@ -125,7 +125,7 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
         variant="outline"
         size="sm"
         onClick={handleConvertToSlides}
-        className="gap-2 rounded-2xl hover:bg-gradient-to-br hover:from-purple-500/20 hover:to-indigo-500/20 hover:scale-105 transition-all duration-300 border-2"
+        className="gap-2 hover:bg-muted transition-colors"
         disabled={isGeneratingPDF || !question || !answer}
       >
         <Presentation className="w-4 h-4" />

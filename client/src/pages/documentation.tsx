@@ -296,45 +296,39 @@ export default function Documentation() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden" data-testid="page-documentation">
-      {/* Animated Background */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-40 w-96 h-96 bg-gradient-to-br from-blue-500/15 to-cyan-500/15 rounded-full blur-3xl animate-float" />
-        <div className="absolute top-1/4 right-0 w-80 h-80 bg-gradient-to-br from-primary/15 to-purple-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-br from-cyan-500/15 to-blue-500/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s' }} />
+      {/* Subtle Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.03),transparent_70%)]" />
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/20 backdrop-blur-xl bg-background/80 shadow-lg shadow-blue-500/5">
-        <div className="container flex h-16 md:h-20 items-center justify-between px-4 md:px-6">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="container flex h-14 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3 md:gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation('/')}
-              className="rounded-2xl hover:bg-gradient-to-br hover:from-primary/20 hover:to-blue-500/20 hover:scale-105 transition-all duration-300 gap-2"
+              className="hover:bg-muted transition-colors gap-2"
               data-testid="button-back-to-home"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline font-medium">Retour</span>
             </Button>
             <button
-              className="group hover:scale-105 transition-all duration-300 cursor-pointer"
+              className="cursor-pointer"
               onClick={() => setLocation('/')}
             >
-              <div className="relative flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2.5 rounded-2xl bg-gradient-to-br from-primary/20 via-blue-500/20 to-purple-500/20 backdrop-blur-md border-2 border-primary/40 shadow-lg shadow-primary/20 group-hover:border-primary/60 transition-all duration-300">
-                <div className="relative">
-                  <Sparkles className="w-5 h-5 md:w-7 md:h-7 text-primary animate-pulse-glow drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                  <div className="absolute inset-0 blur-xl bg-primary/60 -z-10" />
-                </div>
-                <div className="hidden md:flex flex-col">
-                  <span className="text-base md:text-lg font-bold bg-gradient-to-r from-primary via-blue-500 to-purple-500 bg-clip-text text-transparent leading-tight">
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <div className="hidden md:flex items-baseline gap-1.5">
+                  <span className="text-base font-bold text-foreground leading-tight">
                     VibeQuant
                   </span>
-                  <span className="text-[10px] text-muted-foreground/80 leading-none -mt-0.5">
+                  <span className="text-[10px] text-muted-foreground leading-none">
                     AI Financial
                   </span>
                 </div>
-                <div className="absolute inset-0 blur-2xl bg-gradient-to-br from-primary/30 via-blue-500/30 to-purple-500/30 -z-10 rounded-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
               </div>
             </button>
           </div>
@@ -404,7 +398,7 @@ export default function Documentation() {
                 >
                   <Card className="h-full hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/50 group cursor-pointer">
                     <CardHeader className="pb-3">
-                      <Icon className={`w-8 h-8 md:w-10 md:h-10 ${useCase.color} mb-3 group-hover:scale-110 transition-transform`} />
+                      <Icon className={`w-8 h-8 md:w-10 md:h-10 ${useCase.color} mb-3`} />
                       <CardTitle className="text-base md:text-lg mb-2">{useCase.title}</CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -655,7 +649,7 @@ export default function Documentation() {
               <Button
                 size="lg"
                 onClick={() => setLocation('/')}
-                className="h-12 md:h-14 px-6 md:px-8 text-base md:text-lg bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                className="h-12 md:h-14 px-6 md:px-8 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
               >
                 <Sparkles className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 Commencer une Analyse

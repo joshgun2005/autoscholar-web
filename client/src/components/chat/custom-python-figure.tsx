@@ -146,7 +146,7 @@ export function CustomPythonFigure({ figureBatches }: CustomPythonFigureGalleryP
                             <img
                               src={figureSrc(figure)}
                               alt={`Figure ${batchNumber}.${figIndex + 1}`}
-                              className="w-full h-auto cursor-pointer hover:scale-105 transition-transform"
+                              className="w-full h-auto cursor-pointer"
                               style={{ maxHeight: '600px', objectFit: 'contain' }}
                               onError={(e) => {
                                 const img = e.currentTarget;
