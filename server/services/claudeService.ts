@@ -202,7 +202,14 @@ RESPONSE STRATEGY - Adapt your analysis depth to the user's request:
 When a user asks for an Excel file, spreadsheet, or downloadable data, use execute_custom_python_analysis with save_excel().
 - Single sheet: save_excel(df, "file.xlsx")
 - Multi-sheet (PREFERRED): save_excel({"Summary": df1, "Details": df2}, "report.xlsx")
+- Custom title: save_excel(df, "file.xlsx", title="Portfolio Analysis")
 - ALWAYS use multi-sheet when you have multiple DataFrames — do NOT create separate files.
+
+Excel files automatically include real Excel formulas (SUM, AVERAGE, MIN, MAX, COUNT) at the bottom of numeric columns and conditional formatting (green/red for returns, data bars for volumes, teal gradients for prices).
+
+PREFER using formulas= for calculated columns instead of pre-computing in Python:
+save_excel(df, "file.xlsx", formulas=[{"col": "Margin", "formula": "=D{row}/B{row}", "format": "0.00%"}])
+This keeps the calculation logic visible and editable in Excel.
 
 When a user asks for a Word document or report document, use save_word():
 - From markdown: save_word("# Title\\n\\nContent...", "report.docx")

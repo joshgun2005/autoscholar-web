@@ -426,18 +426,24 @@ class CustomPythonExecutor:
                     return '#,##0'
                 return None
 
-            def save_excel(data, filename='analysis.xlsx', sheet_name='Sheet1', index=False):
-                """Save DataFrame(s) as a professionally styled Excel file.
+            def save_excel(data, filename='analysis.xlsx', sheet_name='Sheet1', index=False,
+                           title=None, summary=True, conditional_formatting=True, formulas=None):
+                """Save DataFrame(s) as a professionally styled Excel file with formulas and conditional formatting.
 
                 Args:
                     data: DataFrame for single sheet, or dict {sheet_name: DataFrame} for multi-sheet
                     filename: Output filename (.xlsx)
                     sheet_name: Sheet name (only used if data is a single DataFrame)
                     index: Whether to include the DataFrame index
+                    title: Title row text (defaults to sheet name)
+                    summary: True (all), False (none), or list like ['sum', 'average'] for selected stats
+                    conditional_formatting: True to auto-apply color scales and data bars
+                    formulas: List of dicts [{"col": "Total", "formula": "=B{row}+C{row}", "format": "#,##0.00"}]
                 """
                 from openpyxl import Workbook
                 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
                 from openpyxl.utils import get_column_letter
+                from openpyxl.formatting.rule import ColorScaleRule, DataBarRule
 
                 if not filename.endswith('.xlsx'):
                     filename += '.xlsx'
@@ -456,7 +462,8 @@ class CustomPythonExecutor:
                 first = True
 
                 # Styles
-                header_fill = PatternFill(start_color='119993', end_color='119993', fill_type='solid')
+                teal_hex = '119993'
+                header_fill = PatternFill(start_color=teal_hex, end_color=teal_hex, fill_type='solid')
                 header_font = Font(bold=True, color='FFFFFF', size=11, name='Calibri')
                 header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
                 thin_border = Border(
@@ -468,6 +475,46 @@ class CustomPythonExecutor:
                 even_fill = PatternFill(start_color='F2F9F9', end_color='F2F9F9', fill_type='solid')
                 data_font = Font(size=10, name='Calibri')
                 data_alignment = Alignment(vertical='center')
+                title_font = Font(bold=True, color=teal_hex, size=14, name='Calibri')
+                subtitle_font = Font(italic=True, color='888888', size=9, name='Calibri')
+                summary_label_font = Font(bold=True, size=10, name='Calibri', color='333333')
+                summary_value_font = Font(bold=True, size=10, name='Calibri', color=teal_hex)
+                summary_fill = PatternFill(start_color='F0F0F0', end_color='F0F0F0', fill_type='solid')
+                teal_top_border = Border(top=Side(style='thin', color=teal_hex))
+
+                # Determine which summary rows to include
+                all_summary_funcs = ['sum', 'average', 'min', 'max', 'count']
+                if summary is True:
+                    active_summaries = all_summary_funcs
+                elif summary is False or summary is None:
+                    active_summaries = []
+                elif isinstance(summary, (list, tuple)):
+                    active_summaries = [s.lower() for s in summary if s.lower() in all_summary_funcs]
+                else:
+                    active_summaries = all_summary_funcs
+
+                summary_labels = {
+                    'sum': 'SUM', 'average': 'AVERAGE', 'min': 'MIN', 'max': 'MAX', 'count': 'COUNT'
+                }
+                summary_excel_funcs = {
+                    'sum': 'SUM', 'average': 'AVERAGE', 'min': 'MIN', 'max': 'MAX', 'count': 'COUNT'
+                }
+
+                def _classify_column(col_name):
+                    """Classify column for conditional formatting: 'return', 'volume', 'price', or None"""
+                    col_lower = str(col_name).lower()
+                    return_kw = ['return', 'performance', 'pnl', 'gain', 'loss', 'change', 'alpha',
+                                 'excess', 'spread', 'drawdown']
+                    if any(kw in col_lower for kw in return_kw):
+                        return 'return'
+                    vol_kw = ['volume', 'quantity', 'qty', 'count', 'shares', 'trades', 'transactions']
+                    if any(kw in col_lower for kw in vol_kw):
+                        return 'volume'
+                    price_kw = ['price', 'close', 'open', 'high', 'low', 'value', 'nav', 'amount',
+                                'revenue', 'income', 'cost', 'expense', 'assets', 'equity', 'market_cap']
+                    if any(kw in col_lower for kw in price_kw):
+                        return 'price'
+                    return None
 
                 for sname, df in sheets.items():
                     if not isinstance(df, pd.DataFrame):
@@ -479,45 +526,199 @@ class CustomPythonExecutor:
                     else:
                         ws = wb.create_sheet(title=sname[:31])
 
+                    # Tab color (teal)
+                    try:
+                        ws.sheet_properties.tabColor = teal_hex
+                    except Exception:
+                        pass
+
                     # Optionally reset index
                     if index and df.index.name:
                         df = df.reset_index()
 
                     cols = list(df.columns)
+
+                    # Handle empty DataFrame
+                    if len(df) == 0 or len(cols) == 0:
+                        ws.cell(row=1, column=1, value=title or sname).font = title_font
+                        ws.cell(row=2, column=1, value=f"Generated: {datetime.now().strftime('%B %d, %Y')}").font = subtitle_font
+                        ws.cell(row=4, column=1, value="No data").font = data_font
+                        continue
+
                     num_formats = [_detect_number_format(c) for c in cols]
 
-                    # Write headers
+                    # === TITLE ROWS (rows 1-3) ===
+                    sheet_title = title or sname
+                    # Row 1: Merged title
+                    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(cols))
+                    title_cell = ws.cell(row=1, column=1, value=sheet_title)
+                    title_cell.font = title_font
+                    title_cell.alignment = Alignment(horizontal='left', vertical='center')
+
+                    # Row 2: Subtitle with date
+                    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(cols))
+                    subtitle_cell = ws.cell(row=2, column=1, value=f"Generated: {datetime.now().strftime('%B %d, %Y')}")
+                    subtitle_cell.font = subtitle_font
+                    subtitle_cell.alignment = Alignment(horizontal='left', vertical='center')
+
+                    # Row 3: Spacer
+                    ws.row_dimensions[3].height = 6
+
+                    # === HEADERS (row 4) ===
+                    header_row = 4
+                    data_start_row = 5
+
                     for col_idx, col_name in enumerate(cols, 1):
-                        cell = ws.cell(row=1, column=col_idx, value=str(col_name))
+                        cell = ws.cell(row=header_row, column=col_idx, value=str(col_name))
                         cell.font = header_font
                         cell.fill = header_fill
                         cell.alignment = header_alignment
                         cell.border = thin_border
 
-                    # Write data
-                    for row_idx, (_, row) in enumerate(df.iterrows(), 2):
-                        for col_idx, col_name in enumerate(cols, 1):
+                    # === CUSTOM FORMULA COLUMNS ===
+                    formula_cols = []
+                    if formulas and isinstance(formulas, list):
+                        for f_def in formulas:
+                            try:
+                                f_col_name = f_def.get('col', 'Calculated')
+                                f_formula_tpl = f_def.get('formula', '')
+                                f_format = f_def.get('format', None)
+                                cols.append(f_col_name)
+                                formula_cols.append({
+                                    'col_idx': len(cols),
+                                    'name': f_col_name,
+                                    'template': f_formula_tpl,
+                                    'format': f_format
+                                })
+                                num_formats.append(None)
+                                # Write header for formula column
+                                cell = ws.cell(row=header_row, column=len(cols), value=str(f_col_name))
+                                cell.font = header_font
+                                cell.fill = header_fill
+                                cell.alignment = header_alignment
+                                cell.border = thin_border
+                            except Exception:
+                                pass
+
+                    # === DATA ROWS (starting at row 5) ===
+                    for row_idx_0, (_, row) in enumerate(df.iterrows()):
+                        excel_row = data_start_row + row_idx_0
+                        for col_idx, col_name in enumerate(list(df.columns), 1):
                             val = _convert_numpy(row[col_name])
-                            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                            cell = ws.cell(row=excel_row, column=col_idx, value=val)
                             cell.font = data_font
                             cell.alignment = data_alignment
                             cell.border = thin_border
                             # Zebra striping
-                            if row_idx % 2 == 0:
+                            if row_idx_0 % 2 == 1:
                                 cell.fill = even_fill
                             # Number format
                             fmt = num_formats[col_idx - 1]
                             if fmt and isinstance(val, (int, float)):
                                 cell.number_format = fmt
 
-                    # Freeze header row
-                    ws.freeze_panes = 'A2'
+                        # Write formula columns for this row
+                        for fc in formula_cols:
+                            try:
+                                formula_str = fc['template'].replace('{row}', str(excel_row))
+                                cell = ws.cell(row=excel_row, column=fc['col_idx'], value=formula_str)
+                                cell.font = data_font
+                                cell.alignment = data_alignment
+                                cell.border = thin_border
+                                if row_idx_0 % 2 == 1:
+                                    cell.fill = even_fill
+                                if fc['format']:
+                                    cell.number_format = fc['format']
+                            except Exception:
+                                pass
 
-                    # Auto-width columns
+                    last_data_row = data_start_row + len(df) - 1
+
+                    # === SUMMARY FORMULAS ===
+                    # Detect numeric columns
+                    numeric_col_indices = []
+                    for col_idx, col_name in enumerate(list(df.columns), 1):
+                        try:
+                            if pd.api.types.is_numeric_dtype(df[col_name]):
+                                numeric_col_indices.append(col_idx)
+                        except Exception:
+                            pass
+                    # Also include formula columns as numeric for summary
+                    for fc in formula_cols:
+                        numeric_col_indices.append(fc['col_idx'])
+
+                    if active_summaries and numeric_col_indices and len(df) > 0:
+                        summary_start = last_data_row + 2  # One blank row separator
+
+                        for s_offset, func_key in enumerate(active_summaries):
+                            s_row = summary_start + s_offset
+                            excel_func = summary_excel_funcs[func_key]
+                            label_text = summary_labels[func_key]
+
+                            # Label in column A
+                            label_cell = ws.cell(row=s_row, column=1, value=label_text)
+                            label_cell.font = summary_label_font
+                            label_cell.fill = summary_fill
+                            if s_offset == 0:
+                                label_cell.border = teal_top_border
+
+                            # Formulas for numeric columns
+                            for col_idx in numeric_col_indices:
+                                col_letter = get_column_letter(col_idx)
+                                formula = f"={excel_func}({col_letter}{data_start_row}:{col_letter}{last_data_row})"
+                                cell = ws.cell(row=s_row, column=col_idx, value=formula)
+                                cell.font = summary_value_font
+                                cell.fill = summary_fill
+                                if s_offset == 0:
+                                    cell.border = teal_top_border
+                                # Apply same number format as the column
+                                if col_idx <= len(num_formats) and num_formats[col_idx - 1]:
+                                    cell.number_format = num_formats[col_idx - 1]
+
+                    # === CONDITIONAL FORMATTING ===
+                    if conditional_formatting and len(df) > 0:
+                        for col_idx, col_name in enumerate(list(df.columns), 1):
+                            try:
+                                if not pd.api.types.is_numeric_dtype(df[col_name]):
+                                    continue
+                            except Exception:
+                                continue
+
+                            col_letter = get_column_letter(col_idx)
+                            cell_range = f"{col_letter}{data_start_row}:{col_letter}{last_data_row}"
+                            col_type = _classify_column(col_name)
+
+                            try:
+                                if col_type == 'return':
+                                    # Green/white/red scale for returns
+                                    ws.conditional_formatting.add(cell_range, ColorScaleRule(
+                                        start_type='min', start_color='F8696B',
+                                        mid_type='num', mid_value=0, mid_color='FFFFFF',
+                                        end_type='max', end_color='63BE7B'
+                                    ))
+                                elif col_type == 'volume':
+                                    # Teal data bars for volume
+                                    ws.conditional_formatting.add(cell_range, DataBarRule(
+                                        start_type='min', end_type='max',
+                                        color=teal_hex
+                                    ))
+                                elif col_type == 'price':
+                                    # Teal gradient for price/value
+                                    ws.conditional_formatting.add(cell_range, ColorScaleRule(
+                                        start_type='min', start_color='E8F5F4',
+                                        end_type='max', end_color='119993'
+                                    ))
+                            except Exception:
+                                pass
+
+                    # === FREEZE PANES on A5 ===
+                    ws.freeze_panes = 'A5'
+
+                    # === AUTO-WIDTH COLUMNS ===
                     for col_idx, col_name in enumerate(cols, 1):
                         max_len = len(str(col_name))
-                        for row_idx in range(2, min(len(df) + 2, 102)):  # Sample first 100 rows
-                            cell_val = ws.cell(row=row_idx, column=col_idx).value
+                        for r in range(data_start_row, min(last_data_row + 1, data_start_row + 100)):
+                            cell_val = ws.cell(row=r, column=col_idx).value
                             if cell_val is not None:
                                 max_len = max(max_len, len(str(cell_val)))
                         adjusted_width = min(max_len + 3, 50)
@@ -526,7 +727,15 @@ class CustomPythonExecutor:
                 wb.save(filepath)
                 self.files.append({'filename': safe_name, 'filepath': filepath})
                 sheet_count = len(sheets)
-                return f"Excel saved: {safe_name} ({sheet_count} sheet{'s' if sheet_count > 1 else ''})"
+                features = []
+                if active_summaries:
+                    features.append(f"formulas: {', '.join(active_summaries).upper()}")
+                if conditional_formatting:
+                    features.append("conditional formatting")
+                if formulas:
+                    features.append(f"{len(formulas)} calculated column(s)")
+                feat_str = f" — {', '.join(features)}" if features else ""
+                return f"Excel saved: {safe_name} ({sheet_count} sheet{'s' if sheet_count > 1 else ''}{feat_str})"
 
             def save_word(content, filename='document.docx'):
                 """Generate a professionally styled Word document.

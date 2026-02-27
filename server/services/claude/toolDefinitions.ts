@@ -1271,7 +1271,13 @@ plt.title("Volume Analysis")
 plt.tight_layout()
 
 📥 EXCEL FILE GENERATION:
-save_excel() generates professionally styled Excel files with teal headers, zebra striping, auto-column-width, freeze panes, and auto number formatting.
+save_excel() generates professionally styled Excel files with title row, teal headers, zebra striping, auto-column-width, freeze panes, auto number formatting, REAL Excel formulas (SUM, AVERAGE, MIN, MAX, COUNT), and conditional formatting.
+
+Every Excel file automatically includes:
+- Professional title row (merged, teal 14pt bold) + generated date subtitle
+- Summary formulas at the bottom of each numeric column (SUM, AVERAGE, MIN, MAX, COUNT) — these are REAL Excel formulas, not static values
+- Conditional formatting: green/red color scales for return columns, teal data bars for volume columns, teal gradients for price/value columns
+- Freeze panes on the first data row (A5)
 
 Single sheet:
 save_excel(df, "AAPL_prices.xlsx")
@@ -1283,7 +1289,22 @@ save_excel({
     "Raw Data": raw_df
 }, "full_report.xlsx")
 
+Custom title:
+save_excel(df, "report.xlsx", title="Revenue Analysis Q4 2025")
+
+Calculated formula columns (PREFERRED over pre-calculating values in Python):
+save_excel(df, "report.xlsx", formulas=[
+    {"col": "Margin", "formula": "=D{row}/B{row}", "format": "0.00%"},
+    {"col": "Total", "formula": "=B{row}+C{row}", "format": "#,##0.00"}
+])
+{row} is replaced by the actual Excel row number. The user sees the formula logic in the formula bar.
+
+Opt-out of auto features:
+save_excel(df, "report.xlsx", summary=False, conditional_formatting=False)
+save_excel(df, "report.xlsx", summary=['sum', 'average'])  # Only selected stats
+
 ⚠️ ALWAYS use multi-sheet format when you have multiple DataFrames — do NOT call save_excel() multiple times to create separate files. One workbook with multiple sheets is cleaner and more professional.
+⚠️ PREFER using formulas= for calculated columns instead of computing values in Python — this lets the user see and modify the calculation logic directly in Excel.
 
 📝 WORD DOCUMENT GENERATION:
 save_word() generates branded VQuant Word documents (.docx) with professional styling.
