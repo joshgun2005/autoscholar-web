@@ -987,7 +987,8 @@ class CustomPythonExecutor:
                 lines.append(r'\end{table}')
                 return '\n'.join(lines)
 
-            def save_latex(content, filename='report.pdf', figures='auto', template='financial'):
+            def save_latex(content, filename='report.pdf', figures='auto', template='financial',
+                           author=None, company=None, logo=None, title=None, **kwargs):
                 r"""Generate a professional PDF report via LaTeX compilation.
 
                 If content contains \documentclass, it is treated as raw LaTeX and compiled as-is.
@@ -1001,6 +1002,10 @@ class CustomPythonExecutor:
                     filename: Output filename (forced to .pdf)
                     figures: 'auto' (save all open figs) or 'none'
                     template: 'financial' (full branding) or 'minimal' (clean, no title page)
+                    author: Author name for the title page and PDF metadata
+                    company: Company name for the title page and headers
+                    logo: URL to a company logo image (PNG/JPG) for the title page
+                    title: Custom subtitle for the title page (default: 'Financial Intelligence Report')
 
                 Returns:
                     str: confirmation message
@@ -1016,6 +1021,37 @@ class CustomPythonExecutor:
 
                 work_dir = tempfile.mkdtemp(prefix='vq_latex_')
 
+                # ── Download company logo if provided ──
+                logo_path = None
+                if logo:
+                    try:
+                        import requests as _req
+                        resp = _req.get(logo, timeout=10)
+                        resp.raise_for_status()
+                        ctype = resp.headers.get('content-type', '').lower()
+                        if 'svg' in ctype:
+                            raise ValueError('SVG logos are not supported; use PNG or JPG')
+                        ext = '.jpg' if 'jpeg' in ctype or 'jpg' in ctype else '.png'
+                        logo_file = os.path.join(work_dir, f'company_logo{ext}')
+                        with open(logo_file, 'wb') as lf:
+                            lf.write(resp.content)
+                        if os.path.getsize(logo_file) > 100:
+                            logo_path = logo_file
+                    except Exception:
+                        logo_path = None  # graceful fallback
+
+                # ── Escape branding strings for LaTeX safety ──
+                safe_company = _escape_latex(company) if company else None
+                safe_author = _escape_latex(author) if author else None
+
+                # Plain-text versions for PDF metadata (hypersetup cannot contain LaTeX commands)
+                def _sanitize_pdf_meta(text):
+                    """Strip characters that break pdflatex hypersetup metadata."""
+                    if not text:
+                        return ''
+                    # Remove characters that break \hypersetup (keep basic ASCII + spaces)
+                    return re.sub(r'[^\x20-\x7E]', '', text).replace('\\', '')
+
                 # ── Save open matplotlib figures as PNGs ──
                 fig_paths = []
                 if figures != 'none':
@@ -1028,11 +1064,13 @@ class CustomPythonExecutor:
                         fig_paths.append(fig_file)
 
                 # ── Replace {{FIG:N}} placeholders ──
+                referenced_figs = set()
                 def _replace_fig_placeholders(text):
                     import re as _re
                     def _fig_repl(m):
                         idx = int(m.group(1))
                         if idx < len(fig_paths):
+                            referenced_figs.add(idx)
                             fname = os.path.basename(fig_paths[idx])
                             return (
                                 r'\begin{figure}[H]' '\n'
@@ -1045,6 +1083,21 @@ class CustomPythonExecutor:
 
                 content = _replace_fig_placeholders(content)
 
+                # ── Auto-append unreferenced figures at end of content ──
+                if fig_paths:
+                    unreferenced = [i for i in range(len(fig_paths)) if i not in referenced_figs]
+                    if unreferenced:
+                        fig_blocks = []
+                        for idx in unreferenced:
+                            fname = os.path.basename(fig_paths[idx])
+                            fig_blocks.append(
+                                r'\begin{figure}[H]' '\n'
+                                r'\centering' '\n'
+                                r'\includegraphics[width=\linewidth]{' + fname + '}\n'
+                                r'\end{figure}'
+                            )
+                        content = content + '\n\n' + '\n\n'.join(fig_blocks)
+
                 # ── Detect raw vs template mode ──
                 is_raw = r'\documentclass' in content
 
@@ -1053,41 +1106,86 @@ class CustomPythonExecutor:
                 else:
                     today_str = datetime.now().strftime('%B %d, %Y')
 
+                    # Branding: company name for header, or default
+                    header_company = safe_company if safe_company else 'VQuant'
+                    # Custom subtitle
+                    safe_title = _escape_latex(title) if title else 'Financial Intelligence Report'
+                    # PDF metadata (plain ASCII — no LaTeX commands, no Unicode)
+                    meta_company = _sanitize_pdf_meta(company) if company else 'VQuant'
+                    pdf_author = _sanitize_pdf_meta(author) if author else 'VQuant Analytics'
+                    meta_title_str = _sanitize_pdf_meta(title) if title else 'Financial Intelligence Report'
+                    pdf_title = f'{meta_company} - {meta_title_str}'
+
                     if template == 'minimal':
                         full_latex = r"""\documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{lmodern}
+\usepackage{newtxtext}
+\usepackage{newtxmath}
+\usepackage[sfdefault,scale=0.92]{sourcesanspro}
+\usepackage{microtype}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{xcolor}
 \usepackage[table]{xcolor}
 \usepackage{float}
 \usepackage{amsmath}
-\usepackage{hyperref}
 \usepackage{parskip}
+\usepackage{hyperref}
 
 \definecolor{vqteal}{HTML}{119993}
 
-\hypersetup{colorlinks=true,linkcolor=vqteal,urlcolor=vqteal,citecolor=vqteal}
+\hypersetup{colorlinks=true,linkcolor=vqteal,urlcolor=vqteal,citecolor=vqteal,
+  pdfauthor={""" + pdf_author + r"""},pdftitle={""" + pdf_title + r"""}}
 
 \begin{document}
 """ + content + r"""
 \end{document}
 """
                     else:
-                        # Full financial template
+                        # ── Logo include command ──
+                        logo_include = ''
+                        if logo_path:
+                            logo_basename = os.path.basename(logo_path)
+                            logo_include = (
+                                r'\includegraphics[height=2cm]{' + logo_basename + r'}'
+                                '\n' r'\vspace{0.8cm}' '\n'
+                            )
+
+                        # ── Title-page blocks ──
+                        company_block = (
+                            r'{\fontsize{36}{42}\selectfont\sffamily\bfseries\textcolor{vqcharcoal}{'
+                            + header_company + r'}\par}'
+                        )
+                        subtitle_block = (
+                            r'\vspace{0.4cm}' '\n'
+                            r'{\Large\sffamily\textcolor{vqsubtitle}{' + safe_title + r'}\par}'
+                        )
+                        author_block = ''
+                        if safe_author:
+                            author_block = (
+                                r'\vspace{0.6cm}' '\n'
+                                r'{\large\sffamily\textcolor{vqsubtitle}{Prepared by ' + safe_author + r'}\par}'
+                            )
+
+                        # Full financial template — pro styling
                         full_latex = r"""\documentclass[11pt,a4paper]{article}
 
 %% ── Encoding & Fonts ──
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{lmodern}
+\usepackage{newtxtext}
+\usepackage{newtxmath}
+\usepackage[sfdefault,scale=0.92]{sourcesanspro}
+
+%% ── Micro-typography ──
+\usepackage{microtype}
 
 %% ── Layout ──
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{parskip}
+\usepackage{setspace}
+\setstretch{1.15}
 
 %% ── Colors ──
 \usepackage[table]{xcolor}
@@ -1095,6 +1193,9 @@ class CustomPythonExecutor:
 \definecolor{vqdark}{HTML}{1A1A2E}
 \definecolor{vqgray}{HTML}{666666}
 \definecolor{vqlight}{HTML}{F2F9F9}
+\definecolor{vqcharcoal}{HTML}{3C3C3C}
+\definecolor{vqrule}{HTML}{BFBFBF}
+\definecolor{vqsubtitle}{HTML}{5A6A72}
 
 %% ── Graphics & Floats ──
 \usepackage{graphicx}
@@ -1104,60 +1205,79 @@ class CustomPythonExecutor:
 \usepackage{booktabs}
 \usepackage{tabularx}
 
+%% ── Lists ──
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=1.5em}
+
 %% ── Math ──
 \usepackage{amsmath}
+
+%% ── Page count ──
+\usepackage{lastpage}
 
 %% ── Headers/Footers ──
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\textcolor{vqteal}{\textbf{VQuant}} \textcolor{vqgray}{| Financial Intelligence}}
-\fancyhead[R]{\small\textcolor{vqgray}{""" + today_str + r"""}}
-\fancyfoot[C]{\thepage}
+\fancyhead[L]{\small\sffamily\textcolor{vqteal}{\textbf{""" + header_company + r"""}} \textcolor{vqrule}{|} \textcolor{vqsubtitle}{Financial Intelligence}}
+\fancyhead[R]{\small\sffamily\textcolor{vqsubtitle}{""" + today_str + r"""}}
+\fancyfoot[C]{\small\sffamily\textcolor{vqsubtitle}{Page \thepage\ / \pageref{LastPage}}}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\headrule}{\hbox to\headwidth{\color{vqteal}\leaders\hrule height \headrulewidth\hfill}}
+\renewcommand{\footrulewidth}{0pt}
 
 %% ── Section Styling ──
 \usepackage{titlesec}
-\titleformat{\section}{\Large\bfseries\color{vqteal}}{\thesection}{1em}{}
-\titleformat{\subsection}{\large\bfseries\color{vqdark}}{\thesubsection}{1em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\color{vqgray}}{\thesubsubsection}{1em}{}
+\titleformat{\section}{\Large\sffamily\bfseries\color{vqteal}}{\thesection}{1em}{}[\vspace{2pt}{\color{vqteal}\titlerule[0.4pt]}]
+\titleformat{\subsection}{\large\sffamily\bfseries\color{vqdark}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\sffamily\bfseries\color{vqsubtitle}}{\thesubsubsection}{1em}{}
 
 %% ── Callout Boxes ──
 \usepackage{tcolorbox}
 \tcbuselibrary{skins,breakable}
 \newtcolorbox{keyinsight}{
   colback=vqlight,colframe=vqteal,
-  fonttitle=\bfseries,title=Key Insight,
+  fonttitle=\sffamily\bfseries,title=Key Insight,
   boxrule=0.5pt,arc=3pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
   breakable
 }
 \newtcolorbox{warningbox}{
   colback=red!5,colframe=red!60!black,
-  fonttitle=\bfseries,title=Warning,
+  fonttitle=\sffamily\bfseries,title=Warning,
   boxrule=0.5pt,arc=3pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
+  breakable
+}
+\newtcolorbox{summarybox}[1][Executive Summary]{
+  colback=vqteal!4,colframe=vqteal,
+  fonttitle=\sffamily\bfseries\large,title=#1,
+  boxrule=0.6pt,arc=4pt,left=10pt,right=10pt,top=8pt,bottom=8pt,
+  toptitle=4pt,bottomtitle=4pt,
   breakable
 }
 
 %% ── Links ──
 \usepackage{hyperref}
-\hypersetup{colorlinks=true,linkcolor=vqteal,urlcolor=vqteal,citecolor=vqteal}
+\hypersetup{colorlinks=true,linkcolor=vqteal,urlcolor=vqteal,citecolor=vqteal,
+  pdfauthor={""" + pdf_author + r"""},pdftitle={""" + pdf_title + r"""}}
 
 %% ── Title Page ──
 \begin{document}
 
 \begin{titlepage}
 \centering
-\vspace*{3cm}
-{\Huge\bfseries\textcolor{vqteal}{VQuant}\par}
-\vspace{0.5cm}
-{\Large\textcolor{vqgray}{Financial Intelligence Report}\par}
+\vspace*{2cm}
+""" + logo_include + r"""
+""" + company_block + r"""
+""" + subtitle_block + r"""
 \vspace{2cm}
-{\large\textcolor{vqdark}{""" + today_str + r"""}\par}
-\vspace{1cm}
-\textcolor{vqteal}{\rule{0.6\textwidth}{1pt}}
+{\large\sffamily\textcolor{vqcharcoal}{""" + today_str + r"""}\par}
+\vspace{0.8cm}
+\textcolor{vqteal}{\rule{0.6\textwidth}{0.8pt}}
+""" + author_block + r"""
 \vfill
-{\small\textcolor{vqgray}{Generated by VQuant Analytics Platform}\par}
+{\footnotesize\sffamily\textcolor{vqrule}{Confidential — For intended recipients only}\par}
+\vspace{0.3cm}
+{\footnotesize\sffamily\textcolor{vqsubtitle}{Generated by VQuant Analytics Platform}\par}
 \end{titlepage}
 
 %% ── Table of Contents ──
@@ -1233,7 +1353,15 @@ class CustomPythonExecutor:
                 n_figs = len(fig_paths)
                 fig_info = f", {n_figs} figure{'s' if n_figs != 1 else ''}" if n_figs else ""
                 tmpl_info = f"template={template}" if not is_raw else "raw LaTeX"
-                return f"LaTeX PDF saved: {pdf_name} ({tmpl_info}{fig_info})"
+                brand_parts = []
+                if company:
+                    brand_parts.append(f"company={company}")
+                if author:
+                    brand_parts.append(f"author={author}")
+                if logo_path:
+                    brand_parts.append("logo=yes")
+                brand_info = f", {', '.join(brand_parts)}" if brand_parts else ""
+                return f"LaTeX PDF saved: {pdf_name} ({tmpl_info}{fig_info}{brand_info})"
 
             exec_globals = {
                 '__builtins__': __builtins__,

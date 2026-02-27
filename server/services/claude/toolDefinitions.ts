@@ -1349,11 +1349,20 @@ Raw LaTeX mode: if the content starts with \documentclass, it is compiled as-is 
 
 Template options: template='financial' (default) includes title page, TOC, fancyhdr, tcolorbox callouts; template='minimal' is a clean document with just geometry and basic packages.
 
+Branding parameters (optional):
+- author="Name" — adds "Prepared by Name" on the title page and sets PDF metadata
+- company="Company" — replaces "VQuant" in the title page heading and page headers
+- logo="https://..." — fetches a PNG/JPG logo image and places it above the company name on the title page (graceful fallback if URL fails)
+- title="Custom Title" — sets the subtitle on the title page (default: "Financial Intelligence Report")
+Example: save_latex(content, "report.pdf", author="Marie Dupont", company="Desjardins", logo="https://logo.clearbit.com/desjardins.com", title="Apple Financial Analysis")
+
 Available LaTeX environments in the financial template:
 - \begin{keyinsight}...\end{keyinsight} — teal callout box for key findings
 - \begin{warningbox}...\end{warningbox} — red callout box for warnings/risks
-- Standard \section, \subsection, \subsubsection with teal styling
+- \begin{summarybox}[Title]...\end{summarybox} — teal-tinted summary box (default title: "Executive Summary")
+- Standard \section, \subsection, \subsubsection with sans-serif teal styling and underline rules
 - amsmath for equations, booktabs for tables, float for [H] placement
+- Professional typography: Times body (newtxtext), Source Sans Pro headings, microtype kerning, 1.15x line spacing, "Page X / Y" footer
 
 The download links for Excel, Word, and LaTeX PDF files will be automatically included in the tool result.
 

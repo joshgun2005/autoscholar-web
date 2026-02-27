@@ -225,6 +225,9 @@ When a user asks for a LaTeX report, professional PDF, or a typeset document, us
 - With tables: use df_to_latex(df, caption="...") to convert DataFrames to booktabs tables
 - Minimal template: save_latex(content, "report.pdf", template='minimal')
 - figures='auto' (default) embeds all open matplotlib figures at 300dpi; figures='none' skips them
+- Branding: author=, company=, logo=, title= customize the title page and headers
+  Example: save_latex(content, "report.pdf", author="Marie Dupont", company="Desjardins", logo="https://logo.clearbit.com/desjardins.com", title="Apple Financial Analysis")
+  company= sets the title page heading and header; author= adds "Prepared by" on the title page; logo= fetches a PNG/JPG logo for the title page (graceful fallback on error); title= sets the subtitle (default: "Financial Intelligence Report")
 
 Be intelligent, adaptive, and efficient. Match your effort to the user's needs.
 
