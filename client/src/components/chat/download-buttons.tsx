@@ -1,4 +1,4 @@
-import { FileText, FileDown, Loader2, Presentation } from "lucide-react";
+import { FileText, FileDown, FileType, Loader2, Presentation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ interface DownloadButtonsProps {
 
 export function DownloadButtons({ question, answer, contentRef, figureUrls = [] }: DownloadButtonsProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isGeneratingDOCX, setIsGeneratingDOCX] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -79,6 +80,51 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
     }
   };
 
+  const handleDownloadDOCX = async () => {
+    setIsGeneratingDOCX(true);
+
+    try {
+      const response = await fetch('/api/generate-docx', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question,
+          answer
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate Word document');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vibequant-${Date.now()}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Word généré avec succès",
+        description: "Le document Word a été téléchargé.",
+      });
+    } catch (error) {
+      console.error('Error generating DOCX:', error);
+      toast({
+        title: "Erreur de génération",
+        description: "Une erreur s'est produite lors de la génération du Word. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingDOCX(false);
+    }
+  };
+
   const handleConvertToSlides = () => {
     // Store content in sessionStorage to pass to slides generator page
     sessionStorage.setItem('slidesContent', JSON.stringify({ question, answer, figureUrls }));
@@ -124,9 +170,28 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
       <Button
         variant="outline"
         size="sm"
+        onClick={handleDownloadDOCX}
+        className="gap-2 hover:bg-muted transition-colors"
+        disabled={isGeneratingDOCX}
+      >
+        {isGeneratingDOCX ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="hidden sm:inline">Génération...</span>
+          </>
+        ) : (
+          <>
+            <FileType className="w-4 h-4" />
+            <span className="hidden sm:inline">Télécharger Word</span>
+          </>
+        )}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
         onClick={handleConvertToSlides}
         className="gap-2 hover:bg-muted transition-colors"
-        disabled={isGeneratingPDF || !question || !answer}
+        disabled={isGeneratingPDF || isGeneratingDOCX || !question || !answer}
       >
         <Presentation className="w-4 h-4" />
         <span className="hidden sm:inline">Convertir en Slides</span>

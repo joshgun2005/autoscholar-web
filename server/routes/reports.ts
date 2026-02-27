@@ -169,7 +169,7 @@ export function registerReportRoutes(app: Express) {
       const pdfBuffer = await generatePDFFromMarkdown({ question, answer });
       const buffer = Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer);
 
-      const filename = `VibeQuant-${Date.now()}.pdf`;
+      const filename = `VQuant-${Date.now()}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Length', buffer.length);
@@ -193,7 +193,7 @@ export function registerReportRoutes(app: Express) {
       const { generateDOCXFromMarkdown } = await import("../services/pdfService");
       const docxBuffer = await generateDOCXFromMarkdown({ question, answer });
 
-      const filename = `VibeQuant-${Date.now()}.docx`;
+      const filename = `VQuant-${Date.now()}.docx`;
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Length', docxBuffer.length);
@@ -219,7 +219,7 @@ export function registerReportRoutes(app: Express) {
         question,
         answer,
         author,
-        company: company || 'VibeQuant',
+        company: company || 'VQuant',
         figureUrls: figureUrls || [],
       });
 
@@ -227,7 +227,7 @@ export function registerReportRoutes(app: Express) {
         throw new Error('PDF buffer is empty or invalid');
       }
 
-      const filename = `VibeQuant-Presentation-${Date.now()}.pdf`;
+      const filename = `VQuant-Presentation-${Date.now()}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Length', pdfBuffer.length.toString());
@@ -267,6 +267,7 @@ export function registerReportRoutes(app: Express) {
       const contentTypes: Record<string, string> = {
         '.csv': 'text/csv',
         '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         '.json': 'application/json',
         '.txt': 'text/plain',
       };

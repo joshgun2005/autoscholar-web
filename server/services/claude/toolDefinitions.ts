@@ -1270,6 +1270,39 @@ plt.plot(df["date"], df["volume"], color="green")
 plt.title("Volume Analysis")
 plt.tight_layout()
 
+📥 EXCEL FILE GENERATION:
+save_excel() generates professionally styled Excel files with teal headers, zebra striping, auto-column-width, freeze panes, and auto number formatting.
+
+Single sheet:
+save_excel(df, "AAPL_prices.xlsx")
+
+Multi-sheet workbook (PREFERRED when you have multiple DataFrames):
+save_excel({
+    "Summary": summary_df,
+    "Details": details_df,
+    "Raw Data": raw_df
+}, "full_report.xlsx")
+
+⚠️ ALWAYS use multi-sheet format when you have multiple DataFrames — do NOT call save_excel() multiple times to create separate files. One workbook with multiple sheets is cleaner and more professional.
+
+📝 WORD DOCUMENT GENERATION:
+save_word() generates branded VQuant Word documents (.docx) with professional styling.
+
+From markdown string:
+save_word("# Portfolio Analysis\\n\\n## Summary\\n\\nThe portfolio returned **12.5%**...\\n\\n- Strong performance in tech\\n- Underweight in energy", "portfolio_report.docx")
+
+From structured dict (for including tables):
+save_word({
+    "title": "Portfolio Analysis",
+    "sections": [
+        {"heading": "Performance Summary", "body": "The portfolio returned **12.5%** annualized."},
+        {"heading": "Holdings", "table": holdings_df},
+        {"heading": "Risk Metrics", "body": "VaR (95%): -2.3%\\nMax Drawdown: -15.2%", "table": risk_df}
+    ]
+}, "portfolio_report.docx")
+
+The download links for both Excel and Word files will be automatically included in the tool result.
+
 DISPLAYING FIGURES - CRITICAL:
 When your code creates matplotlib figures, they are saved as PNG files and you will receive markdown image references in the tool result output.
 

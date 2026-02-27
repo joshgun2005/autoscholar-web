@@ -1183,14 +1183,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
 
                   // Add download links to output for Claude to include
-                  let fileOutput = '\n\n📥 **FICHIERS EXCEL GÉNÉRÉS:**\n';
+                  let fileOutput = '\n\n📥 **FICHIERS GÉNÉRÉS:**\n';
                   fileLinks.forEach(f => {
                     fileOutput += `\n- [Télécharger ${f.name}](${f.url})\n`;
                   });
                   fileOutput += '\n⚠️ IMPORTANT: Tu DOIS inclure chaque lien de téléchargement dans ta réponse.';
                   result.output = (result.output || '') + fileOutput;
 
-                  logger.debug('   📥 Excel files processed:', fileLinks.map(f => f.name));
+                  logger.debug('   📥 Files processed:', fileLinks.map(f => f.name));
 
                   delete result.files;
                 }
