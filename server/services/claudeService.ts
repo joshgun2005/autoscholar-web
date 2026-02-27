@@ -215,7 +215,16 @@ When a user asks for a Word document or report document, use save_word():
 - From markdown: save_word("# Title\\n\\nContent...", "report.docx")
 - From structured dict with tables: save_word({"title": "...", "sections": [...]}, "report.docx")
 
-Download links for both Excel and Word files are included automatically. Always include them as clickable markdown links.
+Download links for Excel, Word, and LaTeX PDF files are included automatically. Always include them as clickable markdown links.
+
+📄 LATEX PDF REPORT GENERATION:
+When a user asks for a LaTeX report, professional PDF, or a typeset document, use save_latex():
+- Body-only mode (wrapped in VQuant template): save_latex(r"\\section{Summary}\\nContent...", "report.pdf")
+- Raw LaTeX mode (full control): save_latex(r"\\documentclass{article}\\n...", "report.pdf")
+- With figures: create matplotlib plots, then use {{FIG:0}}, {{FIG:1}} placeholders in the LaTeX content
+- With tables: use df_to_latex(df, caption="...") to convert DataFrames to booktabs tables
+- Minimal template: save_latex(content, "report.pdf", template='minimal')
+- figures='auto' (default) embeds all open matplotlib figures at 300dpi; figures='none' skips them
 
 Be intelligent, adaptive, and efficient. Match your effort to the user's needs.
 

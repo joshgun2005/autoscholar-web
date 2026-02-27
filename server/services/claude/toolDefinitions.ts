@@ -1322,7 +1322,40 @@ save_word({
     ]
 }, "portfolio_report.docx")
 
-The download links for both Excel and Word files will be automatically included in the tool result.
+📄 LATEX PDF REPORT GENERATION:
+save_latex() compiles LaTeX to a professional PDF using pdflatex. The PDF includes a branded VQuant title page, table of contents, and professional formatting.
+
+Basic usage (body wrapped in VQuant template):
+save_latex(r"""
+\section{Executive Summary}
+Strong performance driven by tech sector allocation.
+
+\section{Price Analysis}
+{{FIG:0}}
+The chart above shows the price evolution.
+
+\section{Key Statistics}
+""" + df_to_latex(summary_df, caption="Summary Statistics") + r"""
+
+\section{Conclusion}
+Positive outlook based on fundamental analysis.
+""", "AAPL_Analysis.pdf")
+
+Figure embedding: create matplotlib figures first, then use {{FIG:0}}, {{FIG:1}}, etc. placeholders. Figures are saved at 300dpi for print quality. figures='auto' (default) captures all open figures; figures='none' skips figure embedding.
+
+df_to_latex(df, caption="Title", label="tab:summary") converts a DataFrame to a professional booktabs table with teal headers and zebra striping.
+
+Raw LaTeX mode: if the content starts with \documentclass, it is compiled as-is (no template wrapping). Use this for fully custom documents.
+
+Template options: template='financial' (default) includes title page, TOC, fancyhdr, tcolorbox callouts; template='minimal' is a clean document with just geometry and basic packages.
+
+Available LaTeX environments in the financial template:
+- \begin{keyinsight}...\end{keyinsight} — teal callout box for key findings
+- \begin{warningbox}...\end{warningbox} — red callout box for warnings/risks
+- Standard \section, \subsection, \subsubsection with teal styling
+- amsmath for equations, booktabs for tables, float for [H] placement
+
+The download links for Excel, Word, and LaTeX PDF files will be automatically included in the tool result.
 
 DISPLAYING FIGURES - CRITICAL:
 When your code creates matplotlib figures, they are saved as PNG files and you will receive markdown image references in the tool result output.

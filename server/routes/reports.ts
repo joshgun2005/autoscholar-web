@@ -268,6 +268,7 @@ export function registerReportRoutes(app: Express) {
         '.csv': 'text/csv',
         '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.pdf': 'application/pdf',
         '.json': 'application/json',
         '.txt': 'text/plain',
       };

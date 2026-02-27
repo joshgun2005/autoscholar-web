@@ -920,6 +920,321 @@ class CustomPythonExecutor:
                 self.files.append({'filename': safe_name, 'filepath': filepath})
                 return f"Word document saved: {safe_name}"
 
+            # ── LaTeX helpers ────────────────────────────────────
+
+            def _escape_latex(text):
+                """Escape special LaTeX characters in plain text."""
+                if not isinstance(text, str):
+                    text = str(text)
+                specials = {
+                    '&': r'\&', '%': r'\%', '$': r'\$', '#': r'\#',
+                    '_': r'\_', '{': r'\{', '}': r'\}', '~': r'\textasciitilde{}',
+                    '^': r'\textasciicircum{}',
+                }
+                for char, replacement in specials.items():
+                    text = text.replace(char, replacement)
+                return text
+
+            def df_to_latex(df, caption=None, label=None, max_rows=200):
+                r"""Convert a DataFrame to a LaTeX booktabs table with teal headers and zebra striping.
+
+                Args:
+                    df: pandas DataFrame
+                    caption: Optional table caption
+                    label: Optional \label for cross-referencing
+                    max_rows: Maximum rows to include (default 200)
+
+                Returns:
+                    str: LaTeX table code ready for embedding
+                """
+                if not isinstance(df, pd.DataFrame) or df.empty:
+                    return '% Empty DataFrame — no table generated'
+
+                df_display = df.head(max_rows)
+                cols = list(df_display.columns)
+                num_cols = len(cols)
+
+                lines = []
+                lines.append(r'\begin{table}[H]')
+                lines.append(r'\centering')
+                lines.append(r'\rowcolors{2}{gray!8}{white}')
+                col_spec = 'l' + 'r' * (num_cols - 1)
+                lines.append(r'\begin{tabular}{' + col_spec + '}')
+                lines.append(r'\toprule')
+                # Header row with teal background
+                header_cells = [r'\textbf{\textcolor{white}{' + _escape_latex(str(c)) + '}}' for c in cols]
+                lines.append(r'\rowcolor{vqteal}')
+                lines.append(' & '.join(header_cells) + r' \\')
+                lines.append(r'\midrule')
+                # Data rows
+                for _, row in df_display.iterrows():
+                    cells = []
+                    for c in cols:
+                        val = row[c]
+                        if val is None or (isinstance(val, float) and (np.isnan(val) or np.isinf(val))):
+                            cells.append('—')
+                        elif isinstance(val, float):
+                            cells.append(f'{val:,.2f}')
+                        else:
+                            cells.append(_escape_latex(str(val)))
+                    lines.append(' & '.join(cells) + r' \\')
+                lines.append(r'\bottomrule')
+                lines.append(r'\end{tabular}')
+                if caption:
+                    lines.append(r'\caption{' + _escape_latex(caption) + '}')
+                if label:
+                    lines.append(r'\label{' + label + '}')
+                lines.append(r'\end{table}')
+                return '\n'.join(lines)
+
+            def save_latex(content, filename='report.pdf', figures='auto', template='financial'):
+                r"""Generate a professional PDF report via LaTeX compilation.
+
+                If content contains \documentclass, it is treated as raw LaTeX and compiled as-is.
+                Otherwise the content is treated as the body and wrapped in a professional VQuant template.
+
+                Figure placeholders: use {{FIG:0}}, {{FIG:1}}, etc. in the content to insert
+                the corresponding open matplotlib figures (numbered by creation order).
+
+                Args:
+                    content: LaTeX body text or full LaTeX document
+                    filename: Output filename (forced to .pdf)
+                    figures: 'auto' (save all open figs) or 'none'
+                    template: 'financial' (full branding) or 'minimal' (clean, no title page)
+
+                Returns:
+                    str: confirmation message
+                """
+                import subprocess
+                import shutil
+
+                # Force .pdf extension
+                base = os.path.splitext(filename)[0]
+                if not base:
+                    base = 'report'
+                pdf_name = re.sub(r'[^a-zA-Z0-9._-]', '_', base) + '.pdf'
+
+                work_dir = tempfile.mkdtemp(prefix='vq_latex_')
+
+                # ── Save open matplotlib figures as PNGs ──
+                fig_paths = []
+                if figures != 'none':
+                    fig_nums = plt.get_fignums()
+                    for idx, fnum in enumerate(fig_nums):
+                        fig = plt.figure(fnum)
+                        fig_file = os.path.join(work_dir, f'fig_{idx}.png')
+                        fig.savefig(fig_file, format='png', dpi=300, bbox_inches='tight',
+                                    facecolor='white', edgecolor='none')
+                        fig_paths.append(fig_file)
+
+                # ── Replace {{FIG:N}} placeholders ──
+                def _replace_fig_placeholders(text):
+                    import re as _re
+                    def _fig_repl(m):
+                        idx = int(m.group(1))
+                        if idx < len(fig_paths):
+                            fname = os.path.basename(fig_paths[idx])
+                            return (
+                                r'\begin{figure}[H]' '\n'
+                                r'\centering' '\n'
+                                r'\includegraphics[width=\linewidth]{' + fname + '}\n'
+                                r'\end{figure}'
+                            )
+                        return m.group(0)  # leave unresolved placeholders as-is
+                    return _re.sub(r'\{\{FIG:(\d+)\}\}', _fig_repl, text)
+
+                content = _replace_fig_placeholders(content)
+
+                # ── Detect raw vs template mode ──
+                is_raw = r'\documentclass' in content
+
+                if is_raw:
+                    full_latex = content
+                else:
+                    today_str = datetime.now().strftime('%B %d, %Y')
+
+                    if template == 'minimal':
+                        full_latex = r"""\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[table]{xcolor}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{parskip}
+
+\definecolor{vqteal}{HTML}{119993}
+
+\hypersetup{colorlinks=true,linkcolor=vqteal,urlcolor=vqteal,citecolor=vqteal}
+
+\begin{document}
+""" + content + r"""
+\end{document}
+"""
+                    else:
+                        # Full financial template
+                        full_latex = r"""\documentclass[11pt,a4paper]{article}
+
+%% ── Encoding & Fonts ──
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+%% ── Layout ──
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+
+%% ── Colors ──
+\usepackage[table]{xcolor}
+\definecolor{vqteal}{HTML}{119993}
+\definecolor{vqdark}{HTML}{1A1A2E}
+\definecolor{vqgray}{HTML}{666666}
+\definecolor{vqlight}{HTML}{F2F9F9}
+
+%% ── Graphics & Floats ──
+\usepackage{graphicx}
+\usepackage{float}
+
+%% ── Tables ──
+\usepackage{booktabs}
+\usepackage{tabularx}
+
+%% ── Math ──
+\usepackage{amsmath}
+
+%% ── Headers/Footers ──
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{vqteal}{\textbf{VQuant}} \textcolor{vqgray}{| Financial Intelligence}}
+\fancyhead[R]{\small\textcolor{vqgray}{""" + today_str + r"""}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{vqteal}\leaders\hrule height \headrulewidth\hfill}}
+
+%% ── Section Styling ──
+\usepackage{titlesec}
+\titleformat{\section}{\Large\bfseries\color{vqteal}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{vqdark}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{vqgray}}{\thesubsubsection}{1em}{}
+
+%% ── Callout Boxes ──
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\newtcolorbox{keyinsight}{
+  colback=vqlight,colframe=vqteal,
+  fonttitle=\bfseries,title=Key Insight,
+  boxrule=0.5pt,arc=3pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
+  breakable
+}
+\newtcolorbox{warningbox}{
+  colback=red!5,colframe=red!60!black,
+  fonttitle=\bfseries,title=Warning,
+  boxrule=0.5pt,arc=3pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
+  breakable
+}
+
+%% ── Links ──
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=vqteal,urlcolor=vqteal,citecolor=vqteal}
+
+%% ── Title Page ──
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+{\Huge\bfseries\textcolor{vqteal}{VQuant}\par}
+\vspace{0.5cm}
+{\Large\textcolor{vqgray}{Financial Intelligence Report}\par}
+\vspace{2cm}
+{\large\textcolor{vqdark}{""" + today_str + r"""}\par}
+\vspace{1cm}
+\textcolor{vqteal}{\rule{0.6\textwidth}{1pt}}
+\vfill
+{\small\textcolor{vqgray}{Generated by VQuant Analytics Platform}\par}
+\end{titlepage}
+
+%% ── Table of Contents ──
+\tableofcontents
+\newpage
+
+""" + content + r"""
+
+\end{document}
+"""
+
+                # ── Write .tex file ──
+                tex_path = os.path.join(work_dir, 'report.tex')
+                with open(tex_path, 'w', encoding='utf-8') as f:
+                    f.write(full_latex)
+
+                # ── Find pdflatex ──
+                pdflatex = shutil.which('pdflatex')
+                if not pdflatex:
+                    # MacTeX default location
+                    mac_tex = '/Library/TeX/texbin/pdflatex'
+                    if os.path.isfile(mac_tex):
+                        pdflatex = mac_tex
+                if not pdflatex:
+                    raise RuntimeError(
+                        'pdflatex not found. Install MacTeX (brew install --cask mactex) '
+                        'or TeX Live to compile LaTeX documents.'
+                    )
+
+                # ── Compile (2 passes for TOC & cross-refs) ──
+                for pass_num in range(2):
+                    proc = subprocess.run(
+                        [pdflatex, '-interaction=nonstopmode', '-halt-on-error', 'report.tex'],
+                        cwd=work_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                    )
+                    if proc.returncode != 0 and pass_num == 1:
+                        # Read log tail for diagnostics
+                        log_path = os.path.join(work_dir, 'report.log')
+                        log_tail = ''
+                        if os.path.isfile(log_path):
+                            with open(log_path, 'r', errors='replace') as lf:
+                                log_lines = lf.readlines()
+                                # Find lines with '!' (LaTeX errors)
+                                error_lines = [l.rstrip() for l in log_lines if l.startswith('!')]
+                                if error_lines:
+                                    log_tail = '\n'.join(error_lines[:10])
+                                else:
+                                    log_tail = ''.join(log_lines[-30:])
+                        raise RuntimeError(
+                            f'pdflatex compilation failed (pass {pass_num + 1}).\n'
+                            f'--- Log ---\n{log_tail}\n'
+                            f'--- stderr ---\n{proc.stderr[-500:] if proc.stderr else "(empty)"}'
+                        )
+
+                # ── Collect output PDF ──
+                compiled_pdf = os.path.join(work_dir, 'report.pdf')
+                if not os.path.isfile(compiled_pdf):
+                    raise RuntimeError('pdflatex ran but report.pdf was not produced.')
+
+                dest_path = os.path.join(tempfile.gettempdir(), f'vq_{int(time.time())}_{pdf_name}')
+                shutil.copy2(compiled_pdf, dest_path)
+
+                # Cleanup work directory (best-effort)
+                try:
+                    shutil.rmtree(work_dir)
+                except Exception:
+                    pass
+
+                self.files.append({'filename': pdf_name, 'filepath': dest_path})
+                n_figs = len(fig_paths)
+                fig_info = f", {n_figs} figure{'s' if n_figs != 1 else ''}" if n_figs else ""
+                tmpl_info = f"template={template}" if not is_raw else "raw LaTeX"
+                return f"LaTeX PDF saved: {pdf_name} ({tmpl_info}{fig_info})"
+
             exec_globals = {
                 '__builtins__': __builtins__,
                 # Core libraries
@@ -938,6 +1253,8 @@ class CustomPythonExecutor:
                 # File export helpers
                 'save_excel': save_excel,
                 'save_word': save_word,
+                'save_latex': save_latex,
+                'df_to_latex': df_to_latex,
                 # Helper functions for common tasks
                 'convert_to_datetime': lambda x: pd.to_datetime(x, errors='coerce'),
                 'safe_strftime': lambda dt, fmt: dt.strftime(fmt) if pd.notna(dt) and hasattr(dt, 'strftime') else str(dt),
