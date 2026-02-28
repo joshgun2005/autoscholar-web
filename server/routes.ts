@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { callClaudeStreaming } from "./services/claudeService";
+import { analyzeFigures } from "./services/figureAnalysisService";
 import { randomBytes } from "crypto";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerAdminRoutes } from "./routes/admin";
@@ -1133,17 +1134,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     description: toolCall.input.description
                   })}\n\n`);
 
-                  // Create figure references with actual URLs
-                  const figureReferences = figureUrls.map((url, idx) =>
-                    `![Figure ${idx + 1}](${url})`
-                  );
+                  // Analyze figures with vision model (Haiku) if enabled
+                  const enableFigureAnalysis = process.env.ENABLE_FIGURE_ANALYSIS !== 'false';
+                  let figureDescriptions: { index: number; description: string; success: boolean }[] = [];
+
+                  if (enableFigureAnalysis) {
+                    logger.info(`🔍 Analyzing ${originalFigures.length} figure(s) with vision model...`);
+                    res.write(`data: ${JSON.stringify({ type: 'status', message: 'Analyzing generated figures...' })}\n\n`);
+                    try {
+                      figureDescriptions = await analyzeFigures(originalFigures, toolCall.input.description);
+                      logger.info('✅ Figure analysis complete');
+                    } catch (err) {
+                      logger.warn('⚠️ Figure analysis failed, falling back to no descriptions');
+                    }
+                  }
 
                   // Format output so Claude naturally includes figures in response
-                  // Structure: results first, then each figure with a prompt for commentary
                   let formattedOutput = result.output || '';
                   formattedOutput += '\n\n---\n📊 **ANALYSE DES FIGURES GÉNÉRÉES:**\n';
                   figureUrls.forEach((url, idx) => {
-                    formattedOutput += `\n**Figure ${idx + 1}:**\n![Figure ${idx + 1}](${url})\n_(Décris cette figure ci-dessus dans ta réponse)_\n`;
+                    formattedOutput += `\n**Figure ${idx + 1}:**\n![Figure ${idx + 1}](${url})\n`;
+                    const analysis = figureDescriptions.find(d => d.index === idx);
+                    if (analysis?.success && analysis.description) {
+                      formattedOutput += `**Vision Analysis:** ${analysis.description}\n`;
+                    } else {
+                      formattedOutput += `_(Décris cette figure ci-dessus dans ta réponse)_\n`;
+                    }
                   });
                   formattedOutput += '\n---\n⚠️ IMPORTANT: Tu DOIS inclure chaque image ![Figure X](url) dans ta réponse markdown avec ton analyse de chaque figure.';
 
