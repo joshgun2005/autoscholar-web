@@ -1253,6 +1253,7 @@ export interface CustomPythonResult {
   output?: string;
   result?: any;
   figures?: string[]; // Base64 encoded images
+  files?: Array<{ filename: string; filepath: string }>; // Generated files (Excel, etc.)
   error?: string;
   code?: string;
 }
@@ -1281,11 +1282,13 @@ export async function executeCustomPython(
 
     const pythonScriptPath = path.join(__dirname, 'customPythonExecutor.py');
 
-    // Prepare input with FMP API key
+    // Prepare input with API keys
     const executorInput = {
       code: input.code,
       context: input.context || {},
-      fmp_api_key: process.env.FMP_API_KEY
+      fmp_api_key: process.env.FMP_API_KEY,
+      fred_api_key: process.env.FRED_API_KEY,
+      eodhd_api_key: process.env.EODHD_API_KEY
     };
 
     const inputJson = JSON.stringify(executorInput);

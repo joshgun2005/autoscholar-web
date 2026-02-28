@@ -128,6 +128,23 @@ Macroeconomic Data Tools:
 - get_treasury_rates: US Treasury rates across all maturities (yield curve analysis)
 - get_economic_indicator: Specific economic indicators (GDP, unemployment, CPI, etc.)
 
+FRED API (Federal Reserve Economic Data) — 840,000+ macroeconomic series:
+The 'fred' object is PRE-LOADED inside execute_custom_python_analysis (like fmp). Do NOT import fredapi!
+Recommended: fred.get_series_df(series_id) → DataFrame with 'date' (datetime) and 'value' (float). ALWAYS call .dropna() after.
+Other: fred.get_series(id) metadata, fred.search_series(text) keyword search, fred.get_series_observations(id) raw, fred.get_category(id), fred.get_category_series(id), fred.get_releases(), fred.get_release_series(id), fred.get_series_categories(id), fred.get_series_tags(id).
+Popular IDs: GDP, CPIAUCSL (CPI), UNRATE (unemployment), DFF (fed funds effective), DGS10 (10Y Treasury), DGS2 (2Y Treasury), T10Y2Y (10-2Y spread), FEDFUNDS, M2SL (M2 money supply), UMCSENT (consumer sentiment), VIXCLS (VIX), DEXUSEU (EUR/USD), DCOILWTICO (WTI crude), BAMLH0A0HYM2 (HY spread), SP500.
+IMPORTANT FRED coding rules:
+- ALWAYS .dropna() after get_series_df() — FRED uses "." for missing values (converted to NaN)
+- ALWAYS check len(df) > 0 before .iloc[-1] or .iloc[0]
+- When merging series: rename 'value' column first, then pd.merge(df1, df2, on='date', how='inner')
+- Different series have different frequencies — use frequency= param or merge with how='inner'
+Example:
+  m2 = fred.get_series_df('M2SL', observation_start='2000-01-01').dropna()
+  m2 = m2.rename(columns={'value': 'm2'})
+  plt.figure(figsize=(12,6))
+  plt.plot(m2['date'], m2['m2'])
+  plt.title('M2 Money Supply')
+
 Insider Trading & Earnings Tools:
 - get_insider_trading: Recent insider buy/sell transactions (sentiment indicator)
 - get_insider_trade_statistics: Aggregated insider trading stats for a company
@@ -148,6 +165,11 @@ Options Trading Tools (Real Market Data):
 - get_option_prices: Get detailed pricing for a specific option contract (bid/ask, last price, volume, open interest, IV, intrinsic/time value)
 - get_option_greeks: Get Greeks (Delta, Gamma, Theta, Vega, Rho) for a specific option contract for risk analysis and hedging
 - create_volatility_surface: Generate 3D volatility surface visualization showing IV across strikes and expirations. Perfect for analyzing volatility smile/skew and term structure
+
+EODHD API Tools (Higher Granularity & Options Data):
+- get_eodhd_intraday: Fetch intraday OHLCV bars from EODHD (1m/5m/1h intervals, US pre-market & after-hours included, data since 2004). Ticker format: "AAPL.US", "MSFT.US". Prefer over FMP for granular intraday needs
+- get_eodhd_options: Fetch US options chain with EOD Greeks (Delta/Gamma/Theta/Vega/Rho), bid/ask, IV, volume, open interest for 6,000+ US stocks. Returns data organized by expiration date. Use for options flow analysis, volatility surface building, and Greeks-based strategies. Ticker format: "AAPL.US", "SPY.US"
+Note: In custom Python code, use the 'eodhd' client object — e.g. eodhd.get_intraday_df("AAPL.US"), eodhd.get_options_df("AAPL.US"), eodhd.get_eod_df("AAPL.US")
 
 Advanced Analysis Tools:
 - run_monte_carlo_simulation: Run Monte Carlo simulations using historical price data to project future portfolio values, calculate risk metrics, and assess probability of outcomes. IMPORTANT: First call get_historical_price WITHOUT date parameters to get maximum data (2 years), then extract the 'close' prices from the historical array and pass them to this tool as historical_prices parameter

@@ -1219,7 +1219,7 @@ const AVAILABLE_TOOLS: ClaudeToolDefinition[] = [
   },
   {
     name: 'execute_custom_python_analysis',
-    description: `Execute custom Python code for financial analysis. Access to: numpy, pandas, matplotlib, scipy, sklearn, statsmodels, yfinance, cvxpy, and FMP API via fmp object.
+    description: `Execute custom Python code for financial analysis. Access to: numpy, pandas, matplotlib, scipy, sklearn, statsmodels, yfinance, cvxpy, FMP API via fmp object, and FRED API via fred object.
 
 🚀 CRITICAL RULE - DO EVERYTHING IN ONE CALL:
 NEVER make multiple tool calls to execute_custom_python_analysis. Do EVERYTHING in a SINGLE Python script: data fetching + analysis + figures. Do NOT make separate calls for "fetch data" then "run analysis". That's SLOW!
@@ -1241,6 +1241,37 @@ prices = [150.23, 151.45, ...] # takes forever to stream
 ✅ CORRECT (FAST):
 data = fmp.get_historical_prices("AAPL")
 df = pd.DataFrame(data["historical"])
+
+📈 FRED API (Federal Reserve Economic Data) — 840,000+ macroeconomic series:
+The 'fred' object is PRE-LOADED in the global scope (like fmp). Do NOT import fredapi or any external FRED library!
+Recommended: fred.get_series_df(series_id) → DataFrame with columns 'date' (datetime) and 'value' (float). Missing FRED values (".") are already converted to NaN.
+Other: fred.get_series(id) metadata, fred.search_series(text) keyword search, fred.get_category(id), fred.get_releases().
+Popular IDs: GDP, CPIAUCSL, UNRATE, DFF, DGS10, DGS2, T10Y2Y, FEDFUNDS, M2SL, UMCSENT, VIXCLS, DEXUSEU, DCOILWTICO, SP500.
+
+⚠️ FRED DATA RULES:
+- ALWAYS call .dropna() after get_series_df() before any analysis: df = fred.get_series_df('GDP').dropna()
+- When merging multiple FRED series, use pd.merge(..., on='date', how='inner') to avoid NaN rows
+- ALWAYS check len(df) > 0 before using .iloc[-1] or .iloc[0] — some series may have gaps
+- Different series have different frequencies (daily, monthly, quarterly) — use the frequency= param to align them
+- To rename the 'value' column: df = df.rename(columns={'value': 'gdp'})
+
+❌ WRONG (will crash on empty DataFrame):
+m2 = fred.get_series_df('M2SL')
+latest = m2.iloc[-1]  # IndexError if empty!
+
+✅ CORRECT FRED pattern:
+m2 = fred.get_series_df('M2SL', observation_start='2000-01-01').dropna()
+cpi = fred.get_series_df('CPIAUCSL', observation_start='2000-01-01').dropna()
+m2 = m2.rename(columns={'value': 'm2'})
+cpi = cpi.rename(columns={'value': 'cpi'})
+# Merge on date (inner join keeps only matching dates)
+df = pd.merge(m2, cpi, on='date', how='inner')
+print(f"M2 latest: {df['m2'].iloc[-1]:,.0f}" if len(df) > 0 else "No data")
+
+plt.figure(figsize=(12,6))
+plt.plot(df['date'], df['m2'])
+plt.title('US M2 Money Supply')
+plt.tight_layout()
 
 📊 FIGURE CREATION RULES - ALWAYS CREATE SEPARATE FIGURES:
 NEVER use plt.subplots() with multiple rows/columns (like 2x2, 3x1, 4x4 grids).
@@ -1390,7 +1421,7 @@ La distribution présente une légère asymétrie..."`,
       properties: {
         code: {
           type: 'string',
-          description: 'Python code. ⚠️ NEVER HARDCODE DATA ARRAYS! Always fetch with fmp API. CRITICAL: fmp.get_historical_prices() returns dict with "historical" key! ALWAYS use: df = pd.DataFrame(data["historical"]). Convert dates: df["date"] = pd.to_datetime(df["date"]). Always .dropna(). ⚠️ ALWAYS CREATE SEPARATE FIGURES with plt.figure() - NEVER use plt.subplots(2,2) or grids! CORRECT PATTERN:\n```python\n# ✅ CORRECT: Fetch data with API (FAST)\ndata = fmp.get_historical_prices("AAPL")\ndf = pd.DataFrame(data["historical"])  # ← MUST use ["historical"]\ndf["date"] = pd.to_datetime(df["date"])\ndf = df.sort_values("date").dropna()\ndf["returns"] = df["close"].pct_change()\nprint(f"Latest: ${df[\'close\'].iloc[-1]:.2f}")\n\n# Figure 1 - Price\nplt.figure(figsize=(12,6))\nplt.plot(df["date"], df["close"])\nplt.title("Price Evolution")\nplt.tight_layout()\n\n# Figure 2 - Returns\nplt.figure(figsize=(12,6))\nplt.hist(df["returns"].dropna(), bins=50)\nplt.title("Return Distribution")\nplt.tight_layout()\n```\n❌ WRONG: plt.subplots(2,2) or dates = [\'2024-01-01\', ...] # No grids! No hardcoded data!\nLIBS: np, pd, plt, sns, scipy, sklearn, statsmodels, ta, cvxpy, numba, networkx, sympy, arch',
+          description: 'Python code. ⚠️ NEVER HARDCODE DATA ARRAYS! Always fetch with fmp or fred APIs. CRITICAL: fmp.get_historical_prices() returns dict with "historical" key! ALWAYS use: df = pd.DataFrame(data["historical"]). Convert dates: df["date"] = pd.to_datetime(df["date"]). Always .dropna(). ⚠️ ALWAYS CREATE SEPARATE FIGURES with plt.figure() - NEVER use plt.subplots(2,2) or grids!\n⚠️ FRED: the fred object is PRE-LOADED — NEVER import fredapi! Use fred.get_series_df(id).dropna() and ALWAYS check len(df) > 0 before .iloc[-1].\nCORRECT PATTERN:\n```python\n# ✅ FMP data:\ndata = fmp.get_historical_prices("AAPL")\ndf = pd.DataFrame(data["historical"])  # ← MUST use ["historical"]\ndf["date"] = pd.to_datetime(df["date"])\ndf = df.sort_values("date").dropna()\n\n# ✅ FRED data (pre-loaded, NO import needed):\ngdp = fred.get_series_df("GDP", observation_start="2000-01-01").dropna()\ncpi = fred.get_series_df("CPIAUCSL", observation_start="2000-01-01").dropna()\ngdp = gdp.rename(columns={"value": "gdp"})\ncpi = cpi.rename(columns={"value": "cpi"})\ndf = pd.merge(gdp, cpi, on="date", how="inner")\n\nplt.figure(figsize=(12,6))\nplt.plot(df["date"], df["gdp"])\nplt.title("US GDP")\nplt.tight_layout()\n```\n❌ WRONG: plt.subplots(2,2) or dates = [\'2024-01-01\', ...] or import fredapi\nLIBS: np, pd, plt, sns, scipy, sklearn, statsmodels, ta, cvxpy, numba, networkx, sympy, arch, fmp, fred',
         },
         description: {
           type: 'string',
@@ -1506,6 +1537,68 @@ La distribution présente une légère asymétrie..."`,
       required: ['data_type', 'format'],
     },
   },
+  // ==================== EODHD API TOOLS ====================
+  {
+    name: 'get_eodhd_intraday',
+    description: 'Fetches intraday OHLCV price bars from EODHD API. Covers US and global exchanges with pre-market and after-hours data. Available intervals: 1m (1-minute, US since 2004), 5m (5-minute), 1h (1-hour). Prefer this over FMP for intraday when higher granularity or premarket/afterhours coverage is needed.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        ticker: {
+          type: 'string',
+          description: 'Ticker in EODHD format: append exchange suffix, e.g. "AAPL.US", "MSFT.US", "TSLA.US". For non-US: "VOD.LSE", "SAP.XETRA".',
+        },
+        interval: {
+          type: 'string',
+          description: 'Bar interval: "1m" (1-minute), "5m" (5-minute, default), "1h" (1-hour).',
+        },
+        from_date: {
+          type: 'string',
+          description: 'Start date/datetime as ISO string or YYYY-MM-DD (converted to Unix timestamp internally).',
+        },
+        to_date: {
+          type: 'string',
+          description: 'End date/datetime as ISO string or YYYY-MM-DD.',
+        },
+      },
+      required: ['ticker'],
+    },
+  },
+  {
+    name: 'get_eodhd_options',
+    description: 'Fetches the US options chain with end-of-day Greeks (Delta, Gamma, Theta, Vega, Rho) and market data (bid, ask, last price, volume, open interest, implied volatility) from EODHD. Covers 6,000+ top-traded US stocks. Returns data organized by expiration date with CALL and PUT contracts. Use this for options flow analysis, volatility surface building, and Greeks-based strategies.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        ticker: {
+          type: 'string',
+          description: 'US stock ticker in EODHD format, e.g. "AAPL.US", "SPY.US", "TSLA.US".',
+        },
+        from_date: {
+          type: 'string',
+          description: 'Start trade date filter (YYYY-MM-DD).',
+        },
+        to_date: {
+          type: 'string',
+          description: 'End trade date filter (YYYY-MM-DD).',
+        },
+        expiration_date_from: {
+          type: 'string',
+          description: 'Filter contracts expiring on or after this date (YYYY-MM-DD).',
+        },
+        expiration_date_to: {
+          type: 'string',
+          description: 'Filter contracts expiring on or before this date (YYYY-MM-DD).',
+        },
+        contract_name: {
+          type: 'string',
+          description: 'Fetch a single specific contract by its OCC name, e.g. "AAPL230616C00150000".',
+        },
+      },
+      required: ['ticker'],
+    },
+  },
+
   // ==================== FIRECRAWL WEB NAVIGATION & EXTRACTION TOOLS ====================
   {
     name: 'firecrawl_scrape',

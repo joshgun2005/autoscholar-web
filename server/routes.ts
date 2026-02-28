@@ -235,6 +235,7 @@ import {
   getCompanyEquityOfferingsByCIK
 } from "./services/fmpService";
 import { getOptionChain, getOptionPrices, getOptionGreeks } from "./services/financialDataService";
+import { getEODHDIntraday, getEODHDOptions } from "./services/eodhd_service";
 import { executeMonteCarloSimulation, executeOptionsPricing, executeGarchModel, executeVarCalculation, executePortfolioOptimization, executeRiskMetricsAnalysis, executePlot, executeDataDownload, executeCustomPython } from "./services/pythonExecutor";
 import { randomUUID } from "crypto";
 import type { SearchResult } from "@shared/types";
@@ -1238,6 +1239,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 logger.info(`Getting option Greeks for: ${toolCall.input.identifier}`);
                 result = await getOptionGreeks(toolCall.input.identifier);
                 logger.success('Option Greeks retrieved');
+              } else if (toolCall.name === 'get_eodhd_intraday') {
+                const { ticker, interval, from_date, to_date } = toolCall.input;
+                logger.info(`EODHD intraday: ${ticker} interval=${interval || '5m'}`);
+                const bars = await getEODHDIntraday(ticker, interval || '5m', from_date, to_date);
+                result = { ticker, interval: interval || '5m', count: bars.length, data: bars };
+                logger.success(`EODHD intraday: ${bars.length} bars returned`);
+              } else if (toolCall.name === 'get_eodhd_options') {
+                const { ticker, from_date, to_date, expiration_date_from, expiration_date_to, contract_name } = toolCall.input;
+                logger.info(`EODHD options chain: ${ticker}`);
+                const chain = await getEODHDOptions(ticker, from_date, to_date, expiration_date_from, expiration_date_to, contract_name);
+                result = chain;
+                const totalContracts = (chain.data || []).reduce(
+                  (acc: number, b: any) => acc + (b.options?.CALL?.length || 0) + (b.options?.PUT?.length || 0), 0
+                );
+                logger.success(`EODHD options: ${chain.data?.length || 0} expiry buckets, ${totalContracts} contracts`);
               } else if (toolCall.name === 'download_fmp_data') {
                 logger.info(`Downloading FMP data: ${toolCall.input.data_type} (format: ${toolCall.input.format})`);
                 const downloadResult = await executeDataDownload({
