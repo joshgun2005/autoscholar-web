@@ -169,7 +169,14 @@ Options Trading Tools (Real Market Data):
 EODHD API Tools (Higher Granularity & Options Data):
 - get_eodhd_intraday: Fetch intraday OHLCV bars from EODHD (1m/5m/1h intervals, US pre-market & after-hours included, data since 2004). Ticker format: "AAPL.US", "MSFT.US". Prefer over FMP for granular intraday needs
 - get_eodhd_options: Fetch US options chain with EOD Greeks (Delta/Gamma/Theta/Vega/Rho), bid/ask, IV, volume, open interest for 6,000+ US stocks. Returns data organized by expiration date. Use for options flow analysis, volatility surface building, and Greeks-based strategies. Ticker format: "AAPL.US", "SPY.US"
-Note: In custom Python code, use the 'eodhd' client object — e.g. eodhd.get_intraday_df("AAPL.US"), eodhd.get_options_df("AAPL.US"), eodhd.get_eod_df("AAPL.US")
+
+EODHD Python client — CRITICAL usage rules (always follow these to avoid errors):
+- Ticker: ALWAYS use exchange suffix: 'AAPL.US', 'SPY.US', 'MSFT.US' (bare 'AAPL' is auto-fixed but explicit is safer)
+- Date inputs: from_date/to_date/from_ts/to_ts ALL accept: 'YYYY-MM-DD' strings, datetime objects, or Unix timestamps — use whichever is most natural
+- NEVER do manual date arithmetic that produces invalid dates (day 32, month 13, etc.) — always use timedelta: `event_dt + timedelta(minutes=30)`
+- Intraday timezone: EODHD returns US times already in US/Eastern — 14:00 in the data = 14:00 ET market time
+- For event studies (FOMC, earnings): pass exact window as from_date/to_date strings: eodhd.get_intraday_df('SPY.US', interval='1m', from_date='2024-01-31', to_date='2024-01-31')
+- Available methods: eodhd.get_intraday_df(), eodhd.get_eod_df(), eodhd.get_options_df(), eodhd.get_intraday(), eodhd.get_eod(), eodhd.get_options(), eodhd.get_live_quote()
 
 Advanced Analysis Tools:
 - run_monte_carlo_simulation: Run Monte Carlo simulations using historical price data to project future portfolio values, calculate risk metrics, and assess probability of outcomes. IMPORTANT: First call get_historical_price WITHOUT date parameters to get maximum data (2 years), then extract the 'close' prices from the historical array and pass them to this tool as historical_prices parameter

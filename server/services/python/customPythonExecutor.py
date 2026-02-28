@@ -250,12 +250,26 @@ class FREDClient:
 
 
 class EODHDClient:
-    """EODHD API client — intraday historical data + US options chains with Greeks"""
+    """EODHD API client — intraday historical data + US options chains with Greeks.
+
+    Ticker format:  always use exchange suffix, e.g. 'AAPL.US', 'MSFT.US', 'SPY.US'.
+    Bare tickers like 'AAPL' are auto-converted to 'AAPL.US'.
+
+    Date/time inputs: all methods accept any of these for date parameters:
+        - Unix timestamp (int or float)
+        - ISO date string: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS'
+        - Python datetime / pandas Timestamp / numpy datetime64
+
+    Timezone note: EODHD returns datetimes in the exchange's local time (not UTC).
+    For US intraday, times are already in US/Eastern — no conversion needed.
+    """
 
     BASE_URL = 'https://eodhd.com/api'
 
     def __init__(self, api_key):
         self.api_key = api_key
+
+    # ── Internal helpers ───────────────────────────────────────────────────────
 
     def _request(self, endpoint, params=None):
         import requests
@@ -268,35 +282,98 @@ class EODHDClient:
         response.raise_for_status()
         return response.json()
 
+    @staticmethod
+    def _to_unix(value):
+        """Convert any date/time representation to a Unix timestamp (int).
+
+        Accepts: int/float (already a timestamp), str ('YYYY-MM-DD' or
+        'YYYY-MM-DD HH:MM:SS'), datetime, pd.Timestamp, np.datetime64.
+        Returns None if value is None.
+        """
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return int(value)
+        # string → pd.Timestamp → unix
+        ts = pd.Timestamp(value)
+        # if tz-naive assume local time
+        if ts.tzinfo is None:
+            ts = ts.tz_localize('UTC')
+        return int(ts.timestamp())
+
+    @staticmethod
+    def _normalize_ticker(ticker):
+        """Append '.US' exchange suffix when no suffix is present.
+
+        Examples:  'AAPL' → 'AAPL.US',  'AAPL.US' → 'AAPL.US'
+        Non-US tickers already have a suffix: 'VOD.LSE' → unchanged.
+        """
+        return ticker if '.' in ticker else ticker + '.US'
+
     # ── Intraday ──────────────────────────────────────────────────────────────
 
-    def get_intraday(self, ticker, interval='5m', from_ts=None, to_ts=None):
-        """Fetch intraday OHLCV bars.
+    def get_intraday(self, ticker, interval='5m',
+                     from_ts=None, to_ts=None,
+                     from_date=None, to_date=None):
+        """Fetch intraday OHLCV bars from EODHD.
 
         Args:
-            ticker  : e.g. 'AAPL.US'  (append '.US' for US stocks)
-            interval: '1m', '5m', or '1h'
-            from_ts : Unix timestamp (int) — default: last 120 days
-            to_ts   : Unix timestamp (int)
+            ticker    : e.g. 'AAPL.US' or bare 'AAPL' (auto-normalized)
+            interval  : '1m' (US only, since 2004), '5m', or '1h'
+            from_ts   : start — Unix int, 'YYYY-MM-DD', 'YYYY-MM-DD HH:MM', or datetime
+            to_ts     : end   — same formats
+            from_date : alias for from_ts
+            to_date   : alias for to_ts
 
         Returns:
-            list of dicts with keys: datetime, gmtoffset, open, high, low, close, volume
-        """
-        params = {'interval': interval}
-        if from_ts:
-            params['from'] = int(from_ts)
-        if to_ts:
-            params['to'] = int(to_ts)
-        return self._request(f'/intraday/{ticker}', params)
+            list of dicts — datetime (exchange local time), gmtoffset,
+            open, high, low, close, volume
 
-    def get_intraday_df(self, ticker, interval='5m', from_ts=None, to_ts=None):
-        """Same as get_intraday() but returns a pandas DataFrame with a DatetimeIndex."""
-        data = self.get_intraday(ticker, interval=interval, from_ts=from_ts, to_ts=to_ts)
+        Note:
+            Each request costs 5 EODHD API credits.
+            For FOMC / event studies, pass exact window timestamps to limit data.
+        """
+        ticker = self._normalize_ticker(ticker)
+        start = self._to_unix(from_ts or from_date)
+        end   = self._to_unix(to_ts   or to_date)
+
+        params = {'interval': interval}
+        if start is not None:
+            params['from'] = start
+        if end is not None:
+            params['to'] = end
+
+        data = self._request(f'/intraday/{ticker}', params)
+
+        if not data:
+            print(f"⚠️  EODHD intraday: empty response for {ticker} "
+                  f"(interval={interval}, from={from_ts or from_date}, to={to_ts or to_date}).\n"
+                  f"   → Check ticker (needs '.US' suffix for US stocks) and date range.\n"
+                  f"   → 1m data available for US stocks since 2004; 5m/1h since 2020.")
+        return data if isinstance(data, list) else []
+
+    def get_intraday_df(self, ticker, interval='5m',
+                        from_ts=None, to_ts=None,
+                        from_date=None, to_date=None):
+        """Same as get_intraday() but returns a pandas DataFrame.
+
+        Returns a DataFrame indexed by datetime (exchange local time, tz-naive)
+        with columns: open, high, low, close, volume.
+        Sorted ascending by time.
+
+        Note on timezones:
+            EODHD returns US intraday times already in US/Eastern (NYSE/NASDAQ).
+            No conversion is needed for FOMC event studies — 14:00 ET in the
+            data is exactly 14:00 Federal Reserve announcement time.
+        """
+        data = self.get_intraday(ticker, interval=interval,
+                                 from_ts=from_ts, to_ts=to_ts,
+                                 from_date=from_date, to_date=to_date)
         if not data:
             return pd.DataFrame()
         df = pd.DataFrame(data)
         df['datetime'] = pd.to_datetime(df['datetime'])
-        df = df.set_index('datetime')
+        df = df.set_index('datetime').sort_index()
         for col in ['open', 'high', 'low', 'close', 'volume']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -304,34 +381,51 @@ class EODHDClient:
 
     # ── End-of-Day ────────────────────────────────────────────────────────────
 
-    def get_eod(self, ticker, from_date=None, to_date=None, period='d', order='d'):
+    def get_eod(self, ticker, from_date=None, to_date=None, period='d', order='a'):
         """Fetch EOD historical prices.
 
         Args:
-            ticker   : e.g. 'AAPL.US'
-            from_date: 'YYYY-MM-DD'
-            to_date  : 'YYYY-MM-DD'
-            period   : 'd' daily, 'w' weekly, 'm' monthly
-            order    : 'd' descending, 'a' ascending
+            ticker   : e.g. 'AAPL.US' or bare 'AAPL'
+            from_date: start — 'YYYY-MM-DD', datetime, or Unix timestamp
+            to_date  : end   — same formats
+            period   : 'd' daily (default), 'w' weekly, 'm' monthly
+            order    : 'a' ascending (default), 'd' descending
 
         Returns:
             list of dicts with date, open, high, low, close, adjusted_close, volume
         """
+        ticker = self._normalize_ticker(ticker)
         params = {'period': period, 'order': order}
-        if from_date:
-            params['from'] = from_date
-        if to_date:
-            params['to'] = to_date
+        # EOD endpoint uses YYYY-MM-DD strings (not Unix timestamps)
+        if from_date is not None:
+            v = from_date
+            if isinstance(v, (int, float)):
+                v = pd.Timestamp(v, unit='s').strftime('%Y-%m-%d')
+            elif hasattr(v, 'strftime'):
+                v = v.strftime('%Y-%m-%d')
+            else:
+                v = str(pd.Timestamp(v).date())
+            params['from'] = v
+        if to_date is not None:
+            v = to_date
+            if isinstance(v, (int, float)):
+                v = pd.Timestamp(v, unit='s').strftime('%Y-%m-%d')
+            elif hasattr(v, 'strftime'):
+                v = v.strftime('%Y-%m-%d')
+            else:
+                v = str(pd.Timestamp(v).date())
+            params['to'] = v
         return self._request(f'/eod/{ticker}', params)
 
     def get_eod_df(self, ticker, from_date=None, to_date=None, period='d', order='a'):
         """Same as get_eod() but returns a pandas DataFrame with a DatetimeIndex."""
-        data = self.get_eod(ticker, from_date=from_date, to_date=to_date, period=period, order=order)
+        data = self.get_eod(ticker, from_date=from_date, to_date=to_date,
+                            period=period, order=order)
         if not data:
             return pd.DataFrame()
         df = pd.DataFrame(data)
         df['date'] = pd.to_datetime(df['date'])
-        df = df.set_index('date')
+        df = df.set_index('date').sort_index()
         for col in ['open', 'high', 'low', 'close', 'adjusted_close', 'volume']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
