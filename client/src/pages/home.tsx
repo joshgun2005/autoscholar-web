@@ -9,6 +9,7 @@ import { CustomPythonFigure } from "@/components/chat/custom-python-figure";
 import { ResultCard } from "@/components/chat/result-card";
 import { SearchingWidget } from "@/components/chat/searching-widget";
 import { ErrorState } from "@/components/chat/error-state";
+import { AnimatePresence, motion } from "framer-motion";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ThemeColorPicker } from "@/components/theme-color-picker";
 import { ShareButton } from "@/components/chat/share-button";
@@ -62,6 +63,25 @@ export default function Home() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.03),transparent_70%)]" />
       </div>
 
+      {/* Top loading bar */}
+      <AnimatePresence>
+        {chatMutation.isPending && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed top-0 left-0 right-0 z-[60] h-0.5 bg-border overflow-hidden"
+          >
+            <motion.div
+              className="h-full bg-primary"
+              animate={{ x: ["-100%", "100%"] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+              style={{ width: "45%" }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm" data-testid="header-main">
         <div className="container flex h-14 items-center justify-between px-6">
@@ -70,10 +90,7 @@ export default function Home() {
               <Sparkles className="w-5 h-5 text-primary" data-testid="logo-icon" />
               <div className="hidden md:flex items-baseline gap-1.5">
                 <span className="text-base font-bold text-foreground leading-tight">
-                  VibeQuant
-                </span>
-                <span className="text-[10px] font-medium text-muted-foreground leading-none">
-                  AI Financial
+                  VQuant
                 </span>
               </div>
             </div>
@@ -169,7 +186,6 @@ export default function Home() {
             <ErrorState error={chatMutation.error?.message || "An error occurred"} onRetry={handleRetry} />
           )}
 
-          {chatMutation.isPending && !streamingAnswer && !chatMutation.isError && <SearchingWidget />}
 
           {conversationHistory.length > 0 && <ConversationHistory history={conversationHistory} />}
 
@@ -230,6 +246,15 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* VibeQuant overlay — fixed, visible for entire duration of chatMutation.isPending */}
+      <AnimatePresence>
+        {chatMutation.isPending && (
+          <div className="fixed inset-0 z-30 pointer-events-none flex items-center justify-center">
+            <SearchingWidget />
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Search Bar - Fixed at bottom */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm">

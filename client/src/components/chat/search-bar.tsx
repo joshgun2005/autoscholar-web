@@ -198,10 +198,12 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
         <div
           className={`
             relative flex items-center gap-3 px-4 py-3
-            bg-card border rounded-xl transition-colors
-            ${isFocused
-              ? "border-primary ring-2 ring-primary/10"
-              : "border-border hover:border-primary/40"
+            bg-card border rounded-xl transition-all duration-200
+            ${isLoading
+              ? "border-primary/40 ring-2 ring-primary/8"
+              : isFocused
+                ? "border-primary ring-2 ring-primary/10"
+                : "border-border hover:border-primary/40"
             }
           `}
           data-testid="search-input-wrapper"
@@ -264,7 +266,7 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={isRecording ? "Parlez maintenant..." : isTranscribing ? "Transcription en cours..." : placeholder}
+            placeholder={isLoading ? "VibeQuant analyse..." : isRecording ? "Parlez maintenant..." : isTranscribing ? "Transcription en cours..." : placeholder}
             disabled={isLoading}
             data-testid="input-search-query"
             className="
@@ -280,15 +282,23 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             type="submit"
             disabled={!canSubmit}
             className={`
-              flex-shrink-0 p-2.5 rounded-lg transition-colors
-              ${canSubmit
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-muted text-muted-foreground cursor-not-allowed"
+              flex-shrink-0 p-2.5 rounded-lg transition-all duration-200
+              ${isLoading
+                ? "bg-primary/80 text-primary-foreground cursor-wait"
+                : canSubmit
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+                  : "bg-muted text-muted-foreground cursor-not-allowed"
               }
             `}
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" data-testid="icon-search-loading" />
+              <motion.div
+                data-testid="icon-search-loading"
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </motion.div>
             ) : (
               <Send className="w-4 h-4" />
             )}

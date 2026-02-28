@@ -1294,9 +1294,18 @@ export async function executeCustomPython(
     const inputJson = JSON.stringify(executorInput);
 
     return new Promise((resolve) => {
+      // Augment PATH so pdflatex (MacTeX) is accessible inside the Python subprocess
+      const texBinPaths = [
+        '/Library/TeX/texbin',
+        '/usr/local/texlive/2025/bin/universal-darwin',
+        '/usr/local/texlive/2024/bin/universal-darwin',
+        '/usr/texbin',
+      ].join(':');
+      const augmentedPath = `${texBinPaths}:${process.env.PATH || '/usr/bin:/bin'}`;
+
       const pythonProcess = spawn(PYTHON_PATH, [pythonScriptPath], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+        env: { ...process.env, PYTHONUNBUFFERED: '1', PATH: augmentedPath },
         timeout: 90000 // 90 second timeout for custom code
       });
 

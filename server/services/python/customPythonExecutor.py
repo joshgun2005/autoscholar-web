@@ -1607,12 +1607,30 @@ class CustomPythonExecutor:
                     f.write(full_latex)
 
                 # ── Find pdflatex ──
-                pdflatex = shutil.which('pdflatex')
+                # Augment PATH with known MacTeX/TeX Live locations so shutil.which
+                # and pdflatex's own sub-tools (kpsewhich, etc.) are all reachable.
+                tex_bin_candidates = [
+                    '/Library/TeX/texbin',
+                    '/usr/local/texlive/2025/bin/universal-darwin',
+                    '/usr/local/texlive/2024/bin/universal-darwin',
+                    '/usr/local/texlive/2025/bin/x86_64-darwin',
+                    '/usr/local/texlive/2024/bin/x86_64-darwin',
+                    '/usr/texbin',
+                ]
+                tex_env = os.environ.copy()
+                extra_paths = [p for p in tex_bin_candidates if os.path.isdir(p)]
+                if extra_paths:
+                    tex_env['PATH'] = ':'.join(extra_paths) + ':' + tex_env.get('PATH', '/usr/bin:/bin')
+
+                pdflatex = shutil.which('pdflatex', path=tex_env['PATH'])
                 if not pdflatex:
-                    # MacTeX default location
-                    mac_tex = '/Library/TeX/texbin/pdflatex'
-                    if os.path.isfile(mac_tex):
-                        pdflatex = mac_tex
+                    # Final hard-coded MacTeX fallback
+                    for candidate in ['/Library/TeX/texbin/pdflatex'] + [
+                        os.path.join(p, 'pdflatex') for p in tex_bin_candidates
+                    ]:
+                        if os.path.isfile(candidate):
+                            pdflatex = candidate
+                            break
                 if not pdflatex:
                     raise RuntimeError(
                         'pdflatex not found. Install MacTeX (brew install --cask mactex) '
@@ -1627,6 +1645,7 @@ class CustomPythonExecutor:
                         capture_output=True,
                         text=True,
                         timeout=60,
+                        env=tex_env,  # pass augmented PATH so pdflatex finds its tools
                     )
                     if proc.returncode != 0 and pass_num == 1:
                         # Read log tail for diagnostics

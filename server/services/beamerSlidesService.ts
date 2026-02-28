@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -281,7 +282,7 @@ function createBeamerDocument(content: string, options: BeamerOptions): string {
   const slideTitle = headingMatch ? headingMatch[1].trim() : 'Analyse Financière';
   const escTitle = slideTitle.replace(/\$/g, '\\$').replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/&/g, '\\&').replace(/#/g, '\\#').replace(/\*/g, '');
   const escA = options.author.replace(/&/g, '\\&').replace(/_/g, '\\_');
-  const escC = (options.company || 'VibeQuant').replace(/&/g, '\\&').replace(/_/g, '\\_');
+  const escC = (options.company || 'VQuant').replace(/&/g, '\\&').replace(/_/g, '\\_');
 
   return `\\documentclass[aspectratio=169,12pt]{beamer}
 
@@ -371,7 +372,7 @@ function createBeamerDocument(content: string, options: BeamerOptions): string {
   \\hbox{%
     \\begin{beamercolorbox}[wd=\\paperwidth,ht=3ex,dp=1.5ex]{footline}%
       \\hspace{1em}%
-      {\\tiny\\color{VQGray}\\textbf{VibeQuant} \\,|\\, ${today}}%
+      {\\tiny\\color{VQGray}\\textbf{VQuant} \\,|\\, ${today}}%
       \\hfill%
       {\\tiny\\color{VQGray}\\insertframenumber\\,/\\,\\inserttotalframenumber}%
       \\hspace{1em}%
@@ -419,7 +420,7 @@ function createBeamerDocument(content: string, options: BeamerOptions): string {
 
   \\vfill
   \\begin{center}
-    {\\Large\\color{VQTeal}\\textbf{VibeQuant}}\\\\[2pt]
+    {\\Large\\color{VQTeal}\\textbf{VQuant}}\\\\[2pt]
     {\\tiny\\color{VQGray}Financial Intelligence Platform}\\\\[20pt]
     {\\LARGE\\color{white}\\textbf{${escTitle}}}\\\\[12pt]
     {\\color{VQTeal}\\rule{60pt}{2pt}}\\\\[12pt]
@@ -449,7 +450,7 @@ ${content}
     {\\normalsize\\color{VQGray}Questions \\& Suggestions}\\\\[12pt]
     {\\small\\color{VQTeal}\\faEnvelope\\hspace{0.5em}\\href{mailto:admin@vquant.ai}{admin@vquant.ai}}\\\\[6pt]
     {\\small\\color{VQTeal}\\faGlobe\\hspace{0.5em}\\href{https://www.vquant.ai}{www.vquant.ai}}\\\\[20pt]
-    {\\footnotesize\\color{VQGray!60}Généré avec \\textbf{\\color{VQTeal}VibeQuant AI}}
+    {\\footnotesize\\color{VQGray!60}Généré avec \\textbf{\\color{VQTeal}VQuant AI}}
   \\end{center}
   \\vfill
 \\end{frame}
@@ -492,8 +493,28 @@ async function compileToPDF(texContent: string, outputName: string, figureUrls?:
     await fs.writeFile(texPath, texContent, 'utf-8');
     console.log('[BeamerSlides] .tex file written:', texPath);
 
-    // Compile with pdflatex (2 passes for references)
-    const pdflatexPath = '/Library/TeX/texbin/pdflatex';
+    // ── Find pdflatex (MacTeX / TeX Live) ───────────────────────────────────
+    const texBinCandidates = [
+      '/Library/TeX/texbin',
+      '/usr/local/texlive/2025/bin/universal-darwin',
+      '/usr/local/texlive/2024/bin/universal-darwin',
+      '/usr/local/texlive/2025/bin/x86_64-darwin',
+      '/usr/local/texlive/2024/bin/x86_64-darwin',
+      '/usr/texbin',
+    ];
+
+    const pdflatexPath = texBinCandidates
+      .map(dir => path.join(dir, 'pdflatex'))
+      .find(p => existsSync(p)) || 'pdflatex'; // fallback to PATH
+
+    // Augment PATH so pdflatex can find its own sub-tools (kpsewhich, etc.)
+    const texBinDirs = texBinCandidates.filter(d => existsSync(d)).join(':');
+    const spawnEnv = {
+      ...process.env,
+      PATH: `${texBinDirs}:${process.env.PATH || '/usr/bin:/bin'}`,
+    };
+
+    console.log('[BeamerSlides] Using pdflatex:', pdflatexPath);
 
     for (let i = 1; i <= 2; i++) {
       console.log(`[BeamerSlides] Compiling pass ${i}/2...`);
@@ -504,7 +525,8 @@ async function compileToPDF(texContent: string, outputName: string, figureUrls?:
           '-output-directory=' + tempDir,
           texPath
         ], {
-          cwd: tempDir
+          cwd: tempDir,
+          env: spawnEnv,
         });
 
         let stdout = '';
