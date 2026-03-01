@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, MessageSquarePlus } from "lucide-react";
 import { StreamingAnswer } from "@/components/streaming-answer";
 import { ToolResults } from "@/components/chat/tool-results";
 import { ResultCard } from "@/components/chat/result-card";
@@ -155,14 +155,35 @@ export default function SharedReport() {
             <p className="text-lg font-medium" data-testid="text-question">{data.question}</p>
           </div>
 
-          {/* Download Buttons */}
-          <div className="flex gap-3 justify-center my-6">
-            <DownloadButtons
-              question={data.question}
-              answer={data.answer}
-              contentRef={contentRef}
-              figureUrls={figureUrls}
-            />
+          {/* Actions: Download + Continue */}
+          <div className="flex flex-col gap-3 my-6">
+            <div className="flex flex-wrap gap-3 justify-center">
+              <DownloadButtons
+                question={data.question}
+                answer={data.answer}
+                contentRef={contentRef}
+                figureUrls={figureUrls}
+              />
+            </div>
+            <div className="flex justify-center">
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem(
+                      'vquant_continue_from_share',
+                      JSON.stringify({ question: data.question, answer: data.answer })
+                    );
+                  } catch { /* noop */ }
+                  setLocation('/');
+                }}
+              >
+                <MessageSquarePlus className="w-4 h-4" />
+                Continuer cette analyse
+              </Button>
+            </div>
           </div>
 
           {/* Content */}

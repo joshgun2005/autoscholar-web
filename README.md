@@ -8,7 +8,7 @@
 
 [![Live](https://img.shields.io/badge/Live-www.vquant.ai-00c853?style=for-the-badge&logo=googlechrome&logoColor=white)](https://www.vquant.ai)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](./LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.0-blue?style=for-the-badge)](./)
+[![Version](https://img.shields.io/badge/Version-2.2.0-blue?style=for-the-badge)](./)
 
 <br/>
 
@@ -46,14 +46,14 @@
 
 **Metrics**
 
-[![Lines of Code](https://img.shields.io/badge/Lines_of_Code-36,000+-0969da?style=flat-square)](./)
-[![Source Files](https://img.shields.io/badge/Source_Files-150+-0969da?style=flat-square)](./)
-[![API Endpoints](https://img.shields.io/badge/API_Endpoints-265+-8b5cf6?style=flat-square)](./)
+[![Lines of Code](https://img.shields.io/badge/Lines_of_Code-40,000+-0969da?style=flat-square)](./)
+[![Source Files](https://img.shields.io/badge/Source_Files-155+-0969da?style=flat-square)](./)
+[![API Endpoints](https://img.shields.io/badge/API_Endpoints-270+-8b5cf6?style=flat-square)](./)
 [![Claude Tools](https://img.shields.io/badge/Claude_Tools-213-d97706?style=flat-square)](./)
 [![Python Libs](https://img.shields.io/badge/Python_Libs-17-3776ab?style=flat-square)](./)
 [![Tests](https://img.shields.io/badge/Tests-41_passing-22c55e?style=flat-square)](./)
 [![Test Suites](https://img.shields.io/badge/Test_Suites-6-22c55e?style=flat-square)](./)
-[![Components](https://img.shields.io/badge/React_Components-57-61dafb?style=flat-square)](./)
+[![Components](https://img.shields.io/badge/React_Components-60-61dafb?style=flat-square)](./)
 [![Hooks](https://img.shields.io/badge/Custom_Hooks-5-61dafb?style=flat-square)](./)
 [![Route Modules](https://img.shields.io/badge/Route_Modules-6-000000?style=flat-square)](./)
 
@@ -67,9 +67,9 @@
 
 ## Overview
 
-VibeQuant is a production-grade full-stack financial analysis platform that combines **Claude AI (Opus 4.6, 1M token context)** with **265+ financial data endpoints**, **quantitative Python analysis** (Monte Carlo, GARCH, VaR, Black-Scholes, portfolio optimization), and **multi-source web research** (Tavily, Firecrawl, Exa, SerpAPI) to deliver institutional-grade insights through a real-time streaming conversational interface.
+VibeQuant is a production-grade full-stack financial analysis platform that combines **Claude AI (Opus 4.6, 1M token context)** with **270+ financial data endpoints** (FMP + EODHD), **quantitative Python analysis** (Monte Carlo, GARCH, VaR, Black-Scholes, portfolio optimization), and **multi-source web research** (Tavily, Firecrawl, Exa, SerpAPI) to deliver institutional-grade insights through a real-time streaming conversational interface.
 
-Built with a modern TypeScript stack (React 18 + Vite + Express + Drizzle ORM), validated with Zod schemas, tested with Vitest, and linted with ESLint + Prettier.
+Built with a modern TypeScript stack (React 18 + Vite + Express + Drizzle ORM), validated with Zod schemas, tested with Vitest, and linted with ESLint + Prettier. Export results as **Corporate Reports, Presentation Slides, PDF, Word, HTML,** or shareable links — all generated on the fly by Claude AI.
 
 ---
 
@@ -78,6 +78,7 @@ Built with a modern TypeScript stack (React 18 + Vite + Express + Drizzle ORM), 
 ### Financial Data Engine
 
 [![FMP API](https://img.shields.io/badge/FMP_API-230_endpoints-8b5cf6?style=flat-square)](https://financialmodelingprep.com/)
+[![EODHD API](https://img.shields.io/badge/EODHD_API-Intraday_%26_Options-16a34a?style=flat-square)](https://eodhd.com/)
 
 | Category | Endpoints | Details |
 |----------|-----------|---------|
@@ -93,6 +94,8 @@ Built with a modern TypeScript stack (React 18 + Vite + Express + Drizzle ORM), 
 | **Valuation** | 10+ | DCF, levered DCF, custom DCF, enterprise values, owner earnings, financial scores |
 | **Forex & Crypto** | 15+ | Forex pairs, crypto quotes, commodity prices, historical forex data |
 | **Events** | 10+ | Earnings calendar, IPO calendar, dividend history, stock splits, mergers & acquisitions |
+| **EODHD Intraday** | — | Sub-minute intraday OHLCV data with robust date-format normalization and ticker mapping |
+| **EODHD Options Chain** | — | Full options chain with Black-Scholes Greeks (delta, gamma, theta, vega, rho) for any symbol |
 
 ### Quantitative Analysis Engine
 
@@ -151,20 +154,33 @@ Built with a modern TypeScript stack (React 18 + Vite + Express + Drizzle ORM), 
 | **Model** | Claude Opus 4.6 with 1 million token context window |
 | **Tools** | 213 specialized financial tools |
 | **Batching** | Intelligent tool batching (5 tools per batch with 500ms pauses) |
-| **Streaming** | Real-time Server-Sent Events (SSE) for instant response display |
+| **Streaming** | Real-time Server-Sent Events (SSE) with automatic retry on ECONNRESET |
 | **History** | Persistent conversation sessions with token tracking |
-| **Vision** | Image analysis support (charts, screenshots, documents) |
+| **Vision** | Image analysis support for charts, screenshots, and documents |
+| **Figure Vision** | Claude Haiku automatically analyses generated Python figures and adds descriptive captions |
 | **Cost Tracking** | Per-session input/output token counting and cost estimation |
+| **Loading Overlay** | Animated VQuant overlay during AI generation with live status messages |
 
 ### Export & Reports
 
 | Format | Description | Badge |
 |--------|-------------|-------|
-| **PDF** | Professional reports generated with Puppeteer, markdown rendering | [![PDF](https://img.shields.io/badge/PDF-Puppeteer-ea4335?style=flat-square&logo=googlechrome&logoColor=white)](./) |
-| **DOCX** | Word documents via Pandoc conversion | [![DOCX](https://img.shields.io/badge/DOCX-Pandoc-2b579a?style=flat-square&logo=microsoftword&logoColor=white)](./) |
-| **LaTeX Slides** | Beamer presentations with professional theming | [![LaTeX](https://img.shields.io/badge/LaTeX-Beamer_Slides-008080?style=flat-square&logo=latex&logoColor=white)](./) |
+| **Corporate Report PDF** | Institutional-grade A4 report — Claude extracts executive summary + key metrics, renders in LaTeX-style typography (Crimson Pro serif), includes all figures, running headers/footers, conclusion section | [![Report](https://img.shields.io/badge/Corporate_Report-A4_PDF-119993?style=flat-square)](./) |
+| **Presentation Slides PDF** | HTML/CSS slide deck (16:9) generated by Claude Opus 4.6, cover slide, stats cards, figure slides, TOC, rendered to PDF by Puppeteer | [![Slides](https://img.shields.io/badge/Slides-HTML%2FCSS_PDF-2072B2?style=flat-square)](./) |
+| **PDF** | Markdown-to-PDF report with KaTeX math rendering, VQuant cover page, and base64-embedded figures | [![PDF](https://img.shields.io/badge/PDF-Puppeteer-ea4335?style=flat-square&logo=googlechrome&logoColor=white)](./) |
+| **HTML** | Standalone HTML file with full styles, KaTeX, and embedded images (no server needed) | [![HTML](https://img.shields.io/badge/HTML-Standalone-f97316?style=flat-square)](./) |
+| **DOCX** | Word document via Pandoc conversion | [![DOCX](https://img.shields.io/badge/DOCX-Pandoc-2b579a?style=flat-square&logo=microsoftword&logoColor=white)](./) |
+| **Markdown** | Raw markdown download of the analysis | [![MD](https://img.shields.io/badge/Markdown-Raw-6b7280?style=flat-square)](./) |
 | **Data Files** | CSV, XLSX, JSON, TXT downloads of analysis data | [![Data](https://img.shields.io/badge/Data-CSV_XLSX_JSON-217346?style=flat-square&logo=microsoftexcel&logoColor=white)](./) |
 | **Share Links** | Shareable report URLs with unique IDs | [![Share](https://img.shields.io/badge/Share-Unique_Links-0ea5e9?style=flat-square)](./) |
+
+### Community Showcase
+
+| Feature | Details |
+|---------|---------|
+| **Public Gallery** | Browse all shared analyses from the community with search and tool filters |
+| **Continue Analysis** | "Continuer cette analyse" button on every showcase card and shared report — loads the previous Q&A as conversation context and returns to the chat interface ready for a follow-up |
+| **Tool Badges** | Click any tool badge to filter the showcase by that data source |
 
 ---
 
@@ -264,15 +280,17 @@ vquant/
 │   │   ├── useAnalytics.ts              # Heartbeat tracking
 │   │   ├── use-toast.ts                 # Toast notifications
 │   │   └── use-mobile.tsx               # Responsive detection
-│   ├── pages/                            # 9 route pages
-│   │   ├── home.tsx                      #   Main chat interface (255 lines)
+│   ├── pages/                            # 11 route pages
+│   │   ├── home.tsx                      #   Main chat interface
 │   │   ├── explore.tsx                   #   Stock explorer
 │   │   ├── admin.tsx                     #   Admin dashboard
 │   │   ├── auth.tsx                      #   Login/register
-│   │   ├── showcase.tsx                  #   Community reports
-│   │   ├── shared-report.tsx             #   Shared report viewer
+│   │   ├── showcase.tsx                  #   Community reports gallery (+ "Continue" button)
+│   │   ├── shared-report.tsx             #   Shared report viewer (+ "Continue" button)
+│   │   ├── slides-generator.tsx          #   HTML/CSS presentation slides generator
+│   │   ├── corporate-report-generator.tsx #  Institutional A4 PDF report generator
 │   │   ├── documentation.tsx             #   API documentation
-│   │   └── ...                           #   + privacy, terms, slides, 404
+│   │   └── ...                           #   + privacy, terms, 404
 │   ├── lib/
 │   │   ├── queryClient.ts               # TanStack Query config
 │   │   └── utils.ts                     # cn() + helpers
@@ -294,8 +312,10 @@ vquant/
 │   │   ├── claude/
 │   │   │   ├── toolDefinitions.ts        #   213 tool definitions (4,480 lines)
 │   │   │   └── tokenManagement.ts        #   Context window management
-│   │   ├── claudeService.ts              #   Claude API integration
+│   │   ├── claudeService.ts              #   Claude API integration + Haiku figure vision
 │   │   ├── fmpService.ts                 #   230 FMP API wrapper functions
+│   │   ├── eodhd/
+│   │   │   └── intradayClient.ts         #   EODHD intraday + options chain with Greeks
 │   │   ├── python/
 │   │   │   ├── monteCarlo.ts             #   Monte Carlo simulation
 │   │   │   ├── optionsPricing.ts         #   Black-Scholes pricing
@@ -303,6 +323,9 @@ vquant/
 │   │   │   ├── var.ts                    #   VaR + portfolio + risk metrics
 │   │   │   └── shared.ts                #   Python executor config
 │   │   ├── *.py                          #   11 Python scientific services
+│   │   ├── beamerSlidesService.ts        #   HTML/CSS 16:9 slides → Puppeteer PDF
+│   │   ├── corporateReportService.ts     #   LaTeX-style A4 corporate report → Puppeteer PDF
+│   │   ├── pdfService.ts                 #   Markdown → PDF/HTML/DOCX
 │   │   ├── firecrawlService.ts           #   Web extraction
 │   │   ├── tavilyService.ts              #   AI search
 │   │   ├── exaService.ts                 #   Semantic search
@@ -403,10 +426,12 @@ vquant/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/generate-pdf` | Markdown to PDF (Puppeteer) |
+| `POST` | `/api/generate-corporate-report` | Institutional A4 PDF — Claude extracts metadata, LaTeX-style HTML/CSS, figures embedded, Puppeteer render |
+| `POST` | `/api/convert-to-slides` | 16:9 HTML/CSS slide deck PDF — Claude structures content into slides, Puppeteer render |
+| `POST` | `/api/generate-pdf` | Markdown to A4 PDF with KaTeX + cover page (Puppeteer) |
+| `POST` | `/api/generate-html` | Markdown to standalone HTML with embedded styles and images |
 | `POST` | `/api/generate-docx` | Markdown to DOCX (Pandoc) |
-| `POST` | `/api/convert-to-slides` | Markdown to Beamer LaTeX PDF |
-| `GET` | `/api/download/:filename` | Download data file |
+| `GET` | `/api/download/:filename` | Download data file (CSV, XLSX, PDF, etc.) |
 
 ### Financial Data (FMP)
 

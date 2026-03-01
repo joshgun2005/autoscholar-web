@@ -62,6 +62,7 @@ function resetChatState() {
 }
 
 const SESSION_STORAGE_KEY = 'vquant_active_session';
+const CONTINUE_FROM_SHARE_KEY = 'vquant_continue_from_share';
 
 export function useChatSession() {
   const queryClient = useQueryClient();
@@ -103,6 +104,21 @@ export function useChatSession() {
       }
     } catch { /* sessionStorage unavailable */ }
   }, [currentSessionId]);
+
+  // ─── Load "continue from shared report" context on mount ────
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(CONTINUE_FROM_SHARE_KEY);
+      if (raw) {
+        sessionStorage.removeItem(CONTINUE_FROM_SHARE_KEY);
+        const { question: q, answer: a } = JSON.parse(raw);
+        if (q && a) {
+          setConversationHistory([{ question: q, answer: a }]);
+        }
+      }
+    } catch { /* noop */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Auth ───────────────────────────────────────────────
   const { data: authData } = useQuery<{ user: { id: string; displayName: string } | null }>({

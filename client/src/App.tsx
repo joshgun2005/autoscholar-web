@@ -14,6 +14,7 @@ import Documentation from "@/pages/documentation";
 import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
 import SlidesGenerator from "@/pages/slides-generator";
+import CorporateReportGenerator from "@/pages/corporate-report-generator";
 import Auth from "@/pages/auth";
 import NotFound from "@/pages/not-found";
 
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/terms" component={Terms} />
       <Route path="/slides-generator" component={SlidesGenerator} />
+      <Route path="/report-generator" component={CorporateReportGenerator} />
       <Route component={NotFound} />
     </Switch>
   );

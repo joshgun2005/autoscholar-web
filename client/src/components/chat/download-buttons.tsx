@@ -1,4 +1,4 @@
-import { FileText, FileDown, FileType, Loader2, Presentation, Code } from "lucide-react";
+import { FileText, FileDown, FileType, Loader2, Presentation, Code, BookText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -171,9 +171,33 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
     }
   };
 
+  const handleConvertToReport = () => {
+    try {
+      sessionStorage.setItem('reportContent', JSON.stringify({ question, answer, figureUrls }));
+    } catch {
+      try {
+        sessionStorage.setItem('reportContent', JSON.stringify({ question, answer, figureUrls: [] }));
+      } catch { /* noop */ }
+    }
+    setLocation('/report-generator');
+    toast({
+      title: "Redirection...",
+      description: "Ouverture du générateur de rapport corporatif",
+    });
+  };
+
   const handleConvertToSlides = () => {
     // Store content in sessionStorage to pass to slides generator page
-    sessionStorage.setItem('slidesContent', JSON.stringify({ question, answer, figureUrls }));
+    // figureUrls can be large base64 strings — try with them first, fall back without
+    try {
+      sessionStorage.setItem('slidesContent', JSON.stringify({ question, answer, figureUrls }));
+    } catch {
+      try {
+        sessionStorage.setItem('slidesContent', JSON.stringify({ question, answer, figureUrls: [] }));
+      } catch {
+        // sessionStorage unavailable — slides page will handle missing data
+      }
+    }
     setLocation('/slides-generator');
 
     toast({
@@ -250,6 +274,16 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
             <span className="hidden sm:inline">Télécharger HTML</span>
           </>
         )}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleConvertToReport}
+        className="gap-2 hover:bg-muted transition-colors"
+        disabled={isGeneratingPDF || isGeneratingDOCX || !question || !answer}
+      >
+        <BookText className="w-4 h-4" />
+        <span className="hidden sm:inline">Rapport Corporatif</span>
       </Button>
       <Button
         variant="outline"

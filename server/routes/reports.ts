@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { storage } from "../storage";
 import { convertToBeamerPDF } from "../services/beamerSlidesService";
+import { generateCorporateReport } from "../services/corporateReportService";
 import { logger } from "../utils/logger";
 
 export function registerReportRoutes(app: Express) {
@@ -225,6 +226,42 @@ export function registerReportRoutes(app: Express) {
     } catch (error) {
       logger.error(`DOCX generation error: ${(error as Error).message}`);
       res.status(500).json({ error: "Failed to generate DOCX" });
+    }
+  });
+
+  // Corporate report (LaTeX-style, A4, with figures)
+  app.post("/api/generate-corporate-report", async (req: Request, res: Response) => {
+    try {
+      const { question, answer, author, company, figureUrls } = req.body;
+      if (!question || !answer || !author) {
+        return res.status(400).json({ error: "Question, answer, and author are required" });
+      }
+
+      logger.info(`Generating corporate report for: "${question.substring(0, 50)}..."`);
+
+      const pdfBuffer = await generateCorporateReport({
+        question,
+        answer,
+        author,
+        company: company || 'VQuant',
+        figureUrls: figureUrls || [],
+      });
+
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('PDF buffer is empty or invalid');
+      }
+
+      const filename = `VQuant-Report-${Date.now()}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', pdfBuffer.length.toString());
+      res.setHeader('Cache-Control', 'no-cache');
+      res.send(pdfBuffer);
+    } catch (error) {
+      logger.error(`Corporate report error: ${(error as Error).message}`);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to generate report: " + (error as Error).message });
+      }
     }
   });
 
