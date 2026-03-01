@@ -324,6 +324,15 @@ def create_volatility_surface(data_json: str) -> dict:
         plots_dir = os.path.join(project_root, 'public', 'plots')
         os.makedirs(plots_dir, exist_ok=True)
 
+        # Add VibeQuant watermark
+        fig.text(
+            0.99, 0.01, 'VibeQuant',
+            fontsize=9, color='#119993', alpha=0.6,
+            ha='right', va='bottom',
+            transform=fig.transFigure,
+            fontweight='bold', style='italic'
+        )
+
         # Save plot
         filepath = os.path.join(plots_dir, filename)
         plt.savefig(filepath, format='png', dpi=120, bbox_inches='tight',

@@ -47,8 +47,17 @@ async function streamChat(request: ChatRequest, onChunk: (data: any) => void): P
   let buffer = '';
 
   while (true) {
-    const { done, value } = await reader.read();
+    let readResult;
+    try {
+      readResult = await reader.read();
+    } catch (e: any) {
+      // reader.read() fails when connection drops (navigation, network loss)
+      // Return what we have instead of showing "Something went wrong"
+      console.warn('Stream read interrupted:', e?.message);
+      break;
+    }
 
+    const { done, value } = readResult;
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
@@ -93,5 +102,6 @@ async function streamChat(request: ChatRequest, onChunk: (data: any) => void): P
 export function useChatMutation(onChunk?: (data: any) => void) {
   return useMutation({
     mutationFn: (request: ChatRequest) => streamChat(request, onChunk || (() => {})),
+    retry: false,
   });
 }

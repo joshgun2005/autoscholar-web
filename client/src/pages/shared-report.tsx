@@ -108,10 +108,7 @@ export default function SharedReport() {
                 <Sparkles className="w-5 h-5 text-primary" data-testid="logo-icon" />
                 <div className="hidden md:flex items-baseline gap-1.5">
                   <span className="text-base font-bold text-foreground leading-tight">
-                    VibeQuant
-                  </span>
-                  <span className="text-[10px] text-muted-foreground leading-none">
-                    AI Financial
+                    VQuant
                   </span>
                 </div>
               </div>
@@ -137,7 +134,7 @@ export default function SharedReport() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Rapport généré par</p>
                 <p className="text-xl font-bold text-foreground tracking-tight">
-                  VibeQuant AI
+                  VQuant AI
                 </p>
               </div>
             </div>

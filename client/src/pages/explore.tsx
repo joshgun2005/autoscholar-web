@@ -271,7 +271,7 @@ export default function Explore() {
             >
               <Sparkles className="w-5 h-5 text-primary" />
               <span className="hidden md:inline text-lg font-semibold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent leading-tight">
-                VibeQuant
+                VQuant
               </span>
             </button>
           </div>

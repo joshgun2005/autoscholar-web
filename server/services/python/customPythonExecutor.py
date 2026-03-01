@@ -1464,6 +1464,14 @@ class CustomPythonExecutor:
                     fig_nums = plt.get_fignums()
                     for idx, fnum in enumerate(fig_nums):
                         fig = plt.figure(fnum)
+                        # Add VibeQuant watermark
+                        fig.text(
+                            0.99, 0.01, 'VibeQuant',
+                            fontsize=9, color='#119993', alpha=0.6,
+                            ha='right', va='bottom',
+                            transform=fig.transFigure,
+                            fontweight='bold', style='italic'
+                        )
                         fig_file = os.path.join(work_dir, f'fig_{idx}.png')
                         fig.savefig(fig_file, format='png', dpi=300, bbox_inches='tight',
                                     facecolor='white', edgecolor='none')
@@ -1881,6 +1889,15 @@ class CustomPythonExecutor:
         figs = [plt.figure(i) for i in plt.get_fignums()]
 
         for fig in figs:
+            # Add VibeQuant watermark — bottom-right, teal, subtle
+            fig.text(
+                0.99, 0.01, 'VibeQuant',
+                fontsize=9, color='#119993', alpha=0.6,
+                ha='right', va='bottom',
+                transform=fig.transFigure,
+                fontweight='bold', style='italic'
+            )
+
             # Save figure to bytes buffer
             buf = io.BytesIO()
             fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')

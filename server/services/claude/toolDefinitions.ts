@@ -1540,25 +1540,26 @@ La distribution présente une légère asymétrie..."`,
   // ==================== EODHD API TOOLS ====================
   {
     name: 'get_eodhd_intraday',
-    description: 'Fetches intraday OHLCV price bars from EODHD API. Covers US and global exchanges with pre-market and after-hours data. Available intervals: 1m (1-minute, US since 2004), 5m (5-minute), 1h (1-hour). Prefer this over FMP for intraday when higher granularity or premarket/afterhours coverage is needed.',
+    description: 'Fetches intraday OHLCV price bars from EODHD API. Covers US and global exchanges with pre-market and after-hours data. Available intervals: 1m (1-minute, US since 2004), 5m (5-minute), 1h (1-hour). Ticker is auto-normalized: "AAPL" becomes "AAPL.US". The from/to params accept YYYY-MM-DD dates (converted to Unix timestamps internally). Prefer this over FMP for intraday when higher granularity or premarket/afterhours coverage is needed.',
     input_schema: {
       type: 'object',
       properties: {
         ticker: {
           type: 'string',
-          description: 'Ticker in EODHD format: append exchange suffix, e.g. "AAPL.US", "MSFT.US", "TSLA.US". For non-US: "VOD.LSE", "SAP.XETRA".',
+          description: 'Stock ticker — auto-normalized to EODHD format. US stocks: just "AAPL" or "AAPL.US". Non-US: "VOD.LSE", "SAP.XETRA".',
         },
         interval: {
           type: 'string',
+          enum: ['1m', '5m', '1h'],
           description: 'Bar interval: "1m" (1-minute), "5m" (5-minute, default), "1h" (1-hour).',
         },
         from_date: {
           type: 'string',
-          description: 'Start date/datetime as ISO string or YYYY-MM-DD (converted to Unix timestamp internally).',
+          description: 'Start date in YYYY-MM-DD format.',
         },
         to_date: {
           type: 'string',
-          description: 'End date/datetime as ISO string or YYYY-MM-DD.',
+          description: 'End date in YYYY-MM-DD format.',
         },
       },
       required: ['ticker'],
@@ -1566,13 +1567,13 @@ La distribution présente une légère asymétrie..."`,
   },
   {
     name: 'get_eodhd_options',
-    description: 'Fetches the US options chain with end-of-day Greeks (Delta, Gamma, Theta, Vega, Rho) and market data (bid, ask, last price, volume, open interest, implied volatility) from EODHD. Covers 6,000+ top-traded US stocks. Returns data organized by expiration date with CALL and PUT contracts. Use this for options flow analysis, volatility surface building, and Greeks-based strategies.',
+    description: 'Fetches the US options chain with end-of-day Greeks and market data from EODHD. Covers 6,000+ top-traded US stocks. Returns data organized by expiration date with CALL and PUT contracts. Each contract includes: contractName, contractSize, type (Call/Put), strike, expirationDate, lastTradeDateTime, lastTradePrice, bid, ask, volume, openInterest, impliedVolatility (may be null for illiquid contracts), delta, gamma, theta, vega (may be null). Ticker is auto-normalized: "AAPL" becomes "AAPL.US".',
     input_schema: {
       type: 'object',
       properties: {
         ticker: {
           type: 'string',
-          description: 'US stock ticker in EODHD format, e.g. "AAPL.US", "SPY.US", "TSLA.US".',
+          description: 'US stock ticker — auto-normalized. Just "AAPL" or "AAPL.US" both work.',
         },
         from_date: {
           type: 'string',

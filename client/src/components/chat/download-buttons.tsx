@@ -1,4 +1,4 @@
-import { FileText, FileDown, FileType, Loader2, Presentation } from "lucide-react";
+import { FileText, FileDown, FileType, Loader2, Presentation, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ interface DownloadButtonsProps {
 export function DownloadButtons({ question, answer, contentRef, figureUrls = [] }: DownloadButtonsProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isGeneratingDOCX, setIsGeneratingDOCX] = useState(false);
+  const [isGeneratingHTML, setIsGeneratingHTML] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -125,6 +126,51 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
     }
   };
 
+  const handleDownloadHTML = async () => {
+    setIsGeneratingHTML(true);
+
+    try {
+      const response = await fetch('/api/generate-html', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question,
+          answer
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate HTML');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vibequant-${Date.now()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "HTML généré avec succès",
+        description: "Le rapport HTML a été téléchargé.",
+      });
+    } catch (error) {
+      console.error('Error generating HTML:', error);
+      toast({
+        title: "Erreur de génération",
+        description: "Une erreur s'est produite lors de la génération du HTML. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingHTML(false);
+    }
+  };
+
   const handleConvertToSlides = () => {
     // Store content in sessionStorage to pass to slides generator page
     sessionStorage.setItem('slidesContent', JSON.stringify({ question, answer, figureUrls }));
@@ -183,6 +229,25 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
           <>
             <FileType className="w-4 h-4" />
             <span className="hidden sm:inline">Télécharger Word</span>
+          </>
+        )}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownloadHTML}
+        className="gap-2 hover:bg-muted transition-colors"
+        disabled={isGeneratingHTML}
+      >
+        {isGeneratingHTML ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="hidden sm:inline">Génération...</span>
+          </>
+        ) : (
+          <>
+            <Code className="w-4 h-4" />
+            <span className="hidden sm:inline">Télécharger HTML</span>
           </>
         )}
       </Button>

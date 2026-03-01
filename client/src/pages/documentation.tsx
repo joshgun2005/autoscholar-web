@@ -323,10 +323,7 @@ export default function Documentation() {
                 <Sparkles className="w-5 h-5 text-primary" />
                 <div className="hidden md:flex items-baseline gap-1.5">
                   <span className="text-base font-bold text-foreground leading-tight">
-                    VibeQuant
-                  </span>
-                  <span className="text-[10px] text-muted-foreground leading-none">
-                    AI Financial
+                    VQuant
                   </span>
                 </div>
               </div>
@@ -356,7 +353,7 @@ export default function Documentation() {
             Documentation Complète
           </h1>
           <p className="text-lg md:text-xl lg:text-2xl text-muted-foreground mb-4 md:mb-6 max-w-3xl mx-auto leading-relaxed">
-            Découvrez toutes les capacités de VibeQuant - Plus de 200 outils financiers et analyses quantitatives à votre disposition.
+            Découvrez toutes les capacités de VQuant - Plus de 200 outils financiers et analyses quantitatives à votre disposition.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
             <Badge className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm bg-gradient-to-r from-blue-500 to-cyan-500 border-0">
@@ -606,7 +603,7 @@ export default function Documentation() {
               <Database className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6 text-green-500" />
               <CardTitle className="text-2xl md:text-3xl font-bold mb-3">Couverture API Complète</CardTitle>
               <CardDescription className="text-base md:text-lg max-w-3xl mx-auto">
-                VibeQuant s'intègre avec les meilleures sources de données financières
+                VQuant s'intègre avec les meilleures sources de données financières
               </CardDescription>
             </CardHeader>
             <CardContent>

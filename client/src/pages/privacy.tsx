@@ -23,7 +23,7 @@ export default function Privacy() {
 
           <h2>1. Introduction</h2>
           <p>
-            Bienvenue sur VibeQuant ("nous", "notre" ou "nos"). Nous nous engageons à protéger votre vie privée.
+            Bienvenue sur VQuant ("nous", "notre" ou "nos"). Nous nous engageons à protéger votre vie privée.
             Cette politique de confidentialité explique comment nous collectons, utilisons et protégeons vos informations
             personnelles lorsque vous utilisez notre plateforme d'analyse financière propulsée par IA sur <strong>www.vquant.ai</strong>.
           </p>

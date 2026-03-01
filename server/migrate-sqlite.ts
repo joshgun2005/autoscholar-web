@@ -50,6 +50,7 @@ db.exec(`
     answer TEXT NOT NULL,
     tool_results TEXT,
     sources TEXT,
+    custom_python_figures TEXT,
     created_at INTEGER NOT NULL
   );
 

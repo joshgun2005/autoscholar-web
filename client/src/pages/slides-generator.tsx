@@ -11,7 +11,7 @@ export default function SlidesGenerator() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [authorName, setAuthorName] = useState("");
-  const [companyName, setCompanyName] = useState("VibeQuant");
+  const [companyName, setCompanyName] = useState("VQuant");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [figureUrls, setFigureUrls] = useState<string[]>([]);
@@ -101,7 +101,7 @@ export default function SlidesGenerator() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `VibeQuant-Presentation-${Date.now()}.pdf`;
+      a.download = `VQuant-Presentation-${Date.now()}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

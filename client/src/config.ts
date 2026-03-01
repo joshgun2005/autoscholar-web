@@ -23,8 +23,8 @@ export const API_BASE_URL = getBaseUrl();
 
 // Application metadata
 export const APP_CONFIG = {
-  name: 'VibeQuant',
-  fullName: 'VibeQuant Financial Intelligence Platform',
+  name: 'VQuant',
+  fullName: 'VQuant Financial Intelligence Platform',
   domain: 'www.vquant.ai',
   description: 'Plateforme d\'analyse financière de niveau institutionnel propulsée par Claude AI',
   version: '2.0.0',

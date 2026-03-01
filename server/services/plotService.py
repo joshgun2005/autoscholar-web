@@ -335,6 +335,15 @@ def create_plot(data_json: str) -> dict:
         # Create directory if it doesn't exist
         os.makedirs(plots_dir, exist_ok=True)
 
+        # Add VibeQuant watermark
+        fig.text(
+            0.99, 0.01, 'VibeQuant',
+            fontsize=9, color='#119993', alpha=0.6,
+            ha='right', va='bottom',
+            transform=fig.transFigure,
+            fontweight='bold', style='italic'
+        )
+
         # Save the plot to file
         filepath = os.path.join(plots_dir, filename)
         plt.savefig(filepath, format='png', dpi=100, bbox_inches='tight',

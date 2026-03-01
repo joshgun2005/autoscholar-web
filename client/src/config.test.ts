@@ -3,7 +3,7 @@ import { APP_CONFIG } from "./config";
 
 describe("APP_CONFIG", () => {
   it("has correct app name", () => {
-    expect(APP_CONFIG.name).toBe("VibeQuant");
+    expect(APP_CONFIG.name).toBe("VQuant");
   });
 
   it("has correct domain", () => {

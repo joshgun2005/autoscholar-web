@@ -121,10 +121,7 @@ export default function Auth() {
             <Sparkles className="w-5 h-5 text-primary" />
             <div className="hidden md:flex items-baseline gap-1.5">
               <span className="text-base font-bold text-foreground">
-                VibeQuant
-              </span>
-              <span className="text-[10px] text-muted-foreground leading-none">
-                AI Financial
+                VQuant
               </span>
             </div>
           </button>

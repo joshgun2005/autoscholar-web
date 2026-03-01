@@ -99,7 +99,7 @@ Extract the main points, key metrics, and insights. Structure into 6-10 slides.`
 
     // Add metadata
     structure.author = options.author;
-    structure.company = options.company || 'VibeQuant';
+    structure.company = options.company || 'VQuant';
     structure.date = today;
 
     console.log('[SlidesConverter] ✓ Structure created:', structure.slides.length, 'slides');

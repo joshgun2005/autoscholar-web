@@ -13,7 +13,7 @@ interface AdvancedPDFOptions {
   includeAllVisuals?: boolean;
 }
 
-// Helper function to draw the VibeQuant logo
+// Helper function to draw the VQuant logo
 function drawLogo(doc: jsPDF, x: number, y: number, size: number): void {
   // Draw gradient circle background
   doc.setFillColor(139, 92, 246); // Purple
@@ -82,7 +82,7 @@ function addTitlePage(doc: jsPDF, title: string): void {
   doc.setTextColor(55, 48, 163); // Indigo-700
   doc.setFontSize(42);
   doc.setFont('helvetica', 'bold');
-  const mainTitle = 'VibeQuant';
+  const mainTitle = 'VQuant';
   const titleWidth = doc.getTextWidth(mainTitle);
   doc.text(mainTitle, (pageWidth - titleWidth) / 2, 125);
 
@@ -293,7 +293,7 @@ export async function generateAdvancedPDF(options: AdvancedPDFOptions): Promise<
 
   let yPosition = margin;
 
-  // Add VibeQuant header with logo - amélioré
+  // Add VQuant header with logo - amélioré
   // Dégradé simulé pour l'en-tête
   pdf.setFillColor(139, 92, 246);
   pdf.rect(0, 0, pageWidth, 40, 'F');
@@ -306,7 +306,7 @@ export async function generateAdvancedPDF(options: AdvancedPDFOptions): Promise<
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(22);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('VibeQuant', 34, 18);
+  pdf.text('VQuant', 34, 18);
 
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'normal');
@@ -426,7 +426,7 @@ export async function generateAdvancedPDF(options: AdvancedPDFOptions): Promise<
     pdf.setFontSize(7.5);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(100, 116, 139);
-    pdf.text('Généré par VibeQuant • www.vibequant.com', margin, pageHeight - 9);
+    pdf.text('Généré par VQuant • www.vibequant.com', margin, pageHeight - 9);
 
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(99, 102, 241);
@@ -434,7 +434,7 @@ export async function generateAdvancedPDF(options: AdvancedPDFOptions): Promise<
   }
 
   // Save PDF
-  const filename = `VibeQuant_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+  const filename = `VQuant_Report_${new Date().toISOString().split('T')[0]}.pdf`;
   pdf.save(filename);
 }
 
@@ -458,7 +458,7 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
 
   let yPosition = margin;
 
-  // Add VibeQuant header with logo
+  // Add VQuant header with logo
   pdf.setFillColor(59, 130, 246); // Blue
   pdf.rect(0, 0, pageWidth, 30, 'F');
 
@@ -468,7 +468,7 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(24);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('VibeQuant', 35, 15);
+  pdf.text('VQuant', 35, 15);
 
   pdf.setFontSize(12);
   pdf.setFont('helvetica', 'normal');
@@ -506,15 +506,157 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
   pdf.setTextColor(0, 0, 0);
   pdf.setFont('helvetica', 'normal');
 
-  // Split content into sections and paragraphs
-  const sections = content.split(/\n\n+/);
+  // Split content into lines for sequential processing
+  const contentLines = content.split('\n');
+  let i = 0;
 
-  for (const section of sections) {
-    if (!section.trim()) continue;
+  while (i < contentLines.length) {
+    const line = contentLines[i];
 
-    // Check if section is a heading (starts with #)
-    if (section.trim().startsWith('#')) {
-      const heading = section.trim().replace(/^#+\s*/, '');
+    // Skip empty lines
+    if (!line.trim()) {
+      yPosition += 3;
+      i++;
+      continue;
+    }
+
+    // Detect markdown table: line starts with | and contains at least 2 |
+    if (line.trim().startsWith('|') && (line.match(/\|/g) || []).length >= 2) {
+      // Collect all table lines
+      const tableLines: string[] = [];
+      while (i < contentLines.length && contentLines[i].trim().startsWith('|')) {
+        tableLines.push(contentLines[i].trim());
+        i++;
+      }
+
+      // Parse the table
+      if (tableLines.length >= 2) {
+        // Extract header row
+        const headerCells = tableLines[0].split('|').filter(c => c.trim() !== '').map(c => c.trim());
+        // Skip separator row (line with ---), data starts after it
+        const dataStartIdx = tableLines[1].includes('---') ? 2 : 1;
+        const dataRows: string[][] = [];
+        for (let r = dataStartIdx; r < tableLines.length; r++) {
+          dataRows.push(tableLines[r].split('|').filter(c => c.trim() !== '').map(c => c.trim()));
+        }
+
+        const numCols = headerCells.length;
+        if (numCols === 0) continue;
+
+        // Calculate column widths — distribute evenly but adapt to content
+        const colWidth = contentWidth / numCols;
+        const rowHeight = 7;
+        const headerHeight = 8;
+        const cellPadding = 2;
+        const tableFontSize = numCols > 5 ? 7 : numCols > 3 ? 8.5 : 9.5;
+
+        // Check if table fits on current page; if not, start new page
+        const totalTableHeight = headerHeight + (dataRows.length * rowHeight) + 6;
+        if (yPosition + totalTableHeight > pageHeight - 30) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+
+        const tableX = margin;
+        const tableWidth = contentWidth;
+
+        // Draw header background
+        pdf.setFillColor(243, 244, 246);
+        pdf.rect(tableX, yPosition - 1, tableWidth, headerHeight, 'F');
+
+        // Draw header border
+        pdf.setDrawColor(209, 213, 219);
+        pdf.setLineWidth(0.3);
+        pdf.rect(tableX, yPosition - 1, tableWidth, headerHeight, 'S');
+
+        // Draw header text
+        pdf.setFontSize(tableFontSize);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(55, 65, 81);
+        for (let c = 0; c < numCols; c++) {
+          const cellX = tableX + (c * colWidth) + cellPadding;
+          const text = headerCells[c] || '';
+          const truncated = pdf.splitTextToSize(text, colWidth - (cellPadding * 2))[0] || '';
+          pdf.text(truncated, cellX, yPosition + 4);
+          // Column dividers
+          if (c > 0) {
+            pdf.line(tableX + (c * colWidth), yPosition - 1, tableX + (c * colWidth), yPosition + headerHeight - 1);
+          }
+        }
+        yPosition += headerHeight;
+
+        // Draw header bottom border (thicker)
+        pdf.setLineWidth(0.5);
+        pdf.line(tableX, yPosition - 1, tableX + tableWidth, yPosition - 1);
+        pdf.setLineWidth(0.3);
+
+        // Draw data rows
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(75, 85, 99);
+        for (let r = 0; r < dataRows.length; r++) {
+          // Check page break
+          if (yPosition + rowHeight > pageHeight - 30) {
+            pdf.addPage();
+            yPosition = margin;
+
+            // Re-draw header on new page
+            pdf.setFillColor(243, 244, 246);
+            pdf.rect(tableX, yPosition - 1, tableWidth, headerHeight, 'F');
+            pdf.setDrawColor(209, 213, 219);
+            pdf.rect(tableX, yPosition - 1, tableWidth, headerHeight, 'S');
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(55, 65, 81);
+            for (let c = 0; c < numCols; c++) {
+              const cellX = tableX + (c * colWidth) + cellPadding;
+              const text = headerCells[c] || '';
+              const truncated = pdf.splitTextToSize(text, colWidth - (cellPadding * 2))[0] || '';
+              pdf.text(truncated, cellX, yPosition + 4);
+              if (c > 0) {
+                pdf.line(tableX + (c * colWidth), yPosition - 1, tableX + (c * colWidth), yPosition + headerHeight - 1);
+              }
+            }
+            yPosition += headerHeight;
+            pdf.setLineWidth(0.5);
+            pdf.line(tableX, yPosition - 1, tableX + tableWidth, yPosition - 1);
+            pdf.setLineWidth(0.3);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(75, 85, 99);
+          }
+
+          // Alternating row background
+          if (r % 2 === 1) {
+            pdf.setFillColor(249, 250, 251);
+            pdf.rect(tableX, yPosition - 1, tableWidth, rowHeight, 'F');
+          }
+
+          // Row border
+          pdf.setDrawColor(229, 231, 235);
+          pdf.rect(tableX, yPosition - 1, tableWidth, rowHeight, 'S');
+
+          const row = dataRows[r];
+          for (let c = 0; c < numCols; c++) {
+            const cellX = tableX + (c * colWidth) + cellPadding;
+            const text = (row[c] || '').replace(/\*\*/g, '').replace(/\*/g, '');
+            const truncated = pdf.splitTextToSize(text, colWidth - (cellPadding * 2))[0] || '';
+            pdf.text(truncated, cellX, yPosition + 4);
+            // Column dividers
+            if (c > 0) {
+              pdf.line(tableX + (c * colWidth), yPosition - 1, tableX + (c * colWidth), yPosition + rowHeight - 1);
+            }
+          }
+          yPosition += rowHeight;
+        }
+
+        yPosition += 6; // Space after table
+        pdf.setFontSize(11);
+        pdf.setTextColor(0, 0, 0);
+      }
+      continue;
+    }
+
+    // Check if line is a heading (starts with #)
+    if (line.trim().startsWith('#')) {
+      const heading = line.trim().replace(/^#+\s*/, '');
 
       // Check if new page needed
       if (yPosition > pageHeight - 30) {
@@ -532,24 +674,29 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(0, 0, 0);
+      i++;
       continue;
     }
 
-    // Regular paragraph
-    const lines = pdf.splitTextToSize(section.trim(), contentWidth);
-
-    for (const line of lines) {
-      // Check if new page needed
-      if (yPosition > pageHeight - 30) {
-        pdf.addPage();
-        yPosition = margin;
-      }
-
-      pdf.text(line, margin, yPosition);
-      yPosition += 6;
+    // Regular paragraph — collect consecutive non-empty, non-special lines
+    let paragraphText = '';
+    while (i < contentLines.length && contentLines[i].trim() && !contentLines[i].trim().startsWith('#') && !contentLines[i].trim().startsWith('|')) {
+      paragraphText += (paragraphText ? ' ' : '') + contentLines[i].trim();
+      i++;
     }
 
-    yPosition += 4; // Add space between paragraphs
+    if (paragraphText) {
+      const wrappedLines = pdf.splitTextToSize(paragraphText, contentWidth);
+      for (const wl of wrappedLines) {
+        if (yPosition > pageHeight - 30) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        pdf.text(wl, margin, yPosition);
+        yPosition += 6;
+      }
+      yPosition += 4;
+    }
   }
 
   // Capture charts if requested
@@ -612,12 +759,12 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
     pdf.setFontSize(9);
     pdf.setTextColor(100, 100, 100);
     pdf.setFont('helvetica', 'normal');
-    pdf.text('Generated by VibeQuant', margin, pageHeight - 10);
+    pdf.text('Generated by VQuant', margin, pageHeight - 10);
     pdf.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 20, pageHeight - 10);
   }
 
   // Save PDF
-  const filename = `VibeQuant_Analysis_${new Date().toISOString().split('T')[0]}.pdf`;
+  const filename = `VQuant_Analysis_${new Date().toISOString().split('T')[0]}.pdf`;
   pdf.save(filename);
 }
 

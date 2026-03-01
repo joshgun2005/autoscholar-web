@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { PasswordGate } from "@/components/password-gate";
 import Home from "@/pages/home";
 import Showcase from "@/pages/showcase";
 import Admin from "@/pages/admin";
@@ -40,7 +41,9 @@ function App() {
         <ThemeProvider defaultTheme="light" storageKey="perplexity-theme">
           <TooltipProvider>
             <Toaster />
-            <Router />
+            <PasswordGate>
+              <Router />
+            </PasswordGate>
           </TooltipProvider>
         </ThemeProvider>
       </QueryClientProvider>

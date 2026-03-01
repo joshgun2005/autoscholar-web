@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_VERSION = '2023-06-01';
 const VISION_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -24,10 +23,18 @@ export async function analyzeFigure(
   index: number,
   context?: string
 ): Promise<FigureAnalysisResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('❌ Figure analysis: ANTHROPIC_API_KEY is not set');
+    return { index, description: '', success: false };
+  }
+
   try {
     const systemPrompt = context
       ? `${FIGURE_ANALYSIS_PROMPT}\n\nContext: this figure was generated for the following analysis: ${context}`
       : FIGURE_ANALYSIS_PROMPT;
+
+    console.log(`🔍 Figure ${index + 1}: sending ${Math.round(base64.length / 1024)}KB image to ${VISION_MODEL}...`);
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
@@ -60,18 +67,34 @@ export async function analyzeFigure(
       {
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY!,
+          'x-api-key': apiKey,
           'anthropic-version': ANTHROPIC_VERSION,
         },
-        timeout: 15000,
+        timeout: 30000,
       }
     );
 
-    const description = response.data.content[0].text;
+    const description = response.data?.content?.[0]?.text;
+    if (!description) {
+      console.error(`❌ Figure ${index + 1}: empty response from vision model`, JSON.stringify(response.data).slice(0, 200));
+      return { index, description: '', success: false };
+    }
+
+    console.log(`✅ Figure ${index + 1} analysis: "${description.slice(0, 80)}..."`);
     return { index, description, success: true };
   } catch (error: any) {
-    const message = error?.message || 'Unknown error';
-    console.error(`❌ Figure ${index + 1} analysis failed: ${message}`);
+    // Log full error details for debugging
+    if (error?.response) {
+      console.error(`❌ Figure ${index + 1} analysis API error:`, {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: JSON.stringify(error.response.data).slice(0, 300),
+      });
+    } else if (error?.code) {
+      console.error(`❌ Figure ${index + 1} analysis network error:`, error.code, error.message);
+    } else {
+      console.error(`❌ Figure ${index + 1} analysis failed:`, error?.message || error);
+    }
     return { index, description: '', success: false };
   }
 }
@@ -80,8 +103,11 @@ export async function analyzeFigures(
   figures: string[],
   context?: string
 ): Promise<FigureAnalysisResult[]> {
+  console.log(`🔍 Starting vision analysis for ${figures.length} figure(s)...`);
   const results = await Promise.all(
     figures.map((base64, idx) => analyzeFigure(base64, idx, context))
   );
+  const succeeded = results.filter(r => r.success).length;
+  console.log(`✅ Vision analysis complete: ${succeeded}/${figures.length} succeeded`);
   return results;
 }

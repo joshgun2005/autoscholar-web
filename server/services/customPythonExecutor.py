@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generic Python Executor with FMP API Access
-Allows Claude to write custom Python code with direct access to FMP endpoints
+Generic Python Executor with FMP & FRED API Access
+Allows Claude to write custom Python code with direct access to FMP and FRED endpoints
 """
 
 import sys
@@ -110,6 +110,141 @@ class FMPClient:
     def search(self, query, limit=10):
         """Search for companies"""
         return self._request('/search', {'query': query, 'limit': limit})
+
+# Create a comprehensive FRED API client class
+class FREDClient:
+    """FRED (Federal Reserve Economic Data) API client — 840,000+ macroeconomic series"""
+
+    def __init__(self, api_key):
+        self.api_key = api_key
+        self.base_url = 'https://api.stlouisfed.org/fred'
+
+    def _request(self, endpoint, params=None):
+        """Make API request to FRED"""
+        import requests
+        if params is None:
+            params = {}
+        params['api_key'] = self.api_key
+        params['file_type'] = 'json'
+
+        url = f"{self.base_url}{endpoint}"
+        response = requests.get(url, params=params, timeout=15)
+        response.raise_for_status()
+        return response.json()
+
+    # ===== CORE DATA METHODS =====
+
+    def get_series_observations(self, series_id, observation_start=None, observation_end=None,
+                                 units=None, frequency=None, aggregation_method=None):
+        """Get raw observations for a FRED series.
+        Args:
+            series_id: e.g. 'GDP', 'CPIAUCSL', 'UNRATE', 'DFF'
+            observation_start/end: 'YYYY-MM-DD'
+            units: 'lin' (default), 'chg', 'ch1', 'pch', 'pc1', 'pca', 'cch', 'cca', 'log'
+            frequency: 'd','w','bw','m','q','sa','a' (aggregate to lower frequency)
+            aggregation_method: 'avg','sum','eop' (used with frequency)
+        """
+        params = {'series_id': series_id}
+        if observation_start:
+            params['observation_start'] = observation_start
+        if observation_end:
+            params['observation_end'] = observation_end
+        if units:
+            params['units'] = units
+        if frequency:
+            params['frequency'] = frequency
+        if aggregation_method:
+            params['aggregation_method'] = aggregation_method
+        data = self._request('/series/observations', params)
+        return data.get('observations', [])
+
+    def get_series_df(self, series_id, observation_start=None, observation_end=None,
+                       units=None, frequency=None, aggregation_method=None):
+        """Get observations as a pandas DataFrame with 'date' (datetime) and 'value' (float) columns.
+        Missing values (reported as '.') are converted to NaN.
+        This is the RECOMMENDED method for analysis — returns clean, ready-to-use data.
+        """
+        obs = self.get_series_observations(
+            series_id,
+            observation_start=observation_start,
+            observation_end=observation_end,
+            units=units,
+            frequency=frequency,
+            aggregation_method=aggregation_method,
+        )
+        df = pd.DataFrame(obs)
+        if df.empty:
+            return df
+        df['date'] = pd.to_datetime(df['date'])
+        df['value'] = pd.to_numeric(df['value'], errors='coerce')  # '.' → NaN
+        return df[['date', 'value']]
+
+    # ===== METADATA =====
+
+    def get_series(self, series_id):
+        """Get metadata for a series (title, units, frequency, seasonal adjustment, etc.)"""
+        data = self._request('/series', {'series_id': series_id})
+        serieses = data.get('serieses', [])
+        return serieses[0] if serieses else data
+
+    def search_series(self, search_text, limit=20, order_by='search_rank',
+                       filter_variable=None, filter_value=None, tag_names=None):
+        """Search for FRED series by keyword.
+        Args:
+            search_text: keywords (e.g. 'housing starts', 'inflation expectations')
+            limit: max results (default 20)
+            order_by: 'search_rank','series_id','title','units','frequency',
+                      'seasonal_adjustment','realtime_start','realtime_end',
+                      'last_updated','observation_start','observation_end','popularity'
+            filter_variable/filter_value: e.g. filter_variable='frequency', filter_value='Monthly'
+            tag_names: semicolon-separated tags (e.g. 'monetary aggregates;weekly')
+        """
+        params = {'search_text': search_text, 'limit': limit, 'order_by': order_by}
+        if filter_variable:
+            params['filter_variable'] = filter_variable
+        if filter_value:
+            params['filter_value'] = filter_value
+        if tag_names:
+            params['tag_names'] = tag_names
+        data = self._request('/series/search', params)
+        return data.get('serieses', [])
+
+    # ===== CATEGORIES =====
+
+    def get_category(self, category_id=0):
+        """Get a FRED category (default 0 = root)"""
+        data = self._request('/category', {'category_id': category_id})
+        return data.get('categories', [])
+
+    def get_category_series(self, category_id, limit=100):
+        """Get all series in a category"""
+        data = self._request('/category/series', {'category_id': category_id, 'limit': limit})
+        return data.get('serieses', [])
+
+    # ===== RELEASES =====
+
+    def get_releases(self):
+        """Get all FRED data releases"""
+        data = self._request('/releases')
+        return data.get('releases', [])
+
+    def get_release_series(self, release_id, limit=100):
+        """Get series belonging to a specific release"""
+        data = self._request('/release/series', {'release_id': release_id, 'limit': limit})
+        return data.get('serieses', [])
+
+    # ===== SERIES RELATED =====
+
+    def get_series_categories(self, series_id):
+        """Get categories a series belongs to"""
+        data = self._request('/series/categories', {'series_id': series_id})
+        return data.get('categories', [])
+
+    def get_series_tags(self, series_id):
+        """Get tags for a series"""
+        data = self._request('/series/tags', {'series_id': series_id})
+        return data.get('tags', [])
+
 
 # Import additional libraries (optional - fail silently if not available)
 AVAILABLE_LIBS = {}
@@ -346,11 +481,13 @@ except ImportError:
 
 
 class CustomPythonExecutor:
-    """Executor for custom Python code with FMP API access"""
+    """Executor for custom Python code with FMP & FRED API access"""
 
-    def __init__(self, fmp_api_key=None):
+    def __init__(self, fmp_api_key=None, fred_api_key=None):
         self.fmp_api_key = fmp_api_key or os.getenv('FMP_API_KEY')
         self.fmp = FMPClient(self.fmp_api_key) if FMPClient and self.fmp_api_key else None
+        self.fred_api_key = fred_api_key or os.getenv('FRED_API_KEY')
+        self.fred = FREDClient(self.fred_api_key) if FREDClient and self.fred_api_key else None
         self.output_text = []
         self.figures = []
 
@@ -383,8 +520,9 @@ class CustomPythonExecutor:
                 'matplotlib': matplotlib,
                 'datetime': datetime,
                 'timedelta': timedelta,
-                # FMP API client
+                # API clients
                 'fmp': self.fmp,
+                'fred': self.fred,
                 # Custom print
                 'print': self._custom_print,
                 # Helper functions for common tasks
@@ -406,13 +544,14 @@ class CustomPythonExecutor:
             result_value = None
 
             with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-                # Execute the code
-                exec_locals = {}
-                exec(code, exec_globals, exec_locals)
+                # Execute the code using a single namespace so variables
+                # persist across steps and are visible in nested scopes
+                # (functions, comprehensions, lambdas, etc.)
+                exec(code, exec_globals)
 
                 # If a 'main' function is defined, call it
-                if 'main' in exec_locals and callable(exec_locals['main']):
-                    result_value = exec_locals['main']()
+                if 'main' in exec_globals and callable(exec_globals['main']):
+                    result_value = exec_globals['main']()
 
                 # Capture any matplotlib figures
                 self._capture_figures()
@@ -455,6 +594,15 @@ class CustomPythonExecutor:
         figs = [plt.figure(i) for i in plt.get_fignums()]
 
         for fig in figs:
+            # Add VibeQuant watermark — bottom-right, teal, subtle
+            fig.text(
+                0.99, 0.01, 'VibeQuant',
+                fontsize=9, color='#119993', alpha=0.6,
+                ha='right', va='bottom',
+                transform=fig.transFigure,
+                fontweight='bold', style='italic'
+            )
+
             # Save figure to bytes buffer
             buf = io.BytesIO()
             fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
@@ -479,6 +627,7 @@ def main():
         code = input_data.get('code', '')
         context = input_data.get('context', {})
         fmp_api_key = input_data.get('fmp_api_key') or os.getenv('FMP_API_KEY')
+        fred_api_key = input_data.get('fred_api_key') or os.getenv('FRED_API_KEY')
 
         if not code:
             print(json.dumps({
@@ -488,7 +637,7 @@ def main():
             return
 
         # Execute the code
-        executor = CustomPythonExecutor(fmp_api_key=fmp_api_key)
+        executor = CustomPythonExecutor(fmp_api_key=fmp_api_key, fred_api_key=fred_api_key)
         result = executor.execute(code, context)
 
         # Return result as JSON

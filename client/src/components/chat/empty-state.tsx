@@ -192,7 +192,7 @@ export function EmptyState({ onQuestionClick }: EmptyStateProps) {
         <div className="flex items-center justify-center gap-3 mb-4">
           <Sparkles className="w-8 h-8 text-primary" />
           <h1 className="text-3xl font-bold text-foreground">
-            VibeQuant
+            VQuant
           </h1>
         </div>
         <p className="text-lg text-muted-foreground max-w-md">

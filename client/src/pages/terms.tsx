@@ -23,14 +23,14 @@ export default function Terms() {
 
           <h2>1. Acceptation des conditions</h2>
           <p>
-            En accédant et en utilisant VibeQuant ("le Service"), disponible sur <strong>www.vquant.ai</strong>,
+            En accédant et en utilisant VQuant ("le Service"), disponible sur <strong>www.vquant.ai</strong>,
             vous acceptez d'être lié par ces Conditions d'utilisation. Si vous n'acceptez pas ces conditions,
             veuillez ne pas utiliser le Service.
           </p>
 
           <h2>2. Description du service</h2>
           <p>
-            VibeQuant est une plateforme d'analyse financière propulsée par intelligence artificielle qui fournit :
+            VQuant est une plateforme d'analyse financière propulsée par intelligence artificielle qui fournit :
           </p>
           <ul>
             <li>Analyses financières via Claude AI de Anthropic</li>
@@ -72,7 +72,7 @@ export default function Terms() {
 
           <h2>5. Propriété intellectuelle</h2>
           <ul>
-            <li>Le Service et son contenu original sont propriété de VibeQuant</li>
+            <li>Le Service et son contenu original sont propriété de VQuant</li>
             <li>Les données financières sont fournies par nos partenaires API (FMP, etc.)</li>
             <li>Les analyses générées par Claude AI appartiennent à Anthropic</li>
             <li>Vos requêtes et analyses vous appartiennent</li>
@@ -108,7 +108,7 @@ export default function Terms() {
           <ul>
             <li>Ces services ont leurs propres conditions d'utilisation</li>
             <li>Nous ne sommes pas responsables de leur disponibilité</li>
-            <li>Les coûts d'API sont supportés par VibeQuant dans les limites raisonnables</li>
+            <li>Les coûts d'API sont supportés par VQuant dans les limites raisonnables</li>
             <li>Un usage excessif peut être limité ou facturé</li>
           </ul>
 
@@ -172,7 +172,7 @@ export default function Terms() {
           <hr className="my-8" />
 
           <p className="text-sm text-muted-foreground text-center">
-            En utilisant VibeQuant, vous acceptez ces Conditions d'utilisation et notre Privacy Policy.
+            En utilisant VQuant, vous acceptez ces Conditions d'utilisation et notre Privacy Policy.
           </p>
         </div>
       </div>

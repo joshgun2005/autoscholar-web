@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
-import { callClaudeStreaming } from "./services/claudeService";
+import { callClaudeStreamingWithRetry } from "./services/claudeService";
 import { analyzeFigures } from "./services/figureAnalysisService";
 import { randomBytes } from "crypto";
 import { registerAuthRoutes } from "./routes/auth";
@@ -236,7 +236,7 @@ import {
   getCompanyEquityOfferingsByCIK
 } from "./services/fmpService";
 import { getOptionChain, getOptionPrices, getOptionGreeks } from "./services/financialDataService";
-import { getEODHDIntraday, getEODHDOptions } from "./services/eodhd_service";
+import { getEODHDIntraday, getEODHDOptions, getEODHDEOD, getEODHDLiveQuote } from "./services/eodhd_service";
 import { executeMonteCarloSimulation, executeOptionsPricing, executeGarchModel, executeVarCalculation, executePortfolioOptimization, executeRiskMetricsAnalysis, executePlot, executeDataDownload, executeCustomPython } from "./services/pythonExecutor";
 import { randomUUID } from "crypto";
 import type { SearchResult } from "@shared/types";
@@ -314,6 +314,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat", async (req: Request, res: Response) => {
     let sseStarted = false;
 
+    // Safe write helper: skip writes to dead/finished connections
+    const safeWrite = (data: string) => {
+      if (res.writableEnded || res.destroyed) return;
+      try {
+        res.write(data);
+        // @ts-ignore - flush may not be in types but exists at runtime
+        if (res.flush) res.flush();
+      } catch (err) {
+        logger.warn(`Write failed (client likely disconnected): ${(err as Error).message}`);
+      }
+    };
+
     try {
       const parsed = chatBodySchema.safeParse(req.body);
       if (!parsed.success) {
@@ -362,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send status message
       logger.info('Sending status update to client');
-      res.write(`data: ${JSON.stringify({ type: 'status', message: '📊 Financial analysis in progress...' })}\n\n`);
+      safeWrite(`data: ${JSON.stringify({ type: 'status', message: '📊 Financial analysis in progress...' })}\n\n`);
       
       // Build messages array with conversation history
       // Add previous conversation messages (only question and answer text)
@@ -409,25 +421,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const processClaudeResponse = async () => {
         logger.section('Claude API Call');
         logger.kv('Messages in context', messages.length);
-        const { answer, toolCalls, usage } = await callClaudeStreaming(
+        // Track text length before this call to allow rollback on retry
+        const answerLengthBeforeCall = fullAnswer.length;
+
+        const { answer, toolCalls, usage } = await callClaudeStreamingWithRetry(
           query,
           (chunk) => {
             // Add line break before first chunk if coming after tool execution
             if (isFirstChunkAfterTools) {
               const lineBreak = '\n\n';
               fullAnswer += lineBreak + chunk;
-              res.write(`data: ${JSON.stringify({ type: 'text', content: lineBreak + chunk })}\n\n`);
-              // @ts-ignore - flush may not be in types but exists at runtime
-              if (res.flush) res.flush();
+              safeWrite(`data: ${JSON.stringify({ type: 'text', content: lineBreak + chunk })}\n\n`);
               isFirstChunkAfterTools = false;
             } else {
               fullAnswer += chunk;
-              res.write(`data: ${JSON.stringify({ type: 'text', content: chunk })}\n\n`);
-              // @ts-ignore - flush may not be in types but exists at runtime
-              if (res.flush) res.flush();
+              safeWrite(`data: ${JSON.stringify({ type: 'text', content: chunk })}\n\n`);
             }
           },
-          messages
+          messages,
+          () => {
+            // onRetry: discard partial text from the failed attempt
+            const partialText = fullAnswer.substring(answerLengthBeforeCall);
+            if (partialText.length > 0) {
+              fullAnswer = fullAnswer.substring(0, answerLengthBeforeCall);
+              // Tell client to replace the partial text
+              safeWrite(`data: ${JSON.stringify({ type: 'retry', discardLength: partialText.length })}\n\n`);
+              logger.warn(`Discarded ${partialText.length} chars of partial text from failed attempt`);
+            }
+          }
         );
         logger.success('Claude API response received');
 
@@ -459,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             logger.warn(`Large request: executing ${toolCalls.length} tools in ${batches.length} batches`);
           }
 
-          res.write(`data: ${JSON.stringify({ type: 'tools', tools: toolCalls })}\n\n`);
+          safeWrite(`data: ${JSON.stringify({ type: 'tools', tools: toolCalls })}\n\n`);
 
           // Add ALL assistant's tool use to messages at once
           messages.push({
@@ -478,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (batches.length > 1) {
               logger.info(`Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} tools)`);
-              res.write(`data: ${JSON.stringify({
+              safeWrite(`data: ${JSON.stringify({
                 type: 'status',
                 message: `📊 Batch ${batchIndex + 1}/${batches.length}: ${batch.map((t: any) => t.name).join(', ')}...`
               })}\n\n`);
@@ -491,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const toolStartTime = Date.now();
 
               // Notify client that tool execution is starting
-              res.write(`data: ${JSON.stringify({
+              safeWrite(`data: ${JSON.stringify({
                 type: 'tool_start',
                 tool: toolCall.name,
                 toolId: toolCall.id,
@@ -785,7 +806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Python code separately
                 logger.debug('   📊 Sending Python code to client (length:', simulationResult.code?.length || 0, 'chars)');
-                res.write(`data: ${JSON.stringify({
+                safeWrite(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: simulationResult.code
                 })}\n\n`);
@@ -837,7 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Python code separately
                 logger.debug('   📊 Sending Python code to client (length:', optionsResult.code?.length || 0, 'chars)');
-                res.write(`data: ${JSON.stringify({
+                safeWrite(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: optionsResult.code
                 })}\n\n`);
@@ -874,7 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Python code separately
                 logger.debug('   📊 Sending Python code to client (length:', garchResult.code?.length || 0, 'chars)');
-                res.write(`data: ${JSON.stringify({
+                safeWrite(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: garchResult.code
                 })}\n\n`);
@@ -913,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Python code separately
                 logger.debug('   📊 Sending Python code to client (length:', varResult.code?.length || 0, 'chars)');
-                res.write(`data: ${JSON.stringify({
+                safeWrite(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: varResult.code
                 })}\n\n`);
@@ -956,7 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Python code separately
                 logger.debug('   📊 Sending Python code to client (length:', portfolioResult.code?.length || 0, 'chars)');
-                res.write(`data: ${JSON.stringify({
+                safeWrite(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: portfolioResult.code
                 })}\n\n`);
@@ -992,7 +1013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Python code separately
                 logger.debug('   📊 Sending Python code to client (length:', riskMetricsResult.code?.length || 0, 'chars)');
-                res.write(`data: ${JSON.stringify({
+                safeWrite(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: riskMetricsResult.code
                 })}\n\n`);
@@ -1041,7 +1062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Python code separately
                 logger.debug('   📊 Sending Python code to client (length:', plotResult.code?.length || 0, 'chars)');
-                res.write(`data: ${JSON.stringify({
+                safeWrite(`data: ${JSON.stringify({
                   type: 'python_code',
                   code: plotResult.code
                 })}\n\n`);
@@ -1050,7 +1071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 if (result.image_url) {
                   const plotUrl = result.image_url;
                   logger.debug('   🖼️  Sending plot URL to client:', plotUrl);
-                  res.write(`data: ${JSON.stringify({
+                  safeWrite(`data: ${JSON.stringify({
                     type: 'custom_python_figures',
                     figureId: `plot-${Date.now()}`,
                     figures: [plotUrl],
@@ -1125,7 +1146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   // Send base64 figures + file URLs to client
                   // base64 in `figures` ensures persistence when shared to DB
                   // file URLs in `figureUrls` used for fast display during current session
-                  res.write(`data: ${JSON.stringify({
+                  safeWrite(`data: ${JSON.stringify({
                     type: 'custom_python_figures',
                     figureId: figureId,
                     figures: originalFigures,   // base64 data — persisted to DB via share
@@ -1140,28 +1161,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                   if (enableFigureAnalysis) {
                     logger.info(`🔍 Analyzing ${originalFigures.length} figure(s) with vision model...`);
-                    res.write(`data: ${JSON.stringify({ type: 'status', message: 'Analyzing generated figures...' })}\n\n`);
+                    safeWrite(`data: ${JSON.stringify({ type: 'status', message: 'Analyzing generated figures...' })}\n\n`);
                     try {
                       figureDescriptions = await analyzeFigures(originalFigures, toolCall.input.description);
                       logger.info('✅ Figure analysis complete');
-                    } catch (err) {
-                      logger.warn('⚠️ Figure analysis failed, falling back to no descriptions');
+                    } catch (err: any) {
+                      logger.warn(`⚠️ Figure analysis failed: ${err?.message || err}`);
                     }
                   }
 
                   // Format output so Claude naturally includes figures in response
-                  let formattedOutput = result.output || '';
-                  formattedOutput += '\n\n---\n📊 **ANALYSE DES FIGURES GÉNÉRÉES:**\n';
+                  // CRITICAL: Figure URLs go FIRST so they survive truncation
+                  let formattedOutput = '📊 **FIGURES GÉNÉRÉES — À INCLURE DANS TA RÉPONSE:**\n';
                   figureUrls.forEach((url, idx) => {
-                    formattedOutput += `\n**Figure ${idx + 1}:**\n![Figure ${idx + 1}](${url})\n`;
+                    formattedOutput += `![Figure ${idx + 1}](${url})\n`;
+                  });
+                  formattedOutput += '\n⚠️ Tu DOIS inclure chaque image ![Figure X](url) ci-dessus dans ta réponse markdown.\n\n';
+
+                  // Then append analyses (may be truncated, that's OK)
+                  figureUrls.forEach((url, idx) => {
                     const analysis = figureDescriptions.find(d => d.index === idx);
                     if (analysis?.success && analysis.description) {
-                      formattedOutput += `**Vision Analysis:** ${analysis.description}\n`;
-                    } else {
-                      formattedOutput += `_(Décris cette figure ci-dessus dans ta réponse)_\n`;
+                      formattedOutput += `**Figure ${idx + 1} analysis:** ${analysis.description}\n\n`;
                     }
                   });
-                  formattedOutput += '\n---\n⚠️ IMPORTANT: Tu DOIS inclure chaque image ![Figure X](url) dans ta réponse markdown avec ton analyse de chaque figure.';
+
+                  // Finally the Python output
+                  if (result.output) {
+                    formattedOutput += '---\n**Python output:**\n' + result.output;
+                  }
 
                   result.output = formattedOutput;
 
@@ -1816,7 +1844,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 'get_contents_exa',
                 'execute_custom_python_analysis'  // CRITICAL: Must not truncate figure references!
               ].includes(toolCall.name);
-              const MAX_TOOL_RESULT_LENGTH = isContentExtractionTool ? 15000 : 3000; // 15k for content extraction & Python analysis, 3k for others
+              const isPythonAnalysis = toolCall.name === 'execute_custom_python_analysis';
+              const MAX_TOOL_RESULT_LENGTH = isPythonAnalysis ? 30000 : isContentExtractionTool ? 15000 : 3000;
 
               const truncatedResult = resultString.length > MAX_TOOL_RESULT_LENGTH
                 ? resultString.substring(0, MAX_TOOL_RESULT_LENGTH) + `\n\n[... truncated, original length: ${resultString.length} chars]`
@@ -1836,14 +1865,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               logger.debug(`Result preview: ${resultPreview}...`);
 
               // Notify client that tool completed
-              res.write(`data: ${JSON.stringify({
+              safeWrite(`data: ${JSON.stringify({
                 type: 'tool_complete',
                 tool: toolCall.name,
                 toolId: toolCall.id,
                 duration: toolDuration
               })}\n\n`);
 
-              res.write(`data: ${JSON.stringify({
+              safeWrite(`data: ${JSON.stringify({
                 type: 'tool_result',
                 tool: toolCall.name,
                 result: result
@@ -1852,7 +1881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               logger.error(`Error executing tool ${toolCall.name}: ${(toolError as Error).message}`);
 
               // Notify client of tool error
-              res.write(`data: ${JSON.stringify({
+              safeWrite(`data: ${JSON.stringify({
                 type: 'tool_error',
                 tool: toolCall.name,
                 toolId: toolCall.id,
@@ -1881,7 +1910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         logger.info(`Sending all ${allToolResultsForClaude.length} tool results to Claude for final analysis`);
 
         if (batches.length > 1) {
-          res.write(`data: ${JSON.stringify({
+          safeWrite(`data: ${JSON.stringify({
             type: 'status',
             message: `🤖 All ${allToolResultsForClaude.length} tools completed. Generating comprehensive analysis...`
           })}\n\n`);
@@ -1990,9 +2019,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Send sources and completion
           logger.info('Sending final response to client');
-          res.write(`data: ${JSON.stringify({ type: 'sources', sources })}\n\n`);
-          res.write(`data: ${JSON.stringify({ type: 'done', sessionId })}\n\n`);
-          res.end();
+          safeWrite(`data: ${JSON.stringify({ type: 'sources', sources })}\n\n`);
+          safeWrite(`data: ${JSON.stringify({ type: 'done', sessionId })}\n\n`);
+          if (!res.writableEnded && !res.destroyed) try { res.end(); } catch { /* noop */ }
           logger.success('CHAT REQUEST COMPLETED');
         }
       };
@@ -2002,13 +2031,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await processClaudeResponse();
 
     } catch (error) {
-      logger.error(`CHAT ERROR: ${(error as Error).message}`);
+      const msg = (error as Error).message || '';
+      // Connection errors (client disconnected) — just log and clean up
+      if (msg.includes('aborted') || msg.includes('ECONNRESET') || res.destroyed) {
+        logger.warn(`Chat interrupted (${msg}) — processing saved server-side`);
+        if (!res.writableEnded) try { res.end(); } catch { /* noop */ }
+        return;
+      }
+      logger.error(`CHAT ERROR: ${msg}`);
       logger.debug(`Stack: ${(error as Error).stack}`);
-      if (sseStarted) {
-        res.write(`data: ${JSON.stringify({ type: 'error', error: 'Failed to process chat' })}\n\n`);
-        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-        res.end();
-      } else {
+      if (sseStarted && !res.writableEnded && !res.destroyed) {
+        safeWrite(`data: ${JSON.stringify({ type: 'error', error: 'Failed to process chat' })}\n\n`);
+        safeWrite(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        try { res.end(); } catch { /* noop */ }
+      } else if (!sseStarted && !res.headersSent) {
         res.status(500).json({ error: 'Failed to process chat' });
       }
     }

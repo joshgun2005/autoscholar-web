@@ -308,7 +308,7 @@ export default function Admin() {
               <Sparkles className="w-6 h-6 text-primary" />
               <div className="hidden md:flex items-baseline gap-2">
                 <span className="text-xl font-semibold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-                  VibeQuant
+                  VQuant
                 </span>
                 <span className="text-sm text-muted-foreground">
                   by Agentilab.ai
@@ -393,7 +393,7 @@ export default function Admin() {
             <Sparkles className="w-6 h-6 text-primary" />
             <div className="hidden md:flex items-baseline gap-2">
               <span className="text-xl font-semibold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-                VibeQuant Admin
+                VQuant Admin
               </span>
             </div>
           </button>

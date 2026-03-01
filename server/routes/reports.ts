@@ -181,6 +181,29 @@ export function registerReportRoutes(app: Express) {
     }
   });
 
+  // HTML (standalone)
+  app.post("/api/generate-html", async (req: Request, res: Response) => {
+    try {
+      const { question, answer } = req.body;
+      if (!question || !answer) {
+        return res.status(400).json({ error: "Question and answer are required" });
+      }
+
+      logger.info("Generating standalone HTML");
+      const { generateHTMLFromMarkdown } = await import("../services/pdfService");
+      const html = generateHTMLFromMarkdown({ question, answer });
+
+      const filename = `VQuant-${Date.now()}.html`;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(html);
+      logger.success("HTML generated and sent successfully");
+    } catch (error) {
+      logger.error(`HTML generation error: ${(error as Error).message}`);
+      res.status(500).json({ error: "Failed to generate HTML" });
+    }
+  });
+
   // DOCX
   app.post("/api/generate-docx", async (req: Request, res: Response) => {
     try {

@@ -189,10 +189,7 @@ export default function Showcase() {
               <Sparkles className="w-5 h-5 text-primary" />
               <div className="hidden md:flex items-baseline gap-1.5">
                 <span className="text-base font-bold text-foreground leading-tight">
-                  VibeQuant
-                </span>
-                <span className="text-[10px] text-muted-foreground leading-none">
-                  AI Financial
+                  VQuant
                 </span>
               </div>
             </button>
@@ -218,7 +215,7 @@ export default function Showcase() {
                 Showcase Communautaire
               </h1>
               <p className="text-muted-foreground text-base mt-1">
-                Découvrez toutes les analyses générées par la communauté VibeQuant
+                Découvrez toutes les analyses générées par la communauté VQuant
               </p>
             </div>
           </div>

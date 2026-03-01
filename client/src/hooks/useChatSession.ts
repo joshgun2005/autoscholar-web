@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useChatMutation } from "./useChatMutation";
 import { useAnalytics } from "./useAnalytics";
@@ -61,11 +61,16 @@ function resetChatState() {
   };
 }
 
+const SESSION_STORAGE_KEY = 'vquant_active_session';
+
 export function useChatSession() {
   const queryClient = useQueryClient();
 
   // ─── Session state ──────────────────────────────────────
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
+    // Restore session ID from sessionStorage on mount
+    try { return sessionStorage.getItem(SESSION_STORAGE_KEY); } catch { return null; }
+  });
   const [historyOpen, setHistoryOpen] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
@@ -88,6 +93,17 @@ export function useChatSession() {
   const [figureUrls, setFigureUrls] = useState<string[]>([]);
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  // ─── Persist session ID ─────────────────────────────────
+  useEffect(() => {
+    try {
+      if (currentSessionId) {
+        sessionStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
+      } else {
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    } catch { /* sessionStorage unavailable */ }
+  }, [currentSessionId]);
+
   // ─── Auth ───────────────────────────────────────────────
   const { data: authData } = useQuery<{ user: { id: string; displayName: string } | null }>({
     queryKey: ['/api/auth/me'],
@@ -99,6 +115,12 @@ export function useChatSession() {
     switch (event.type) {
       case 'text':
         setStreamingAnswer(prev => prev + event.content);
+        break;
+      case 'retry':
+        // Server is retrying after ECONNRESET — discard partial text from failed attempt
+        if (event.discardLength > 0) {
+          setStreamingAnswer(prev => prev.substring(0, prev.length - event.discardLength));
+        }
         break;
       case 'sources':
         setSources(event.sources);
@@ -245,6 +267,7 @@ export function useChatSession() {
     setCurrentQuestion("");
     clearResponseState();
     chatMutation.reset();
+    try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch { /* noop */ }
   }, [clearResponseState, chatMutation]);
 
   const handleLogout = useCallback(async () => {

@@ -5,6 +5,7 @@ import connectPgSimple from "connect-pg-simple";
 import SqliteStore from "better-sqlite3-session-store";
 import path from 'path';
 import { registerRoutes } from "./routes";
+import { registerGateRoutes } from "./routes/auth";
 import { setupVite, serveStatic, log } from "./vite";
 import { pool, isSqlite } from "./db";
 import { logger } from "./utils/logger";
@@ -80,6 +81,22 @@ app.use(
   }),
 );
 
+// ─── Gate authentication ─────────────────────────────────
+registerGateRoutes(app);
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith("/api")) {
+    // Allow gate endpoints through without authentication
+    if (req.path === "/api/gate/login" || req.path === "/api/gate/status") {
+      return next();
+    }
+    if ((req.session as any).gateAuthenticated !== true) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+  }
+  next();
+});
+
 // ─── Static files for generated assets ────────────────────
 const rootDir = path.resolve(import.meta.dirname, '..');
 app.use('/plots', express.static(path.join(rootDir, 'public', 'plots')));
@@ -108,7 +125,7 @@ app.use((req, res, next) => {
 
 // ─── Bootstrap ────────────────────────────────────────────
 (async () => {
-  logger.banner('SERVER STARTING', 'VibeQuant Financial Intelligence Platform');
+  logger.banner('SERVER STARTING', 'VQuant Financial Intelligence Platform');
 
   logger.section('Configuration');
   logger.kv('Environment', process.env.NODE_ENV || 'development');
