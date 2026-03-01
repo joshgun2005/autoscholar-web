@@ -1,13 +1,7 @@
 import axios from 'axios';
-import { spawn } from 'child_process';
-import { promises as fs } from 'fs';
+import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { existsSync } from 'fs';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import puppeteer from 'puppeteer';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -17,219 +11,145 @@ interface BeamerOptions {
   answer: string;
   author: string;
   company?: string;
-  figureUrls?: string[];  // e.g. ["/figures/fig-123-0.png", ...]
+  figureUrls?: string[];  // e.g. ["/figures/fig-123-0.png", ...] or data URIs
 }
 
-/**
- * Converts analysis to LaTeX Beamer structure using Claude
- */
-async function generateBeamerStructure(options: BeamerOptions): Promise<string> {
+interface SlideStructure {
+  title: string;
+  subtitle: string;
+  sections: SectionDef[];
+}
+
+interface SectionDef {
+  sectionTitle: string;
+  slides: SlideDef[];
+}
+
+type SlideDef =
+  | { type: 'toc'; items: string[] }
+  | { type: 'content'; title: string; bullets: string[] }
+  | { type: 'stats'; title: string; stats: { label: string; value: string; trend?: 'up' | 'down' | 'neutral' }[] }
+  | { type: 'figure'; title: string; figureIndex: number; caption?: string }
+  | { type: 'two-column'; title: string; left: string[]; right: string[] }
+  | { type: 'conclusion'; title: string; bullets: string[] };
+
+// ─── 1. Load figures as base64 data URIs ────────────────────────────────────
+
+function loadFiguresAsBase64(figureUrls?: string[]): string[] {
+  if (!figureUrls || figureUrls.length === 0) {
+    console.log('[Slides] No figureUrls provided');
+    return [];
+  }
+
+  console.log('[Slides] Processing', figureUrls.length, 'figure URLs');
+
+  const figuresDir = path.join(process.cwd(), 'dist', 'public', 'figures');
+  const altFiguresDir = path.join(process.cwd(), 'public', 'figures');
+
+  return figureUrls.map((url, i) => {
+    // Already a data URI — use directly
+    if (url.startsWith('data:image')) {
+      console.log(`[Slides] ✓ Figure ${i}: already data URI (${url.length} chars)`);
+      return url;
+    }
+
+    // Already a raw base64 string (no prefix, no path) — wrap it
+    if (url.length > 200 && !url.startsWith('/') && !url.startsWith('http')) {
+      console.log(`[Slides] ✓ Figure ${i}: raw base64 (${url.length} chars)`);
+      return `data:image/png;base64,${url}`;
+    }
+
+    // File path: /figures/xxx.png — try multiple locations
+    const filename = url.replace(/^\/figures\//, '').replace(/^\/plots\//, '');
+    const candidates = [
+      path.join(figuresDir, filename),
+      path.join(altFiguresDir, filename),
+      path.join(process.cwd(), 'dist', 'public', url.startsWith('/') ? url.slice(1) : url),
+    ];
+
+    for (const filePath of candidates) {
+      try {
+        if (fs.existsSync(filePath)) {
+          const buffer = fs.readFileSync(filePath);
+          if (buffer.length > 0) {
+            console.log(`[Slides] ✓ Figure ${i} loaded from ${filePath} (${buffer.length} bytes)`);
+            return `data:image/png;base64,${buffer.toString('base64')}`;
+          }
+        }
+      } catch (err) {
+        // continue to next candidate
+      }
+    }
+
+    console.warn(`[Slides] ✗ Figure ${i} not found for URL: ${url.substring(0, 80)}`);
+    return '';
+  });
+}
+
+// ─── 2. Generate slide structure with Claude ─────────────────────────────────
+
+async function generateSlideStructure(options: BeamerOptions, availableFigureCount: number): Promise<SlideStructure> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
-  const today = new Date().toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  // Only tell Claude about figures that actually loaded
+  const figureNote = availableFigureCount > 0
+    ? `\n\nFIGURES DISPONIBLES: ${availableFigureCount} images (indices 0 à ${availableFigureCount - 1}). Crée des slides "figure" UNIQUEMENT pour les indices existants (0 à ${availableFigureCount - 1}). Ne dépasse PAS l'indice ${availableFigureCount - 1}.`
+    : '\n\nAUCUNE FIGURE disponible. Ne crée PAS de slides de type "figure".';
 
-  const systemPrompt = `Tu es un expert en présentations LaTeX Beamer avec le thème Metropolis. Ton travail est d'analyser un contenu d'analyse financière et de créer des slides modernes, épurées et professionnelles.
-
-RÈGLES CRITIQUES:
-1. Retourne UNIQUEMENT le code LaTeX - PAS d'explications, PAS de \\documentclass, PAS de préambule
-2. Le thème Metropolis est déjà configuré (aspect ratio 16:8, couleurs EventBlue/EventRed/EventGray)
-3. Design ÉPURÉ: une idée par slide, max 4-5 points
-4. Échappe TOUS les caractères spéciaux: $ → \\$, % → \\%, & → \\&, _ → \\_
-5. Utilise \\alert{} pour nombres et pourcentages importants (couleur rouge EventRed)
-
-STRUCTURE MODERNE METROPOLIS:
-• \\section{Nom} - Crée une slide de section automatique (design épuré)
-• \\begin{frame}{Titre} ... \\end{frame} - Slide standard
-• \\begin{frame}[fragile] si code/verbatim
-• \\begin{block}{Titre} ... \\end{block} - Boîte bleue pour info importante
-• \\begin{alertblock}{Titre} ... \\end{alertblock} - Boîte rouge pour alertes
-• \\begin{itemize} \\item ... \\end{itemize} - Liste à puces (bullets ronds bleus)
-• \\begin{enumerate} \\item ... \\end{enumerate} - Liste numérotée
-• \\alert{texte} - Highlight rouge pour chiffres/pourcentages
-
-DESIGN ÉPURÉ METROPOLIS:
-✓ Utilise des blocks pour structurer (pas de texte brut)
-✓ Espace blanc généreux
-✓ Titres courts et clairs
-✓ Max 4-5 bullets par slide
-✓ Privilégie les sections pour diviser le contenu
-✗ Évite les slides surchargées
-✗ Pas de sous-sous-points complexes
-✗ Pas de paragraphes longs
-
-EXEMPLES DE BON STYLE:
-
-EXEMPLE 1 - Slide avec block:
-\\begin{frame}{Résumé Exécutif}
-\\begin{block}{Points Clés}
-\\begin{itemize}
-  \\item Rendement annuel: \\alert{+23\\%}
-  \\item Volatilité: \\alert{37\\%}
-  \\item Ratio Sharpe: \\alert{0.62}
-\\end{itemize}
-\\end{block}
-\\end{frame}
-
-EXEMPLE 2 - Slide avec alertblock:
-\\begin{frame}{Risques Identifiés}
-\\begin{alertblock}{Attention}
-Persistance très faible (\\alert{0.11 jours}) - Les chocs se dissipent rapidement
-\\end{alertblock}
-\\begin{itemize}
-  \\item Impact sur stratégies de hedging
-  \\item Ajustements fréquents nécessaires
-\\end{itemize}
-\\end{frame}
-
-EXEMPLE 3 - Section + contenu:
-\\section{Résultats du Modèle}
-
-\\begin{frame}{Paramètres Estimés}
-\\begin{block}{Coefficients GJR-GARCH}
-\\begin{itemize}
-  \\item $\\alpha$ (ARCH): \\alert{0.0016}
-  \\item $\\gamma$ (effet levier): \\alert{0.00015}
-  \\item $\\beta$ (GARCH): \\alert{0.000009}
-\\end{itemize}
-\\end{block}
-\\end{frame}`;
-
-  // For very long content, extract just the key sections
   let contentToUse = options.answer;
-  if (options.answer.length > 20000) {
-    console.log('[BeamerSlides] Content is long (',options.answer.length,'chars), extracting key sections...');
-    // Extract summary sections (usually contain # headers and key info)
-    const sections = options.answer.split(/\n#{1,3}\s+/);
-    // Take first 5 sections or 15000 chars, whichever is shorter
+  if (contentToUse.length > 20000) {
+    console.log('[Slides] Content is long (' + contentToUse.length + ' chars), truncating...');
+    const sections = contentToUse.split(/\n#{1,3}\s+/);
     contentToUse = sections.slice(0, 5).join('\n## ').substring(0, 15000);
-    console.log('[BeamerSlides] Reduced to',contentToUse.length,'chars');
   }
 
-  // Build figure instructions if figures are available
-  const figureCount = options.figureUrls?.length || 0;
-  const figureInstructions = figureCount > 0
-    ? `\n\n📊 FIGURES DISPONIBLES (${figureCount} images):\nDes figures ont été générées. Pour CHAQUE figure, crée une slide dédiée avec:\n\\begin{frame}{Titre Descriptif de la Figure}\n\\begin{center}\n\\includegraphics[width=0.85\\textwidth]{figure-INDEX.png}\n\\end{center}\n\\end{frame}\n\nLes INDEX disponibles sont: ${Array.from({length: figureCount}, (_, i) => i).join(', ')}\nIntègre ces slides de figures aux endroits logiques dans ta présentation (après l'analyse correspondante).`
-    : '';
+  const systemPrompt = `Tu es un expert en présentations financières. Tu analyses un contenu et tu retournes UNIQUEMENT un JSON structuré pour des slides.
 
-  const userPrompt = `Crée des slides Beamer LaTeX MODERNES avec le thème Metropolis pour cette analyse.
+RÈGLES STRICTES:
+- Retourne UNIQUEMENT du JSON valide, pas de texte avant ou après
+- 8-12 slides maximum
+- Max 5 bullets par slide
+- Max 15 mots par bullet
+- Extrais les chiffres clés pour les slides "stats"
+- Une idée = une slide
+- Ne crée des slides "figure" que si des figures sont disponibles
 
-⚠️ IMPORTANT: Retourne UNIQUEMENT le code LaTeX (PAS de \\documentclass, PAS de préambule, juste les frames)
+Le JSON doit suivre cette structure exacte:
+{
+  "title": "Titre principal",
+  "subtitle": "Sous-titre court",
+  "sections": [
+    {
+      "sectionTitle": "Nom de section",
+      "slides": [
+        {"type": "toc", "items": ["Section 1", "Section 2", "Section 3"]},
+        {"type": "content", "title": "Titre", "bullets": ["Point 1", "Point 2"]},
+        {"type": "stats", "title": "Métriques", "stats": [{"label": "Rendement", "value": "+23%", "trend": "up"}]},
+        {"type": "figure", "title": "Graphique", "figureIndex": 0, "caption": "Description"},
+        {"type": "two-column", "title": "Comparaison", "left": ["A1", "A2"], "right": ["B1", "B2"]},
+        {"type": "conclusion", "title": "Conclusion", "bullets": ["Résumé 1"]}
+      ]
+    }
+  ]
+}
 
-CONTENU DE L'ANALYSE:
-${contentToUse}${figureInstructions}
+Types disponibles: toc, content, stats, figure, two-column, conclusion
+Pour "trend" dans stats: "up", "down", ou "neutral"`;
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STRUCTURE DES SLIDES (8-10 slides maximum):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const userPrompt = `Crée la structure JSON de slides pour cette analyse financière.
+${figureNote}
 
-1️⃣ TABLE DES MATIÈRES
-\\begin{frame}{Plan}
-\\tableofcontents
-\\end{frame}
+QUESTION: ${options.question}
 
-2️⃣ RÉSUMÉ EXÉCUTIF (1 slide)
-\\section{Résumé}
-\\begin{frame}{Résumé Exécutif}
-\\begin{block}{Points Clés}
-\\begin{itemize}
-  \\item Point 1 avec \\alert{chiffre\\%}
-  \\item Point 2 avec \\alert{\\$valeur}
-  \\item Point 3 avec \\alert{résultat}
-\\end{itemize}
-\\end{block}
-\\end{frame}
+ANALYSE:
+${contentToUse}
 
-3️⃣ CONTENU PRINCIPAL (5-6 slides)
-Divise en 2-3 \\section{} logiques, chacune avec 2-3 frames:
-
-\\section{Nom de la Section}
-
-\\begin{frame}{Titre Clair}
-\\begin{block}{Sous-titre Descriptif}
-\\begin{itemize}
-  \\item Point concis (max 1 ligne)
-  \\item Chiffre important: \\alert{X\\%}
-  \\item Conclusion claire
-\\end{itemize}
-\\end{block}
-\\end{frame}
-
-\\begin{frame}{Points Critiques}
-\\begin{alertblock}{⚠️ Attention}
-Message d'alerte important avec \\alert{valeur critique}
-\\end{alertblock}
-
-\\begin{block}{Implications}
-\\begin{itemize}
-  \\item Conséquence 1
-  \\item Conséquence 2
-\\end{itemize}
-\\end{block}
-\\end{frame}
-
-4️⃣ MÉTRIQUES CLÉS (1-2 slides)
-\\section{Métriques}
-
-\\begin{frame}{Indicateurs Financiers}
-\\begin{block}{Performance}
-\\begin{itemize}
-  \\item Métrique 1: \\alert{valeur}
-  \\item Métrique 2: \\alert{valeur}
-\\end{itemize}
-\\end{block}
-
-\\begin{block}{Risque}
-\\begin{itemize}
-  \\item Indicateur 1: \\alert{valeur}
-  \\item Indicateur 2: \\alert{valeur}
-\\end{itemize}
-\\end{block}
-\\end{frame}
-
-5️⃣ CONCLUSION (1 slide)
-\\section{Conclusion}
-
-\\begin{frame}{Conclusions}
-\\begin{block}{Résultats Principaux}
-\\begin{itemize}
-  \\item Résultat 1
-  \\item Résultat 2
-\\end{itemize}
-\\end{block}
-
-\\begin{alertblock}{Recommandation Principale}
-Action clé à prendre avec \\alert{justification}
-\\end{alertblock}
-\\end{frame}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RÈGLES DE STYLE METROPOLIS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✓ TOUJOURS utiliser \\begin{block}{} pour structurer
-✓ \\alert{} pour TOUS les chiffres/pourcentages/montants
-✓ Titres courts (max 6 mots)
-✓ Max 4-5 bullets par slide
-✓ Une idée = une slide
-✓ Espaces généreux (pas de surcharge)
-✓ \\section{} pour diviser le contenu
-
-✗ PAS de texte brut sans block
-✗ PAS de paragraphes longs
-✗ PAS de sous-sous-points
-✗ PAS de slides surchargées
-
-⚠️ ÉCHAPPEMENT OBLIGATOIRE:
-$ → \\$  |  % → \\%  |  & → \\&  |  _ → \\_  |  # → \\#`;
+Retourne UNIQUEMENT le JSON.`;
 
   try {
-    console.log('[BeamerSlides] Structuring content with Claude...');
+    console.log('[Slides] Structuring content with Claude...');
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
@@ -246,411 +166,732 @@ $ → \\$  |  % → \\%  |  & → \\&  |  _ → \\_  |  # → \\#`;
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json'
         },
-        timeout: 120000 // 120 seconds for complex analyses
+        timeout: 120000
       }
     );
 
-    let latexContent = response.data.content[0].text;
+    let jsonText = response.data.content[0].text;
+    jsonText = jsonText.replace(/^```json\n?/gm, '').replace(/^```\n?/gm, '').replace(/\n?```$/gm, '').trim();
 
-    // Clean up markdown fences if Claude added them
-    latexContent = latexContent.replace(/^```latex\n?/gm, '').replace(/^```tex\n?/gm, '').replace(/\n?```$/gm, '').trim();
+    const structure = JSON.parse(jsonText) as SlideStructure;
 
-    console.log('[BeamerSlides] ✓ LaTeX content generated:', latexContent.length, 'chars');
-    return latexContent;
+    // Strip out figure slides that reference non-existent figures
+    for (const section of structure.sections) {
+      section.slides = section.slides.filter(slide => {
+        if (slide.type === 'figure') {
+          if (slide.figureIndex >= availableFigureCount || slide.figureIndex < 0) {
+            console.log(`[Slides] Removed figure slide with out-of-range index ${slide.figureIndex} (only ${availableFigureCount} available)`);
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
+    const totalSlides = structure.sections.reduce((sum, s) => sum + s.slides.length, 0);
+    console.log('[Slides] ✓ Structure created:', totalSlides, 'slides in', structure.sections.length, 'sections');
+    return structure;
 
   } catch (error) {
-    console.error('[BeamerSlides] Error generating structure:', error);
-    if (axios.isAxiosError(error) && error.response) {
-      throw new Error(`Claude API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
-    }
-    throw new Error(`Failed to generate Beamer structure: ${(error as Error).message}`);
+    console.error('[Slides] Error generating structure:', error);
+
+    // Fallback: minimal 3-slide structure
+    console.log('[Slides] Using fallback minimal structure');
+    const headingMatch = options.answer.match(/^#{1,2}\s+(.+)$/m);
+    return {
+      title: headingMatch ? headingMatch[1].trim() : 'Analyse Financière',
+      subtitle: options.question.substring(0, 80),
+      sections: [{
+        sectionTitle: 'Analyse',
+        slides: [
+          { type: 'toc', items: ['Analyse', 'Conclusion'] },
+          { type: 'content', title: 'Points Clés', bullets: options.answer.split('\n').filter(l => l.startsWith('- ') || l.startsWith('* ')).slice(0, 5).map(l => l.replace(/^[-*]\s+/, '').substring(0, 60)) || ['Voir le rapport complet pour les détails'] },
+          { type: 'conclusion', title: 'Conclusion', bullets: ['Consultez le rapport complet pour tous les détails'] }
+        ]
+      }]
+    };
   }
 }
 
-/**
- * Creates complete Beamer .tex file
- */
-function createBeamerDocument(content: string, options: BeamerOptions): string {
+// ─── 3. Render slide HTML ────────────────────────────────────────────────────
+
+function renderSlideHTML(structure: SlideStructure, figureDataURIs: string[], author: string, company: string): string {
   const today = new Date().toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
   });
 
-  // Extract title from first markdown heading in answer, or use generic title
-  const headingMatch = options.answer.match(/^#{1,2}\s+(.+)$/m);
-  const slideTitle = headingMatch ? headingMatch[1].trim() : 'Analyse Financière';
-  const escTitle = slideTitle.replace(/\$/g, '\\$').replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/&/g, '\\&').replace(/#/g, '\\#').replace(/\*/g, '');
-  const escA = options.author.replace(/&/g, '\\&').replace(/_/g, '\\_');
-  const escC = (options.company || 'VQuant').replace(/&/g, '\\&').replace(/_/g, '\\_');
-
-  return `\\documentclass[aspectratio=169,12pt]{beamer}
-
-% =====================================================
-% THEME METROPOLIS — MODERN PREMIUM STYLE
-% =====================================================
-\\usetheme[
-  progressbar=frametitle,
-  numbering=fraction,
-  sectionpage=progressbar,
-  subsectionpage=none
-]{metropolis}
-\\usepackage{appendixnumberbeamer}
-
-% =====================================================
-% PACKAGES
-% =====================================================
-\\usepackage[utf8]{inputenc}
-\\usepackage[T1]{fontenc}
-\\usepackage[french]{babel}
-\\usepackage{amsmath, amsfonts, amssymb}
-\\usepackage{booktabs}
-\\usepackage{graphicx}
-\\usepackage{hyperref}
-\\usepackage{tikz}
-\\usepackage{xcolor}
-\\usepackage{fontawesome5}
-\\usepackage{tcolorbox}
-\\tcbuselibrary{skins,breakable}
-\\usetikzlibrary{arrows.meta, positioning, calc, backgrounds}
-
-% =====================================================
-% COULEURS — VIBEQUANT BRAND PALETTE
-% =====================================================
-\\definecolor{VQTeal}{HTML}{119993}
-\\definecolor{VQBlue}{HTML}{2072B2}
-\\definecolor{VQPurple}{HTML}{652E89}
-\\definecolor{VQOrange}{HTML}{F49422}
-\\definecolor{VQRed}{HTML}{EF632B}
-\\definecolor{VQGreen}{HTML}{6CBC5A}
-\\definecolor{VQDark}{HTML}{1A1A2E}
-\\definecolor{VQGray}{HTML}{6B7280}
-\\definecolor{VQLightBg}{HTML}{F8FAFC}
-
-% =====================================================
-% METROPOLIS OVERRIDES
-% =====================================================
-\\setbeamercolor{normal text}{fg=VQDark, bg=white}
-\\setbeamercolor{alerted text}{fg=VQRed}
-\\setbeamercolor{example text}{fg=VQGreen}
-\\setbeamercolor{structure}{fg=VQTeal}
-
-\\setbeamercolor{progress bar}{fg=VQTeal, bg=VQTeal!15}
-\\setbeamercolor{title separator}{fg=VQTeal}
-\\setbeamercolor{frametitle}{fg=VQDark, bg=VQLightBg}
-
-% Blocks — Glassmorphism-inspired
-\\setbeamercolor{block title}{fg=white, bg=VQTeal}
-\\setbeamercolor{block body}{fg=VQDark, bg=VQTeal!5}
-\\setbeamercolor{block title alerted}{fg=white, bg=VQRed}
-\\setbeamercolor{block body alerted}{fg=VQDark, bg=VQRed!5}
-\\setbeamercolor{block title example}{fg=white, bg=VQGreen!80!black}
-\\setbeamercolor{block body example}{fg=VQDark, bg=VQGreen!5}
-\\setbeamertemplate{blocks}[rounded][shadow=false]
-
-% Navigation
-\\setbeamertemplate{navigation symbols}{}
-
-% Items — Clean circles with gradient feel
-\\setbeamertemplate{itemize items}[circle]
-\\setbeamercolor{itemize item}{fg=VQTeal}
-\\setbeamercolor{itemize subitem}{fg=VQBlue}
-\\setbeamercolor{itemize subsubitem}{fg=VQGray}
-\\setbeamercolor{enumerate item}{fg=VQTeal}
-\\setbeamercolor{enumerate subitem}{fg=VQBlue}
-
-% TOC
-\\setbeamercolor{section in toc}{fg=VQDark}
-\\setbeamercolor{subsection in toc}{fg=VQGray}
-\\setbeamercolor{section number projected}{bg=VQTeal, fg=white}
-
-% Standout
-\\setbeamercolor{standout}{fg=white, bg=VQTeal}
-
-% Footer
-\\setbeamertemplate{footline}{
-  \\hbox{%
-    \\begin{beamercolorbox}[wd=\\paperwidth,ht=3ex,dp=1.5ex]{footline}%
-      \\hspace{1em}%
-      {\\tiny\\color{VQGray}\\textbf{VQuant} \\,|\\, ${today}}%
-      \\hfill%
-      {\\tiny\\color{VQGray}\\insertframenumber\\,/\\,\\inserttotalframenumber}%
-      \\hspace{1em}%
-    \\end{beamercolorbox}%
+  // Collect all slides flat for numbering
+  const allSlides: { section: string; slide: SlideDef }[] = [];
+  for (const section of structure.sections) {
+    for (const slide of section.slides) {
+      allSlides.push({ section: section.sectionTitle, slide });
+    }
   }
+  // +2 for cover and closing
+  const totalPages = allSlides.length + 2;
+
+  function esc(text: string): string {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function progressBar(pageNum: number): string {
+    const pct = (pageNum / totalPages) * 100;
+    return `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+  }
+
+  function footer(pageNum: number): string {
+    return `<div class="slide-footer">
+      <span class="footer-left">VQuant | ${today}</span>
+      <span class="footer-right">Page ${pageNum} / ${totalPages}</span>
+    </div>`;
+  }
+
+  // Build slide HTML pages
+  const slidePages: string[] = [];
+
+  // ── Cover slide ──
+  slidePages.push(`<div class="slide slide-cover">
+    ${progressBar(1)}
+    <div class="cover-circles">
+      <div class="circle circle-teal"></div>
+      <div class="circle circle-blue"></div>
+      <div class="circle circle-purple"></div>
+    </div>
+    <div class="cover-content">
+      <div class="cover-logo">VQuant</div>
+      <div class="cover-tagline">Financial Intelligence Platform</div>
+      <h1 class="cover-title">${esc(structure.title)}</h1>
+      <div class="cover-separator"></div>
+      <div class="cover-subtitle">${esc(structure.subtitle || '')}</div>
+      <div class="cover-author">${esc(author)}</div>
+      <div class="cover-meta">${esc(company)} | ${today}</div>
+    </div>
+    ${footer(1)}
+  </div>`);
+
+  // ── Content slides ──
+  allSlides.forEach(({ slide }, idx) => {
+    const pageNum = idx + 2;
+    let inner = '';
+
+    switch (slide.type) {
+      case 'toc':
+        inner = `<div class="slide slide-toc">
+          ${progressBar(pageNum)}
+          <div class="slide-body">
+            <h2 class="slide-title">Plan</h2>
+            <div class="slide-main">
+              <div class="toc-list">
+                ${slide.items.map((item, i) => `<div class="toc-item"><span class="toc-number">${i + 1}</span><span class="toc-text">${esc(item)}</span></div>`).join('\n')}
+              </div>
+            </div>
+          </div>
+          ${footer(pageNum)}
+        </div>`;
+        break;
+
+      case 'content':
+        inner = `<div class="slide slide-content">
+          ${progressBar(pageNum)}
+          <div class="slide-body">
+            <h2 class="slide-title">${esc(slide.title)}</h2>
+            <div class="slide-main">
+              <ul class="bullet-list">
+                ${slide.bullets.map(b => `<li><span class="bullet-dot"></span><span>${esc(b)}</span></li>`).join('\n')}
+              </ul>
+            </div>
+          </div>
+          ${footer(pageNum)}
+        </div>`;
+        break;
+
+      case 'stats':
+        inner = `<div class="slide slide-stats">
+          ${progressBar(pageNum)}
+          <div class="slide-body">
+            <h2 class="slide-title">${esc(slide.title)}</h2>
+            <div class="slide-main">
+              <div class="stats-grid">
+                ${slide.stats.map(s => {
+                  const trendClass = s.trend === 'up' ? 'trend-up' : s.trend === 'down' ? 'trend-down' : 'trend-neutral';
+                  const trendIcon = s.trend === 'up' ? '↑' : s.trend === 'down' ? '↓' : '→';
+                  return `<div class="stat-card">
+                    <div class="stat-trend ${trendClass}">${trendIcon}</div>
+                    <div class="stat-value ${trendClass}">${esc(s.value)}</div>
+                    <div class="stat-label">${esc(s.label)}</div>
+                  </div>`;
+                }).join('\n')}
+              </div>
+            </div>
+          </div>
+          ${footer(pageNum)}
+        </div>`;
+        break;
+
+      case 'figure': {
+        const dataUri = figureDataURIs[slide.figureIndex] || '';
+        inner = `<div class="slide slide-figure">
+          ${progressBar(pageNum)}
+          <div class="slide-body">
+            <h2 class="slide-title">${esc(slide.title)}</h2>
+            <div class="slide-main">
+              <div class="figure-container">
+                ${dataUri ? `<img src="${dataUri}" class="figure-img" />` : '<div class="figure-placeholder">Figure non disponible</div>'}
+              </div>
+              ${slide.caption ? `<div class="figure-caption">${esc(slide.caption)}</div>` : ''}
+            </div>
+          </div>
+          ${footer(pageNum)}
+        </div>`;
+        break;
+      }
+
+      case 'two-column':
+        inner = `<div class="slide slide-two-column">
+          ${progressBar(pageNum)}
+          <div class="slide-body">
+            <h2 class="slide-title">${esc(slide.title)}</h2>
+            <div class="slide-main">
+              <div class="columns-grid">
+                <div class="column column-left">
+                  <ul class="bullet-list">
+                    ${slide.left.map(b => `<li><span class="bullet-dot"></span><span>${esc(b)}</span></li>`).join('\n')}
+                  </ul>
+                </div>
+                <div class="column column-right">
+                  <ul class="bullet-list">
+                    ${slide.right.map(b => `<li><span class="bullet-dot dot-blue"></span><span>${esc(b)}</span></li>`).join('\n')}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          ${footer(pageNum)}
+        </div>`;
+        break;
+
+      case 'conclusion':
+        inner = `<div class="slide slide-conclusion">
+          ${progressBar(pageNum)}
+          <div class="slide-body">
+            <h2 class="slide-title">${esc(slide.title)}</h2>
+            <div class="slide-main">
+              <div class="conclusion-box">
+                <ul class="bullet-list">
+                  ${slide.bullets.map(b => `<li><span class="bullet-dot"></span><span>${esc(b)}</span></li>`).join('\n')}
+                </ul>
+              </div>
+            </div>
+          </div>
+          ${footer(pageNum)}
+        </div>`;
+        break;
+
+      default:
+        inner = `<div class="slide slide-content">
+          ${progressBar(pageNum)}
+          <div class="slide-body">
+            <h2 class="slide-title">Slide</h2>
+            <div class="slide-main"></div>
+          </div>
+          ${footer(pageNum)}
+        </div>`;
+    }
+
+    slidePages.push(inner);
+  });
+
+  // ── Closing slide ──
+  slidePages.push(`<div class="slide slide-closing">
+    ${progressBar(totalPages)}
+    <div class="cover-circles">
+      <div class="circle circle-teal" style="bottom:-60px;left:-40px;top:auto;"></div>
+      <div class="circle circle-purple" style="top:60px;right:-30px;left:auto;"></div>
+    </div>
+    <div class="closing-content">
+      <h1 class="closing-title">Merci</h1>
+      <div class="cover-separator"></div>
+      <div class="closing-subtitle">Questions &amp; Suggestions</div>
+      <div class="closing-contact">admin@vquant.ai</div>
+      <div class="closing-contact">www.vquant.ai</div>
+      <div class="closing-generated">Généré avec <strong>VQuant AI</strong></div>
+    </div>
+    ${footer(totalPages)}
+  </div>`);
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<style>
+/* ─── Reset & Base ─── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --teal: #119993;
+  --blue: #2072B2;
+  --purple: #652E89;
+  --orange: #F49422;
+  --red: #EF632B;
+  --green: #6CBC5A;
+  --dark: #1A1A2E;
+  --gray: #6B7280;
+  --light-bg: #F8FAFC;
 }
 
-% =====================================================
-% CUSTOM TCOLORBOXES
-% =====================================================
-\\newtcolorbox{keyinsight}{
-  colback=VQTeal!5, colframe=VQTeal, coltitle=white,
-  fonttitle=\\bfseries, title={\\faLightbulb\\hspace{0.5em}Point Clé},
-  boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: white;
+  color: var(--dark);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
-\\newtcolorbox{warningbox}{
-  colback=VQOrange!5, colframe=VQOrange, coltitle=white,
-  fonttitle=\\bfseries, title={\\faExclamationTriangle\\hspace{0.5em}Attention},
-  boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+/* ─── Slide Container ─── */
+.slide {
+  width: 1280px;
+  height: 720px;
+  position: relative;
+  overflow: hidden;
+  page-break-after: always;
+  background: white;
 }
 
-% =====================================================
-% TITLE INFORMATION
-% =====================================================
-\\title{${escTitle}}
-\\subtitle{\\textcolor{VQGray}{Analyse Financière}}
-\\author{${escA}}
-\\institute{${escC}}
-\\date{${today}}
-
-% =====================================================
-\\begin{document}
-
-% ---- Custom Title Slide ----
-{
-\\setbeamercolor{background canvas}{bg=VQDark}
-\\begin{frame}[plain,noframenumbering]
-  \\begin{tikzpicture}[remember picture,overlay]
-    % Gradient accent circles
-    \\fill[VQTeal, opacity=0.15] (current page.north west) ++(-1,-2) circle (4cm);
-    \\fill[VQBlue, opacity=0.1] (current page.south east) ++(1,2) circle (5cm);
-    \\fill[VQPurple, opacity=0.08] (current page.north east) ++(0,-4) circle (3cm);
-  \\end{tikzpicture}
-
-  \\vfill
-  \\begin{center}
-    {\\Large\\color{VQTeal}\\textbf{VQuant}}\\\\[2pt]
-    {\\tiny\\color{VQGray}Financial Intelligence Platform}\\\\[20pt]
-    {\\LARGE\\color{white}\\textbf{${escTitle}}}\\\\[12pt]
-    {\\color{VQTeal}\\rule{60pt}{2pt}}\\\\[12pt]
-    {\\normalsize\\color{VQGray}${escA}}\\\\[4pt]
-    {\\small\\color{VQGray!70}${escC} \\,|\\, ${today}}
-  \\end{center}
-  \\vfill
-\\end{frame}
+/* ─── Slide Body — fills space between progress bar and footer ─── */
+.slide-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-top: 4px;   /* progress bar */
+  padding-bottom: 36px; /* footer */
 }
 
-% Content from Claude
-${content}
-
-% ---- Final Slide ----
-{
-\\setbeamercolor{background canvas}{bg=VQDark}
-\\begin{frame}[plain,noframenumbering]
-  \\begin{tikzpicture}[remember picture,overlay]
-    \\fill[VQTeal, opacity=0.12] (current page.south west) ++(-1,2) circle (4cm);
-    \\fill[VQPurple, opacity=0.08] (current page.north east) ++(0,-3) circle (3cm);
-  \\end{tikzpicture}
-
-  \\vfill
-  \\begin{center}
-    {\\Huge\\color{white}\\textbf{Merci}}\\\\[20pt]
-    {\\color{VQTeal}\\rule{40pt}{2pt}}\\\\[16pt]
-    {\\normalsize\\color{VQGray}Questions \\& Suggestions}\\\\[12pt]
-    {\\small\\color{VQTeal}\\faEnvelope\\hspace{0.5em}\\href{mailto:admin@vquant.ai}{admin@vquant.ai}}\\\\[6pt]
-    {\\small\\color{VQTeal}\\faGlobe\\hspace{0.5em}\\href{https://www.vquant.ai}{www.vquant.ai}}\\\\[20pt]
-    {\\footnotesize\\color{VQGray!60}Généré avec \\textbf{\\color{VQTeal}VQuant AI}}
-  \\end{center}
-  \\vfill
-\\end{frame}
+.slide-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-\\end{document}`;
+/* ─── Progress Bar ─── */
+.progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #E5E7EB;
+  z-index: 10;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--blue), var(--purple));
 }
 
-/**
- * Compiles .tex file to PDF using pdflatex
- */
-async function compileToPDF(texContent: string, outputName: string, figureUrls?: string[]): Promise<Buffer> {
-  const tempDir = path.join(__dirname, '../../temp');
-  const fileName = `slides-${outputName}`;
-  const texPath = path.join(tempDir, `${fileName}.tex`);
-  const pdfPath = path.join(tempDir, `${fileName}.pdf`);
+/* ─── Footer ─── */
+.slide-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  font-size: 11px;
+  color: var(--gray);
+  border-top: 1px solid #E5E7EB;
+  background: rgba(248, 250, 252, 0.9);
+}
+.footer-left { font-weight: 500; }
 
+/* ─── Common Title ─── */
+.slide-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--dark);
+  margin: 36px 60px 0;
+  padding-bottom: 14px;
+  border-bottom: 3px solid var(--teal);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════
+   COVER SLIDE
+   ═══════════════════════════════════════════════════ */
+.slide-cover {
+  background: var(--dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cover-circles { position: absolute; inset: 0; pointer-events: none; }
+.circle { position: absolute; border-radius: 50%; }
+.circle-teal {
+  width: 300px; height: 300px;
+  background: var(--teal); opacity: 0.12;
+  top: -80px; left: -60px;
+}
+.circle-blue {
+  width: 400px; height: 400px;
+  background: var(--blue); opacity: 0.08;
+  bottom: -120px; right: -80px;
+}
+.circle-purple {
+  width: 220px; height: 220px;
+  background: var(--purple); opacity: 0.07;
+  top: 120px; right: -40px;
+}
+.cover-content {
+  text-align: center;
+  z-index: 2;
+  position: relative;
+}
+.cover-logo {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--teal);
+  margin-bottom: 4px;
+}
+.cover-tagline {
+  font-size: 12px;
+  color: var(--gray);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 40px;
+}
+.cover-title {
+  font-size: 44px;
+  font-weight: 800;
+  color: white;
+  max-width: 960px;
+  line-height: 1.2;
+  margin-bottom: 24px;
+}
+.cover-separator {
+  width: 60px; height: 3px;
+  background: var(--teal);
+  margin: 0 auto 20px;
+}
+.cover-subtitle {
+  font-size: 18px;
+  color: var(--gray);
+  margin-bottom: 28px;
+  max-width: 700px;
+}
+.cover-author {
+  font-size: 16px;
+  color: #D1D5DB;
+  margin-bottom: 6px;
+}
+.cover-meta {
+  font-size: 13px;
+  color: rgba(107, 114, 128, 0.7);
+}
+.slide-cover .slide-footer {
+  background: transparent;
+  border-top-color: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3);
+}
+
+/* ═══════════════════════════════════════════════════
+   TOC SLIDE
+   ═══════════════════════════════════════════════════ */
+.toc-list {
+  padding: 0 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.toc-item {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 22px;
+  font-weight: 500;
+}
+.toc-number {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════
+   CONTENT / BULLET SLIDE
+   ═══════════════════════════════════════════════════ */
+.bullet-list {
+  list-style: none;
+  padding: 0 100px;
+}
+.bullet-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 24px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  color: #374151;
+}
+.bullet-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex-shrink: 0;
+  margin-top: 10px;
+}
+.bullet-dot.dot-blue { background: var(--blue); }
+
+/* ═══════════════════════════════════════════════════
+   STATS SLIDE
+   ═══════════════════════════════════════════════════ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 28px;
+  padding: 0 80px;
+  align-content: center;
+}
+.stat-card {
+  background: var(--light-bg);
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 40px 24px 36px;
+  text-align: center;
+  position: relative;
+}
+.stat-value {
+  font-size: 44px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+.stat-label {
+  font-size: 14px;
+  color: var(--gray);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stat-trend {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 20px;
+  font-weight: 700;
+}
+.trend-up { color: var(--green); }
+.trend-down { color: var(--red); }
+.trend-neutral { color: var(--gray); }
+.stat-value.trend-up { color: var(--green); }
+.stat-value.trend-down { color: var(--red); }
+.stat-value.trend-neutral { color: var(--dark); }
+
+/* ═══════════════════════════════════════════════════
+   FIGURE SLIDE
+   ═══════════════════════════════════════════════════ */
+.slide-figure .slide-main {
+  justify-content: center;
+  align-items: center;
+}
+.figure-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 60px;
+  flex: 1;
+  max-height: 520px;
+}
+.figure-img {
+  max-width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+.figure-placeholder {
+  width: 500px; height: 340px;
+  background: var(--light-bg);
+  border: 2px dashed #D1D5DB;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray);
+  font-size: 18px;
+}
+.figure-caption {
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray);
+  font-style: italic;
+  padding: 8px 80px 0;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════
+   TWO-COLUMN SLIDE
+   ═══════════════════════════════════════════════════ */
+.columns-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  padding: 0 60px;
+  align-content: center;
+}
+.column {
+  border-radius: 12px;
+  padding: 28px 20px;
+  background: rgba(248, 250, 252, 0.6);
+}
+.column-left { border-left: 4px solid var(--teal); }
+.column-right { border-left: 4px solid var(--blue); }
+.column .bullet-list { padding: 0 16px; }
+.column .bullet-list li { font-size: 21px; margin-bottom: 20px; }
+
+/* ═══════════════════════════════════════════════════
+   CONCLUSION SLIDE
+   ═══════════════════════════════════════════════════ */
+.conclusion-box {
+  margin: 0 80px;
+  background: linear-gradient(135deg, rgba(17,153,147,0.08), rgba(32,114,178,0.08));
+  border: 1px solid rgba(17,153,147,0.25);
+  border-radius: 20px;
+  padding: 40px 32px;
+}
+.conclusion-box .bullet-list { padding: 0 24px; }
+
+/* ═══════════════════════════════════════════════════
+   CLOSING SLIDE
+   ═══════════════════════════════════════════════════ */
+.slide-closing {
+  background: var(--dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.closing-content {
+  text-align: center;
+  z-index: 2;
+  position: relative;
+}
+.closing-title {
+  font-size: 60px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 28px;
+}
+.closing-subtitle {
+  font-size: 22px;
+  color: var(--gray);
+  margin-bottom: 32px;
+}
+.closing-contact {
+  font-size: 16px;
+  color: var(--teal);
+  margin-bottom: 10px;
+}
+.closing-generated {
+  margin-top: 36px;
+  font-size: 13px;
+  color: rgba(107,114,128,0.5);
+}
+.closing-generated strong { color: var(--teal); }
+.slide-closing .slide-footer {
+  background: transparent;
+  border-top-color: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3);
+}
+
+/* ─── Print ─── */
+@media print {
+  .slide { page-break-after: always; }
+  body { margin: 0; }
+}
+</style>
+</head>
+<body>
+${slidePages.join('\n')}
+</body>
+</html>`;
+}
+
+// ─── 4. Render PDF with Puppeteer ────────────────────────────────────────────
+
+async function renderSlidePDF(html: string): Promise<Buffer> {
+  let browser;
   try {
-    // Create temp directory if doesn't exist
-    await fs.mkdir(tempDir, { recursive: true });
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    });
 
-    // Copy figures into temp dir so LaTeX can find them
-    if (figureUrls && figureUrls.length > 0) {
-      const figuresSourceDir = path.join(process.cwd(), 'dist', 'public', 'figures');
-      for (let i = 0; i < figureUrls.length; i++) {
-        const url = figureUrls[i]; // e.g. "/figures/fig-123-0.png"
-        const sourceFilename = url.replace('/figures/', '');
-        const sourcePath = path.join(figuresSourceDir, sourceFilename);
-        const destPath = path.join(tempDir, `figure-${i}.png`);
-        try {
-          await fs.copyFile(sourcePath, destPath);
-          console.log(`[BeamerSlides] Copied figure ${i}: ${sourceFilename}`);
-        } catch (err) {
-          console.warn(`[BeamerSlides] Could not copy figure ${sourceFilename}:`, (err as Error).message);
-        }
-      }
-    }
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 720 });
+    await page.setContent(html, { waitUntil: 'networkidle0' });
 
-    // Write .tex file
-    await fs.writeFile(texPath, texContent, 'utf-8');
-    console.log('[BeamerSlides] .tex file written:', texPath);
+    // Wait for fonts to load
+    await page.evaluateHandle('document.fonts.ready');
 
-    // ── Find pdflatex (MacTeX / TeX Live) ───────────────────────────────────
-    const texBinCandidates = [
-      '/Library/TeX/texbin',
-      '/usr/local/texlive/2025/bin/universal-darwin',
-      '/usr/local/texlive/2024/bin/universal-darwin',
-      '/usr/local/texlive/2025/bin/x86_64-darwin',
-      '/usr/local/texlive/2024/bin/x86_64-darwin',
-      '/usr/texbin',
-    ];
+    const pdfData = await page.pdf({
+      width: '1280px',
+      height: '720px',
+      margin: { top: '0', right: '0', bottom: '0', left: '0' },
+      printBackground: true,
+    });
 
-    const pdflatexPath = texBinCandidates
-      .map(dir => path.join(dir, 'pdflatex'))
-      .find(p => existsSync(p)) || 'pdflatex'; // fallback to PATH
+    await browser.close();
 
-    // Augment PATH so pdflatex can find its own sub-tools (kpsewhich, etc.)
-    const texBinDirs = texBinCandidates.filter(d => existsSync(d)).join(':');
-    const spawnEnv = {
-      ...process.env,
-      PATH: `${texBinDirs}:${process.env.PATH || '/usr/bin:/bin'}`,
-    };
-
-    console.log('[BeamerSlides] Using pdflatex:', pdflatexPath);
-
-    for (let i = 1; i <= 2; i++) {
-      console.log(`[BeamerSlides] Compiling pass ${i}/2...`);
-
-      await new Promise<void>((resolve, reject) => {
-        const process = spawn(pdflatexPath, [
-          '-interaction=nonstopmode',
-          '-output-directory=' + tempDir,
-          texPath
-        ], {
-          cwd: tempDir,
-          env: spawnEnv,
-        });
-
-        let stdout = '';
-        let stderr = '';
-
-        process.stdout.on('data', (data) => {
-          stdout += data.toString();
-        });
-
-        process.stderr.on('data', (data) => {
-          stderr += data.toString();
-        });
-
-        process.on('close', async (code) => {
-          // pdflatex peut retourner code 1 même si PDF généré (à cause de warnings)
-          // Donc on vérifie si le PDF existe au lieu de juste regarder le code de retour
-          try {
-            const stats = await fs.stat(pdfPath);
-            if (stats.size > 0) {
-              console.log(`[BeamerSlides] ✓ Pass ${i} completed (PDF exists, ${stats.size} bytes)`);
-              resolve();
-              return;
-            }
-          } catch {
-            // PDF doesn't exist
-          }
-
-          // If we get here, PDF wasn't generated
-          if (code !== 0) {
-            console.error('[BeamerSlides] pdflatex exit code:', code);
-            console.error('[BeamerSlides] pdflatex stderr:', stderr);
-            console.error('[BeamerSlides] pdflatex stdout (last 500 chars):', stdout.substring(Math.max(0, stdout.length - 500)));
-            reject(new Error(`pdflatex failed with code ${code}`));
-          } else {
-            resolve();
-          }
-        });
-
-        process.on('error', (error) => {
-          reject(new Error(`Failed to start pdflatex: ${error.message}`));
-        });
-      });
-    }
-
-    // Check if PDF was generated
-    try {
-      await fs.access(pdfPath);
-    } catch {
-      throw new Error('PDF file was not generated - compilation may have failed');
-    }
-
-    // Read the generated PDF
-    const pdfBuffer = await fs.readFile(pdfPath);
-    console.log('[BeamerSlides] ✓ PDF generated successfully:', pdfBuffer.length, 'bytes');
-
-    if (pdfBuffer.length === 0) {
-      throw new Error('PDF file is empty');
-    }
-
-    // Cleanup temp files (but keep for debugging if cleanup fails)
-    setTimeout(async () => {
-      try {
-        await fs.unlink(texPath);
-        await fs.unlink(path.join(tempDir, `${fileName}.aux`));
-        await fs.unlink(path.join(tempDir, `${fileName}.log`));
-        await fs.unlink(path.join(tempDir, `${fileName}.nav`));
-        await fs.unlink(path.join(tempDir, `${fileName}.out`));
-        await fs.unlink(path.join(tempDir, `${fileName}.snm`));
-        await fs.unlink(path.join(tempDir, `${fileName}.toc`));
-        console.log('[BeamerSlides] Temp files cleaned up');
-      } catch (cleanupError) {
-        console.warn('[BeamerSlides] Cleanup failed (files kept for debugging):', (cleanupError as Error).message);
-      }
-    }, 5000); // Cleanup after 5 seconds to ensure PDF is sent
-
-    // Keep PDF for a bit longer in case of issues
-    setTimeout(async () => {
-      try {
-        await fs.unlink(pdfPath);
-        console.log('[BeamerSlides] PDF temp file deleted');
-      } catch {
-        console.warn('[BeamerSlides] PDF cleanup failed');
-      }
-    }, 30000); // Delete PDF after 30 seconds
-
+    const pdfBuffer = Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData);
+    console.log('[Slides] ✓ PDF rendered:', pdfBuffer.length, 'bytes');
     return pdfBuffer;
 
   } catch (error) {
-    console.error('[BeamerSlides] Compilation error:', error);
-    console.error('[BeamerSlides] Error details:', (error as Error).message);
-
-    // Try to read log file for more info
-    try {
-      const logPath = path.join(tempDir, `${fileName}.log`);
-      const logContent = await fs.readFile(logPath, 'utf-8');
-      const errorLines = logContent.split('\n').filter(line =>
-        line.includes('Error') || line.includes('!')
-      ).slice(0, 10);
-      if (errorLines.length > 0) {
-        console.error('[BeamerSlides] LaTeX errors from log:', errorLines.join('\n'));
-      }
-    } catch (logError) {
-      console.warn('[BeamerSlides] Could not read log file');
+    if (browser) {
+      await browser.close();
     }
-
-    throw error;
+    console.error('[Slides] PDF render error:', error);
+    throw new Error(`Failed to render slide PDF: ${(error as Error).message}`);
   }
 }
 
-/**
- * Main function: Convert analysis to Beamer PDF
- */
+// ─── 5. Main export — same signature as before ───────────────────────────────
+
 export async function convertToBeamerPDF(options: BeamerOptions): Promise<Buffer> {
-  console.log('[BeamerSlides] Starting Beamer PDF generation...');
+  console.log('[Slides] Starting HTML/CSS slide generation...');
+  console.log('[Slides] figureUrls received:', options.figureUrls?.length || 0);
 
-  // Step 1: Generate LaTeX content with Claude
-  const latexContent = await generateBeamerStructure(options);
+  // Step 1: Load figures as base64
+  const figureDataURIs = loadFiguresAsBase64(options.figureUrls);
+  const availableCount = figureDataURIs.filter(Boolean).length;
+  console.log('[Slides] Figures loaded:', availableCount, '/', (options.figureUrls?.length || 0));
 
-  // Step 2: Create complete .tex document
-  const fullDocument = createBeamerDocument(latexContent, options);
+  // Step 2: Generate slide structure with Claude (pass actual available count)
+  const structure = await generateSlideStructure(options, availableCount);
 
-  // Step 3: Compile to PDF (with figures if available)
-  const pdfBuffer = await compileToPDF(fullDocument, Date.now().toString(), options.figureUrls);
+  // Step 3: Render HTML
+  const html = renderSlideHTML(structure, figureDataURIs, options.author, options.company || 'VQuant');
+  console.log('[Slides] HTML rendered:', html.length, 'chars');
 
-  console.log('[BeamerSlides] ✓ Complete! PDF ready:', pdfBuffer.length, 'bytes');
+  // Step 4: Convert to PDF with Puppeteer
+  const pdfBuffer = await renderSlidePDF(html);
+
+  console.log('[Slides] ✓ Complete! PDF ready:', pdfBuffer.length, 'bytes');
   return pdfBuffer;
 }

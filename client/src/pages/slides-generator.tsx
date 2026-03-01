@@ -111,7 +111,7 @@ export default function SlidesGenerator() {
 
       toast({
         title: "Présentation générée!",
-        description: "Votre présentation Beamer PDF a été téléchargée avec succès!",
+        description: "Votre présentation PDF a été téléchargée avec succès!",
       });
 
       // Mark as generated for UI update
@@ -218,13 +218,13 @@ export default function SlidesGenerator() {
                 <p className="text-sm text-muted-foreground">
                   <strong className="text-foreground">🎯 Comment ça marche :</strong>
                   <br />
-                  1. Claude Sonnet 4.5 analyse votre contenu et extrait les points clés
+                  1. Claude Opus 4.6 analyse votre contenu et extrait les points clés
                   <br />
                   2. Il structure l'analyse en slides professionnelles
                   <br />
-                  3. LaTeX Beamer compile le tout en PDF de haute qualité
+                  3. HTML/CSS moderne + Puppeteer génèrent un PDF de haute qualité
                   <br />
-                  4. Le PDF est téléchargé automatiquement (30-90 secondes)
+                  4. Le PDF est téléchargé automatiquement (10-30 secondes)
                   <br />
                   <br />
                   <strong className="text-foreground">✨ Résultat :</strong> Présentation PDF de qualité académique/institutionnelle!
@@ -240,7 +240,7 @@ export default function SlidesGenerator() {
                 Présentation PDF Générée avec Succès!
               </CardTitle>
               <CardDescription>
-                Votre présentation Beamer PDF professionnelle a été téléchargée
+                Votre présentation PDF professionnelle a été téléchargée
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -262,7 +262,7 @@ export default function SlidesGenerator() {
                   <li>• Slides de contenu structurées</li>
                   <li>• Métriques clés mises en évidence</li>
                   <li>• Slide de conclusion</li>
-                  <li>• Design professionnel LaTeX Beamer</li>
+                  <li>• Design moderne CSS professionnel</li>
                 </ul>
               </div>
 
@@ -271,9 +271,9 @@ export default function SlidesGenerator() {
                   <strong className="text-foreground">🎯 Technologie utilisée :</strong>
                 </p>
                 <ul className="text-sm space-y-1 mt-2 ml-4">
-                  <li>• <strong>Claude Sonnet 4.5</strong> - Structure intelligente du contenu</li>
-                  <li>• <strong>LaTeX Beamer</strong> - Rendu professionnel de qualité académique</li>
-                  <li>• <strong>Theme Madrid</strong> - Design moderne et épuré</li>
+                  <li>• <strong>Claude Opus 4.6</strong> - Structure intelligente du contenu</li>
+                  <li>• <strong>HTML/CSS Slides</strong> - Rendu moderne 16:9</li>
+                  <li>• <strong>Modern CSS Design</strong> - Branding VQuant teal/blue/purple</li>
                 </ul>
               </div>
 

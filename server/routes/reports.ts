@@ -236,7 +236,7 @@ export function registerReportRoutes(app: Express) {
         return res.status(400).json({ error: "Question, answer, and author are required" });
       }
 
-      logger.info(`Generating Beamer PDF slides for: "${question.substring(0, 50)}..."`);
+      logger.info(`Generating HTML/CSS PDF slides for: "${question.substring(0, 50)}..."`);
 
       const pdfBuffer = await convertToBeamerPDF({
         question,
