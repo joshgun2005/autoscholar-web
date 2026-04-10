@@ -1,0 +1,191 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 1 — SYSTEM OVERVIEW
+%% ══════════════════════════════════════════════════════════════
+\chapter{System Overview}
+\label{ch:overview}
+
+\section{Introduction}
+\label{sec:overview:intro}
+
+\autoscholar is an autonomous scientific research engine that generates publication-quality academic papers in quantitative finance, econometrics, statistics, machine learning, and artificial intelligence---entirely without human intervention.
+The system represents a fundamental departure from traditional AI-assisted writing tools: rather than augmenting a human researcher, \autoscholar \emph{replaces} the entire research pipeline, from literature review through data collection, statistical analysis, and manuscript preparation.
+
+At its core, the platform leverages \claude---Anthropic's flagship large language model with a one-million-token context window---as the cognitive backbone of a multi-agent architecture.
+Five specialized sub-agents, each named after a foundational figure in mathematics and science, collaborate through a carefully orchestrated pipeline to produce papers that target the quality standards of top-tier academic journals such as the \emph{Journal of Finance}, \emph{Journal of Financial Economics}, and the \emph{Review of Financial Studies}.
+
+The system operates continuously.
+On a configurable cadence (default: one paper per hour), \autoscholar autonomously selects a research topic from a bank of over 1,000 pre-constructed prompts spanning 24 research domains and 24 methodological approaches, executes the full research pipeline, validates the output through AI-powered peer review, and publishes the result to its self-hosted autonomous journal.
+Each paper receives a persistent identifier (the AutoScholar Identifier, or \gls{asid}), is stored with full \LaTeX{} source, BibTeX references, Python analysis scripts, and raw data---packaged as a reproducible research archive.
+
+\section{Motivation and Vision}
+\label{sec:overview:motivation}
+
+The academic research process is notoriously slow, expensive, and bottlenecked by human bandwidth.
+A typical empirical finance paper requires 6--18 months from conception to submission, involving literature review (weeks), data acquisition and cleaning (weeks to months), econometric modeling (months), writing (months), and revision cycles.
+\autoscholar compresses this timeline to approximately 45--90 minutes per paper by automating every stage.
+
+The vision is not to produce perfect papers---many generated papers will contain limitations that a human reviewer would flag---but to demonstrate that the \emph{entire pipeline} of empirical research can be automated end-to-end, creating a foundation for:
+
+\begin{enumerate}[label=(\roman*)]
+  \item \textbf{Rapid hypothesis exploration.} Researchers can use \autoscholar to quickly test whether a research direction is viable before investing months of manual effort.
+  \item \textbf{Reproducible research at scale.} Every paper is packaged with its complete computational pipeline, enabling verification and extension.
+  \item \textbf{Continuous scientific production.} The autonomous journal model demonstrates that research output can be ``always on,'' analogous to continuous integration in software engineering.
+  \item \textbf{Democratization of quantitative research.} By encoding expert-level econometric and statistical knowledge into the system prompt and tool definitions, \autoscholar makes sophisticated quantitative methods accessible to researchers without deep programming expertise.
+\end{enumerate}
+
+\section{Technology Stack}
+\label{sec:overview:stack}
+
+\autoscholar is a full-stack TypeScript/Python application with the following major technology choices:
+
+\begin{table}[H]
+\centering
+\caption{Core Technology Stack}
+\label{tab:tech-stack}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Layer} & \textbf{Technologies} \\
+\midrule
+AI Engine & Claude Opus 4.6 (1M context), Claude Haiku 4.5 (vision), OpenRouter (400+ models) \\
+Backend & Node.js, Express 4.21, TypeScript 5.6 \\
+Frontend & React 18.3, Vite 5, TailwindCSS 3, TanStack React Query, Framer Motion \\
+Database & SQLite (better-sqlite3) / PostgreSQL (Neon Serverless), Drizzle ORM \\
+Python Runtime & Python 3.x sandbox with NumPy, Pandas, SciPy, Statsmodels, Scikit-learn, XGBoost, LightGBM, ARCH, CVXPY, Matplotlib \\
+Document Engine & pdflatex, bibtex, 50+ \LaTeX{} packages; Puppeteer (HTML$\to$PDF); Pandoc (DOCX) \\
+Financial Data & FMP (230+ endpoints), EODHD, Financial Data API (real options) \\
+Macroeconomic Data & World Bank (16,000+ indicators), IMF (DataMapper + SDMX 3.0), OECD (1,475+ dataflows), FRED (840,000+ series) \\
+Academic Data & Semantic Scholar, OpenAlex, arXiv, CrossRef, Google Scholar (SerpAPI) \\
+Web Intelligence & Tavily (5 tools), Firecrawl (7 tools), Exa (2 tools), SerpAPI (11 verticals) \\
+Prediction Markets & Polymarket (Gamma, Data, CLOB APIs) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Scale and Metrics}
+\label{sec:overview:metrics}
+
+The codebase comprises approximately 40,000+ lines of source code across 155+ files, exposing 270+ HTTP API endpoints and 213 Claude-callable tool definitions.
+Key quantitative characteristics include:
+
+\begin{itemize}
+  \item \textbf{Tool definitions:} 213 tools across 7 categories (financial, academic, web, macro, Python, research paper, prediction markets), totaling $\sim$6,100 lines of JSON schema definitions.
+  \item \textbf{System prompt:} 1,798 lines defining the complete research pipeline, sub-agent protocols, data fallback chains, and academic writing standards.
+  \item \textbf{Prompt bank:} 1,000+ deterministically generated research prompts spanning 24 domains $\times$ 24 methods $\times$ 14 topics per domain.
+  \item \textbf{Python execution environment:} 17 pre-installed scientific computing libraries, 5 pre-loaded API clients, 4 embedded databases (SDC Platinum IPOs, US Housing via DuckDB), and 8 file export functions.
+  \item \textbf{Financial data coverage:} 230+ FMP endpoints, EODHD historical data to IPO date, real-time options with Greeks from Financial Data API, and 840,000+ FRED macroeconomic series.
+  \item \textbf{Tool execution depth:} Up to 180 recursive tool calls per auto-paper run (45 for interactive chat).
+\end{itemize}
+
+\section{Repository Structure}
+\label{sec:overview:repo}
+
+The repository follows a monorepo structure with clear separation between client, server, and shared code:
+
+\begin{figure}[H]
+\centering
+\begin{forest}
+  for tree={
+    font=\ttfamily\small,
+    grow'=0,
+    child anchor=west,
+    parent anchor=south,
+    anchor=west,
+    calign=first,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}]
+      (!u.south west) +(7.5pt,0) |- node[fill,inner sep=1.25pt] {} (.child anchor)\forestoption{edge label};
+    },
+    before typesetting nodes={
+      if n=1
+        {insert before={[,phantom]}}
+        {}
+    },
+    fit=band,
+    before computing xy={l=15pt},
+  }
+[autoscholar/
+  [client/
+    [src/
+      [components/ \textnormal{\textit{(chat, UI, streaming)}}]
+      [hooks/ \textnormal{\textit{(useChatSession, useChatMutation, useAnalytics)}}]
+      [pages/ \textnormal{\textit{(home, admin, showcase, shared-report, ...)}}]
+      [utils/ \textnormal{\textit{(pdfGenerator)}}]
+      [lib/ \textnormal{\textit{(queryClient)}}]
+    ]
+  ]
+  [server/
+    [routes/ \textnormal{\textit{(chat, admin, reports/, api/v1/)}}]
+    [services/
+      [claude/ \textnormal{\textit{(systemPrompt, streaming, tools/)}}]
+      [python/ \textnormal{\textit{(executor, GARCH, VaR, Monte Carlo, ...)}}]
+      [latex/ \textnormal{\textit{(compiler, generator, sanitizer, patch)}}]
+      [governor/ \textnormal{\textit{(engine, profiles, decision log)}}]
+      [fmp/ \textnormal{\textit{(client, company, quotes, ...)}}]
+      [pdf/ \textnormal{\textit{(Puppeteer, Pandoc, HTML export)}}]
+      [prompt-bank/ \textnormal{\textit{(domains, topics, index)}}]
+    ]
+    [storage/ \textnormal{\textit{(paper, message, session, analytics, admin, user)}}]
+  ]
+  [shared/
+    [schema.ts \textnormal{\textit{(PostgreSQL Drizzle schema)}}]
+    [schema-sqlite.ts \textnormal{\textit{(SQLite Drizzle schema)}}]
+    [types.ts \textnormal{\textit{(shared API types)}}]
+  ]
+  [downloads/ \textnormal{\textit{(generated CSV, XLSX, JSON, ZIP files)}}]
+  [logs/ \textnormal{\textit{(daily log files)}}]
+  [public/ \textnormal{\textit{(static assets, generated plots)}}]
+]
+\end{forest}
+\caption{Top-level repository structure of the \autoscholar codebase.}
+\label{fig:repo-structure}
+\end{figure}
+
+\section{Key Design Decisions}
+\label{sec:overview:design}
+
+Several architectural decisions shape the character of the system:
+
+\begin{description}[style=nextline]
+  \item[Monolithic streaming loop.] Rather than using a message-queue or actor framework, the entire research pipeline executes within a single HTTP streaming connection.
+  Claude issues tool calls, the server executes them synchronously, returns results, and Claude continues---all within one SSE stream that can run for 45--90 minutes.
+  This simplifies state management but creates challenges for resilience (addressed by the checkpoint system).
+
+  \item[Claude as the cognitive core.] All reasoning, planning, and writing is performed by \claude.
+  The sub-agents (\gauss, \turing, \newton, \fisher) are not separate model instances but \emph{conceptual roles} described in the system prompt.
+  Claude switches between these roles based on the stage of the pipeline.
+  The only exception is the \governor, which is a pure rule-based engine with zero LLM calls.
+
+  \item[TypeScript--Python bridge pattern.] Computationally intensive operations (GARCH estimation, portfolio optimization, Monte Carlo simulation, custom analysis) run in Python subprocesses spawned by TypeScript wrappers.
+  Each TypeScript module validates inputs, spawns the Python script, parses structured JSON output, and handles errors.
+  This pattern appears in 10+ service pairs across the codebase.
+
+  \item[Dual database support.] The system supports both SQLite (for development and self-hosted deployments) and PostgreSQL (for production via Neon Serverless).
+  Drizzle ORM provides a unified query interface, with separate schema definitions for each backend.
+
+  \item[Tool-rich agent paradigm.] With 213 tool definitions, \autoscholar takes the ``tool-rich'' approach to AI agents rather than the ``few-tools'' approach.
+  This gives Claude maximum flexibility but requires careful prompt engineering to guide tool selection and prevent misuse.
+\end{description}
+
+\section{Document Organization}
+\label{sec:overview:organization}
+
+The remainder of this document is organized as follows:
+
+\begin{description}
+  \item[\Cref{ch:architecture}] presents the complete system architecture, including component diagrams, dependency graphs, and the execution model.
+  \item[\Cref{ch:agents}] provides deep dives into each of the five sub-agents plus the \governor and \popper validator.
+  \item[\Cref{ch:pipeline}] reconstructs the full paper generation pipeline from trigger to publication.
+  \item[\Cref{ch:journal}] describes the autonomous journal system, including scheduling, quality control, and publication mechanics.
+  \item[\Cref{ch:data-layer}] details the data acquisition, storage, and management infrastructure.
+  \item[\Cref{ch:modeling}] examines the modeling and scientific computation layer.
+  \item[\Cref{ch:paper-engine}] explains the \LaTeX{} paper generation and compilation engine.
+  \item[\Cref{ch:memory}] covers the memory, state, and deduplication systems.
+  \item[\Cref{ch:failure}] analyzes failure handling, retry logic, and recovery mechanisms.
+  \item[\Cref{ch:performance}] discusses performance, scalability, and resource constraints.
+  \item[\Cref{ch:design-patterns}] identifies architectural patterns and design philosophy.
+  \item[\Cref{ch:weaknesses}] provides a critical evaluation of system weaknesses.
+  \item[\Cref{ch:improvements}] proposes improvements for the next generation.
+  \item[\Cref{ch:visualization}] contains system diagrams and pipeline visualizations.
+  \item[\Cref{ch:frontend}] documents the frontend architecture.
+  \item[\Cref{ch:api}] specifies the public REST API.
+\end{description}

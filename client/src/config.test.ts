@@ -3,11 +3,11 @@ import { APP_CONFIG } from "./config";
 
 describe("APP_CONFIG", () => {
   it("has correct app name", () => {
-    expect(APP_CONFIG.name).toBe("VQuant");
+    expect(APP_CONFIG.name).toBe("AutoScholar");
   });
 
   it("has correct domain", () => {
-    expect(APP_CONFIG.domain).toBe("www.vquant.ai");
+    expect(APP_CONFIG.domain).toBe("autoscholar.ai");
   });
 
   it("has required API endpoints", () => {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Sparkles, Search, ArrowLeft, Users, TrendingUp, Filter, MessageSquarePlus } from "lucide-react";
+import { GraduationCap, Search, ArrowLeft, Users, TrendingUp, Filter, MessageSquarePlus } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,7 @@ export default function Showcase() {
 
   // Complete tool metadata mapping for distinct badges
   const TOOL_METADATA: Record<string, { name: string; color: string }> = {
-    get_company_profile: { name: 'Company Profile', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+    get_company_profile: { name: 'Company Profile', color: 'bg-primary/10 text-primary border-primary/20' },
     get_income_statement: { name: 'Income Statement', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
     get_balance_sheet: { name: 'Balance Sheet', color: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
     get_cash_flow: { name: 'Cash Flow', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
@@ -80,7 +80,7 @@ export default function Showcase() {
     get_forex_historical: { name: 'Forex Historical', color: 'bg-teal-600/10 text-teal-700 dark:text-teal-300 border-teal-600/20' },
     get_commodity_quotes: { name: 'Commodity Prices', color: 'bg-amber-600/10 text-amber-700 dark:text-amber-300 border-amber-600/20' },
     get_treasury_rates: { name: 'Treasury Rates', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
-    get_economic_indicator: { name: 'Economic Indicator', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+    get_economic_indicator: { name: 'Economic Indicator', color: 'bg-primary/10 text-primary border-primary/20' },
     get_analyst_estimates: { name: 'Analyst Estimates', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
     get_earnings_surprises: { name: 'Earnings Surprises', color: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
     get_price_target: { name: 'Price Targets', color: 'bg-fuchsia-600/10 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-600/20' },
@@ -95,7 +95,7 @@ export default function Showcase() {
     search_companies: { name: 'Company Search', color: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20' },
     get_stock_peers: { name: 'Peer Companies', color: 'bg-sky-600/10 text-sky-700 dark:text-sky-300 border-sky-600/20' },
     get_etf_holdings: { name: 'ETF Holdings', color: 'bg-cyan-600/10 text-cyan-700 dark:text-cyan-300 border-cyan-600/20' },
-    get_etf_sector_weightings: { name: 'ETF Sectors', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+    get_etf_sector_weightings: { name: 'ETF Sectors', color: 'bg-primary/10 text-primary border-primary/20' },
     get_etf_country_weightings: { name: 'ETF Countries', color: 'bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 border-indigo-600/20' },
     get_crypto_quote: { name: 'Crypto Quote', color: 'bg-yellow-600/10 text-yellow-700 dark:text-yellow-300 border-yellow-600/20' },
     get_crypto_list: { name: 'Crypto List', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
@@ -147,12 +147,12 @@ export default function Showcase() {
               className="flex items-center gap-2.5"
             >
               <div className="relative">
-                <Sparkles className="w-5 h-5 text-primary" />
+                <GraduationCap className="w-5 h-5 text-primary" />
                 <div className="absolute inset-0 blur-md bg-primary/20" />
               </div>
               <div className="hidden md:flex items-baseline gap-1.5">
                 <span className="text-base font-bold text-foreground tracking-tight">
-                  VQuant
+                  AutoScholar
                 </span>
               </div>
             </button>
@@ -173,10 +173,10 @@ export default function Showcase() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-foreground tracking-tight">
-                Showcase Communautaire
+                Community Showcase
               </h1>
               <p className="text-muted-foreground text-sm mt-1">
-                Decouvrez toutes les analyses generees par la communaute VQuant
+                Explore research papers and analyses shared by the AutoScholar community
               </p>
             </div>
           </div>
@@ -186,7 +186,7 @@ export default function Showcase() {
             <div className="relative flex-1">
               <Input
                 type="text"
-                placeholder="Rechercher des analyses..."
+                placeholder="Search analyses..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-11 pr-4 h-11 border border-border focus:border-primary/40 bg-card text-sm rounded-xl transition-all duration-300 focus:shadow-[0_0_16px_hsl(var(--primary)/0.08)]"
@@ -201,7 +201,7 @@ export default function Showcase() {
                 className="gap-2 rounded-xl"
               >
                 <Filter className="w-4 h-4" />
-                Effacer filtre
+                Clear filter
               </Button>
             )}
           </div>
@@ -211,11 +211,11 @@ export default function Showcase() {
             <div className="flex items-center gap-5 text-xs text-muted-foreground">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border">
                 <TrendingUp className="w-3.5 h-3.5 text-primary" />
-                <span className="font-semibold">{reports.length} analyses publiques</span>
+                <span className="font-semibold">{reports.length} public analyses</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border">
                 <Users className="w-3.5 h-3.5 text-primary" />
-                <span className="font-semibold">{allTools.size} outils utilises</span>
+                <span className="font-semibold">{allTools.size} tools used</span>
               </div>
             </div>
           )}
@@ -225,7 +225,7 @@ export default function Showcase() {
         {isLoading && (
           <div className="text-center py-16">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
-            <p className="text-sm text-muted-foreground mt-4 font-medium">Chargement des analyses...</p>
+            <p className="text-sm text-muted-foreground mt-4 font-medium">Loading analyses...</p>
           </div>
         )}
 
@@ -288,7 +288,7 @@ export default function Showcase() {
                       e.stopPropagation();
                       try {
                         sessionStorage.setItem(
-                          'vquant_continue_from_share',
+                          'autoscholar_continue_from_share',
                           JSON.stringify({ question: report.question, answer: report.answer })
                         );
                       } catch { /* noop */ }
@@ -296,7 +296,7 @@ export default function Showcase() {
                     }}
                   >
                     <MessageSquarePlus className="w-3.5 h-3.5" />
-                    Continuer cette analyse
+                    Continue this analysis
                   </Button>
                 </CardContent>
               </Card>
@@ -311,11 +311,11 @@ export default function Showcase() {
               <div className="p-4 rounded-2xl bg-muted/50 w-fit mx-auto mb-4">
                 <Search className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-bold mb-2 tracking-tight">Aucune analyse trouvee</h3>
+              <h3 className="text-lg font-bold mb-2 tracking-tight">No analyses found</h3>
               <p className="text-sm text-muted-foreground mb-5">
                 {searchQuery || toolFilter
-                  ? "Essayez de modifier vos criteres de recherche"
-                  : "Aucune analyse n'a ete partagee pour le moment"}
+                  ? "Try adjusting your search criteria"
+                  : "No analyses have been shared yet"}
               </p>
               {(searchQuery || toolFilter) && (
                 <Button
@@ -326,7 +326,7 @@ export default function Showcase() {
                     setToolFilter(null);
                   }}
                 >
-                  Reinitialiser les filtres
+                  Reset filters
                 </Button>
               )}
             </CardContent>

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import {
-  TrendingUp, LineChart, DollarSign, PieChart, Sparkles,
-  BarChart3, Activity, TrendingDown, Calculator, Target,
-  Building2, Newspaper, Users, Globe, Coins, Gauge
+  GraduationCap,
+  ChevronRight, Wand2,
 } from "lucide-react";
 import {
   Select,
@@ -12,167 +11,56 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AnimatePresence, motion } from "framer-motion";
+import { QUESTION_CATEGORIES } from "./question-categories";
 
 interface EmptyStateProps {
   onQuestionClick?: (question: string) => void;
 }
 
-const QUESTION_CATEGORIES = [
-  {
-    category: "Analyse Fondamentale",
-    icon: Building2,
-    questions: [
-      "Analyse complète d'Apple (AAPL)",
-      "Profil et métriques clés de Microsoft (MSFT)",
-      "Bilan financier et ratios de Tesla",
-      "États financiers complets de Google (GOOGL)",
-      "Croissance des revenus d'Amazon sur 5 ans",
-      "Flux de trésorerie de Meta (META)",
-      "Santé financière et ratios clés de Netflix",
-    ]
-  },
-  {
-    category: "Analyse Technique",
-    icon: Activity,
-    questions: [
-      "Indicateurs techniques RSI et MACD pour Tesla",
-      "Moyennes mobiles EMA et SMA pour AAPL",
-      "Analyse ADX et tendance de NVIDIA",
-      "Stochastique et Williams %R pour AMD",
-      "Tous les indicateurs techniques pour SPY",
-      "Analyse technique complète de Bitcoin",
-      "Points d'entrée et sortie pour Amazon",
-    ]
-  },
-  {
-    category: "Performance et Historique",
-    icon: LineChart,
-    questions: [
-      "Performance de Tesla sur l'année",
-      "Historique des prix Apple sur 5 ans",
-      "Comparaison AAPL vs MSFT sur 2 ans",
-      "Performance du S&P 500 ce trimestre",
-      "Évolution du NASDAQ depuis janvier",
-      "Historique intraday de NVDA aujourd'hui",
-      "Performance des FAANG cette année",
-    ]
-  },
-  {
-    category: "Dividendes et Actions Corporate",
-    icon: DollarSign,
-    questions: [
-      "Historique des dividendes Microsoft",
-      "Rendement des dividendes de Coca-Cola",
-      "Splits d'actions d'Apple historique",
-      "Rachats d'actions et dividendes de JPMorgan",
-      "Entreprises avec les meilleurs dividendes en technologie",
-      "Calendrier des dividendes pour ce mois",
-    ]
-  },
-  {
-    category: "Résultats et Estimations",
-    icon: Target,
-    questions: [
-      "Prochains résultats trimestriels d'Apple",
-      "Surprises de résultats pour Tesla Q3",
-      "Estimations des analystes pour NVIDIA",
-      "Calendrier des résultats cette semaine",
-      "Objectifs de prix des analystes pour Meta",
-      "Révisions à la hausse ou baisse pour Amazon",
-    ]
-  },
-  {
-    category: "Actualités et Événements",
-    icon: Newspaper,
-    questions: [
-      "Dernières nouvelles sur Tesla",
-      "Communiqués de presse Apple cette semaine",
-      "Actualités économiques du jour",
-      "Calendrier économique de la semaine",
-      "Prochaines IPO à surveiller",
-      "Événements importants en finance cette semaine",
-    ]
-  },
-  {
-    category: "Trading d'Initiés et Institutionnel",
-    icon: Users,
-    questions: [
-      "Trading d'initiés récent pour Apple",
-      "Achats d'actions par les dirigeants de Tesla",
-      "Trading des membres du Congrès ce mois",
-      "Positions institutionnelles dans NVIDIA",
-      "Changements de participations dans Meta",
-    ]
-  },
-  {
-    category: "Marchés Globaux",
-    icon: Globe,
-    questions: [
-      "Taux de change EUR/USD aujourd'hui",
-      "Prix des commodités or et pétrole",
-      "Taux du Trésor américain actuels",
-      "Performance des indices mondiaux",
-      "Analyse du marché Forex majeurs",
-      "COT Report pour le pétrole",
-    ]
-  },
-  {
-    category: "Gestion de Portefeuille",
-    icon: PieChart,
-    questions: [
-      "Optimiser portefeuille AAPL, MSFT, GOOGL",
-      "Allocation optimale pour tech stocks",
-      "Diversification avec 10 actions",
-      "Frontière efficiente pour mon portefeuille",
-      "Ratio risque/rendement optimal",
-    ]
-  },
-  {
-    category: "Analyse de Risque",
-    icon: TrendingDown,
-    questions: [
-      "Value at Risk (VaR) pour Tesla",
-      "Volatilité GARCH de Bitcoin",
-      "Métriques de risque pour mon portefeuille",
-      "Drawdown maximum de NVIDIA",
-      "Corrélations entre FAANG stocks",
-      "Beta et volatilité d'Amazon",
-    ]
-  },
-  {
-    category: "Simulations et Prévisions",
-    icon: BarChart3,
-    questions: [
-      "Simulation Monte Carlo NVDA $100k",
-      "Projection de croissance Apple 5 ans",
-      "Scénarios d'investissement Tesla",
-      "Simulation de portefeuille diversifié",
-      "Prévisions basées sur tendances historiques",
-    ]
-  },
-  {
-    category: "Options et Dérivés",
-    icon: Calculator,
-    questions: [
-      "Prix d'option call Apple strike 180",
-      "Stratégie d'options pour Tesla",
-      "Surface de volatilité implicite NVDA",
-      "Greeks pour options Microsoft",
-      "Valorisation Black-Scholes pour call",
-    ]
-  },
-  {
-    category: "Screener et Comparaisons",
-    icon: Gauge,
-    questions: [
-      "Meilleures actions tech par P/E ratio",
-      "Compagnies similaires à Apple",
-      "Screener: dividendes > 3% et P/E < 15",
-      "Top 10 actions momentum ce mois",
-      "Comparaison des géants tech FAANG",
-    ]
-  },
-];
+// ── Surprise paper: pick a random prompt from the 300 available ──────
+
+const SURPRISE_HISTORY_KEY = 'autoscholar_surprise_history';
+const MAX_HISTORY = 30;
+
+function getSurpriseHistory(): number[] {
+  try {
+    const raw = localStorage.getItem(SURPRISE_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveSurpriseHistory(history: number[]) {
+  try {
+    localStorage.setItem(SURPRISE_HISTORY_KEY, JSON.stringify(history.slice(-MAX_HISTORY)));
+  } catch { /* noop */ }
+}
+
+function pickRandomPrompt(): { category: string; prompt: string } {
+  // Flatten all prompts with their flat index
+  const allPrompts: { category: string; prompt: string; flatIdx: number }[] = [];
+  let idx = 0;
+  for (const cat of QUESTION_CATEGORIES) {
+    for (const q of cat.questions) {
+      allPrompts.push({ category: cat.category, prompt: q, flatIdx: idx++ });
+    }
+  }
+
+  // Weighted selection: avoid recently picked prompts
+  const history = getSurpriseHistory();
+  const recentSet = new Set(history);
+  // Prefer prompts not in recent history
+  const candidates = allPrompts.filter(p => !recentSet.has(p.flatIdx));
+  const pool = candidates.length > 0 ? candidates : allPrompts;
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  saveSurpriseHistory([...history, pick.flatIdx]);
+  return pick;
+}
+
+export function generateSurprisePrompt(): string {
+  const { prompt } = pickRandomPrompt();
+  return prompt;
+}
 
 export function EmptyState({ onQuestionClick }: EmptyStateProps) {
   const [selectedCategoryIndex, setSelectedCategoryIndex] = useState<number | null>(null);
@@ -186,41 +74,72 @@ export function EmptyState({ onQuestionClick }: EmptyStateProps) {
     ? QUESTION_CATEGORIES[selectedCategoryIndex]
     : null;
 
+  const totalPrompts = QUESTION_CATEGORIES.reduce((sum, c) => sum + c.questions.length, 0);
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 animate-fade-in">
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <Sparkles className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">
-            VQuant
-          </h1>
-        </div>
-        <p className="text-lg text-muted-foreground max-w-md">
-          Votre assistant d'analyse financière propulsé par l'IA
-        </p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-14 animate-fade-in">
+      {/* Hero section */}
+      <div className="text-center space-y-7">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="flex items-center justify-center gap-3 mb-4"
+        >
+          <div className="relative">
+            <GraduationCap className="w-11 h-11 text-primary/80" />
+            <div className="absolute inset-0 blur-xl bg-primary/15" />
+          </div>
+        </motion.div>
+        <motion.h1
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="text-4xl sm:text-5xl md:text-6xl font-display font-bold tracking-[-0.03em] text-foreground"
+        >
+          <span className="relative">
+            AutoScholar
+            <span className="absolute -bottom-2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+          </span>
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="text-[15px] sm:text-base text-muted-foreground/65 max-w-lg mx-auto leading-[1.7]"
+        >
+          Autonomous AI-powered platform for generating publication-grade academic research papers
+        </motion.p>
       </div>
 
-      <div className="w-full max-w-4xl space-y-6 px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="w-full max-w-4xl space-y-8 px-4"
+      >
         <div className="text-center">
-          <p className="text-sm text-muted-foreground mb-3">
-            Choisissez une catégorie pour découvrir des exemples de questions
+          <p className="text-[13px] text-muted-foreground/50 font-medium">
+            Select a research domain
           </p>
         </div>
 
         {/* Category dropdown */}
         <div>
           <Select onValueChange={handleCategoryChange}>
-            <SelectTrigger className="w-full h-12 text-base font-medium bg-card border border-border rounded-lg transition-colors hover:border-primary/40">
+            <SelectTrigger className="w-full h-13 text-[14px] font-medium bg-card border border-border/60 rounded-2xl transition-all duration-300 hover:border-border hover:shadow-sm focus:border-primary/30 focus:shadow-[0_0_20px_hsl(var(--primary)/0.05)]">
               <div className="flex items-center gap-3 px-1">
-                <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
-                <SelectValue placeholder="Sélectionnez une catégorie d'analyse..." />
+                <div className="p-1.5 rounded-lg bg-primary/6">
+                  <GraduationCap className="w-4 h-4 text-primary/70" />
+                </div>
+                <SelectValue placeholder="Select a research domain..." />
               </div>
             </SelectTrigger>
 
-            <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[450px] bg-card border border-border rounded-lg p-1">
-              <div className="px-3 py-2 mb-1 border-b border-border">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  {QUESTION_CATEGORIES.length} Catégories Disponibles
+            <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[450px] bg-card/98 backdrop-blur-xl border border-border/60 rounded-2xl p-2 shadow-xl">
+              <div className="px-4 py-3 mb-1.5 border-b border-border/30">
+                <p className="text-[10px] font-semibold text-muted-foreground/45 uppercase tracking-[0.15em]">
+                  {QUESTION_CATEGORIES.length} Domains — {totalPrompts} Research Prompts
                 </p>
               </div>
 
@@ -231,18 +150,18 @@ export function EmptyState({ onQuestionClick }: EmptyStateProps) {
                     <SelectItem
                       key={idx}
                       value={idx.toString()}
-                      className="cursor-pointer py-3 px-3 text-base rounded-md transition-colors"
+                      className="cursor-pointer py-3 px-4 text-[14px] rounded-xl transition-all duration-150"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-md bg-primary/10 border border-primary/20">
-                          <Icon className="w-4 h-4 text-primary" />
+                      <div className="flex items-center gap-3.5">
+                        <div className="p-1.5 rounded-lg bg-primary/6 border border-primary/10">
+                          <Icon className="w-4 h-4 text-primary/70" />
                         </div>
-                        <div className="flex flex-col flex-1">
-                          <span className="font-medium text-foreground">
+                        <div className="flex flex-col flex-1 gap-0.5">
+                          <span className="font-semibold text-foreground text-[13px]">
                             {category.category}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {category.questions.length} exemples
+                          <span className="text-[11px] text-muted-foreground/50">
+                            {category.questions.length} prompts
                           </span>
                         </div>
                       </div>
@@ -259,50 +178,82 @@ export function EmptyState({ onQuestionClick }: EmptyStateProps) {
           {selectedCategory && (
             <motion.div
               key={selectedCategoryIndex}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-4"
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="space-y-5"
             >
               {/* Category header */}
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-card border border-border">
+              <div className="flex items-center gap-3.5 p-5 rounded-2xl bg-card border border-border/50">
                 {(() => {
                   const Icon = selectedCategory.icon;
                   return (
-                    <div className="p-2 rounded-md bg-primary/10 border border-primary/20">
-                      <Icon className="w-5 h-5 text-primary" />
+                    <div className="p-2.5 rounded-xl bg-primary/6 border border-primary/10">
+                      <Icon className="w-[18px] h-[18px] text-primary/70" />
                     </div>
                   );
                 })()}
-                <h3 className="text-xl font-bold text-foreground">
+                <h3 className="text-base font-semibold text-foreground tracking-[-0.02em]">
                   {selectedCategory.category}
                 </h3>
               </div>
 
               {/* Questions grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 {selectedCategory.questions.map((question, qIdx) => (
-                  <button
+                  <motion.button
                     key={qIdx}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: qIdx * 0.03 }}
                     onClick={() => onQuestionClick?.(question)}
-                    className="group p-4 text-left rounded-lg bg-card border border-border hover:border-primary/40 transition-colors"
+                    className="group p-4.5 text-left rounded-2xl bg-card/80 border border-border/40 hover:border-border/70 hover:shadow-sm transition-all duration-250 hover:-translate-y-0.5"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-7 h-7 rounded-md bg-muted flex items-center justify-center font-medium text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-muted/50 flex items-center justify-center font-semibold text-[11px] text-muted-foreground/50 group-hover:bg-primary/8 group-hover:text-primary/70 transition-all duration-300">
                         {qIdx + 1}
                       </div>
-                      <p className="flex-1 text-sm font-medium leading-relaxed group-hover:text-foreground transition-colors">
+                      <p className="flex-1 text-[13px] font-medium leading-[1.6] text-foreground/75 group-hover:text-foreground transition-colors">
                         {question}
                       </p>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/0 group-hover:text-primary/50 transition-all duration-300 -translate-x-1 group-hover:translate-x-0 flex-shrink-0" />
                     </div>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+
+        {/* Surprise paper button */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="pt-6 border-t border-border/25"
+        >
+          <button
+            onClick={() => onQuestionClick?.(generateSurprisePrompt())}
+            className="group w-full p-6 rounded-2xl border border-border/40 bg-card/40 hover:bg-card/70 hover:border-border/70 hover:shadow-sm transition-all duration-300 hover:-translate-y-0.5"
+          >
+            <div className="flex items-center gap-5">
+              <div className="p-3 rounded-xl bg-primary/6 border border-primary/10 group-hover:bg-primary/10 transition-colors">
+                <Wand2 className="w-[18px] h-[18px] text-primary/70" />
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-semibold text-foreground text-[14px] tracking-[-0.01em]">
+                  Generate a surprise paper
+                </p>
+                <p className="text-[12px] text-muted-foreground/50 mt-1 leading-[1.6]">
+                  The agent selects an original topic, identifies a literature gap, conducts full econometric analysis, and produces a figure-rich paper
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground/15 group-hover:text-primary/50 transition-all duration-300 -translate-x-1 group-hover:translate-x-0 flex-shrink-0" />
+            </div>
+          </button>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

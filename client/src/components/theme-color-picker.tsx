@@ -9,12 +9,12 @@ import {
 import { useTheme, type ThemeColor } from "./theme-provider";
 
 const colorOptions: { value: ThemeColor; label: string; color: string }[] = [
-  { value: "blue", label: "Bleu", color: "hsl(210, 100%, 50%)" },
-  { value: "green", label: "Vert", color: "hsl(142, 76%, 45%)" },
-  { value: "purple", label: "Violet", color: "hsl(270, 90%, 60%)" },
-  { value: "red", label: "Rouge", color: "hsl(0, 84%, 60%)" },
-  { value: "orange", label: "Orange", color: "hsl(38, 92%, 60%)" },
-  { value: "cyan", label: "Cyan", color: "hsl(199, 89%, 55%)" },
+  { value: "blue", label: "Institutional Blue", color: "hsl(224, 50%, 38%)" },
+  { value: "green", label: "Oxford Green", color: "hsl(158, 64%, 28%)" },
+  { value: "purple", label: "Royal Purple", color: "hsl(268, 60%, 48%)" },
+  { value: "red", label: "Crimson", color: "hsl(0, 65%, 48%)" },
+  { value: "orange", label: "Copper", color: "hsl(25, 80%, 48%)" },
+  { value: "cyan", label: "Teal", color: "hsl(205, 82%, 36%)" },
 ];
 
 export function ThemeColorPicker() {
@@ -35,10 +35,10 @@ export function ThemeColorPicker() {
           variant="ghost"
           size="icon"
           data-testid="button-theme-color"
-          className="hover-elevate active-elevate-2 rounded-2xl hover:bg-primary/10 transition-all duration-300"
+          className="hover-elevate active-elevate-2 rounded-lg hover:bg-muted/50 transition-all duration-200"
         >
-          <Palette className="h-5 w-5" />
-          <span className="sr-only">Choisir la couleur du thème</span>
+          <Palette className="h-4 w-4 text-muted-foreground" />
+          <span className="sr-only">Choose theme color</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48" sideOffset={5}>
@@ -49,7 +49,7 @@ export function ThemeColorPicker() {
             className="flex items-center gap-3 cursor-pointer"
           >
             <div
-              className="w-5 h-5 rounded-full border-2 border-border"
+              className="w-4 h-4 rounded-full border border-border/50"
               style={{ backgroundColor: option.color }}
             />
             <span className="flex-1">{option.label}</span>

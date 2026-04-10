@@ -146,11 +146,28 @@ export function truncateToolResults(messages: any[], maxLength: number = 5000): 
   });
 }
 
-// Calculate cost based on token usage
-export function calculateCost(inputTokens: number, outputTokens: number): number {
-  const inputCostPer1M = 3.00;
-  const outputCostPer1M = 15.00;
-  const inputCost = (inputTokens / 1_000_000) * inputCostPer1M;
-  const outputCost = (outputTokens / 1_000_000) * outputCostPer1M;
+// ── Claude API pricing (per 1M tokens) — updated March 2026 ──
+// See https://docs.anthropic.com/en/docs/about-claude/models
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  'claude-opus-4-6':           { input: 5.00,  output: 25.00 },
+  'claude-sonnet-4-6':         { input: 3.00,  output: 15.00 },
+  'claude-haiku-4-5-20251001': { input: 1.00,  output: 5.00  },
+  'claude-haiku-4-5':          { input: 1.00,  output: 5.00  },
+  // Legacy
+  'claude-opus-4-20250514':    { input: 15.00, output: 75.00 },
+  'claude-sonnet-4-20250514':  { input: 3.00,  output: 15.00 },
+  'claude-3-haiku-20240307':   { input: 0.25,  output: 1.25  },
+};
+
+// Default pricing = Opus 4.6 (primary model in AutoScholar pipeline)
+const DEFAULT_PRICING = MODEL_PRICING['claude-opus-4-6'];
+
+/** Calculate cost in USD based on token usage and model. */
+export function calculateCost(inputTokens: number, outputTokens: number, model?: string): number {
+  const pricing = (model && MODEL_PRICING[model]) || DEFAULT_PRICING;
+  const inputCost = (inputTokens / 1_000_000) * pricing.input;
+  const outputCost = (outputTokens / 1_000_000) * pricing.output;
   return inputCost + outputCost;
 }
+
+export { MODEL_PRICING };

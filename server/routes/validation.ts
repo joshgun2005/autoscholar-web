@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const chatBodySchema = z.object({
-  query: z.string().min(1, "Query is required").max(10000),
+  query: z.string().min(1, "Query is required").max(1000000),
   history: z.array(z.object({
     question: z.string(),
     answer: z.string(),
@@ -9,6 +9,20 @@ export const chatBodySchema = z.object({
   sessionId: z.string().optional(),
   imageData: z.string().optional(),
   imageMimeType: z.string().optional(),
+  authorProfile: z.object({
+    name: z.string(),
+    university: z.string(),
+    department: z.string(),
+    email: z.string(),
+  }).optional(),
+  uploadedFiles: z.array(z.object({
+    originalName: z.string(),
+    storedName: z.string(),
+    filepath: z.string(),
+    size: z.number(),
+    ext: z.string(),
+  })).optional(),
+  restoreFromSessionId: z.string().optional(), // Checkpoint resume: restore figures from this prior session
 });
 
 export const shareBodySchema = z.object({
@@ -17,14 +31,6 @@ export const shareBodySchema = z.object({
   toolResults: z.unknown().optional(),
   sources: z.unknown().optional(),
   customPythonFigures: z.unknown().optional(),
-});
-
-export const registerBodySchema = z.object({
-  name: z.string().min(2, "Le nom doit contenir au moins 2 caracteres"),
-});
-
-export const loginBodySchema = z.object({
-  token: z.string().min(1, "Le token est requis"),
 });
 
 export const heartbeatBodySchema = z.object({

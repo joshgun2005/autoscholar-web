@@ -180,7 +180,7 @@ export function CustomPythonFigure({ figureBatches }: CustomPythonFigureGalleryP
                               </div>
                               <a
                                 href={figureSrc(figure)}
-                                download={`vibequant-figure-${figureId}.png`}
+                                download={`autoscholar-figure-${figureId}.png`}
                                 className="text-xs text-primary hover:underline flex items-center gap-1"
                                 onClick={(e) => e.stopPropagation()}
                               >

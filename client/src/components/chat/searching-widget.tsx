@@ -6,38 +6,36 @@ export function SearchingWidget() {
       initial={{ opacity: 0, scale: 0.92, y: 12 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.92, y: -12 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
-      className="flex flex-col items-center gap-5 px-10 py-7 rounded-2xl border border-border/60 bg-background/85 backdrop-blur-md shadow-xl"
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col items-center gap-6 px-14 py-10 rounded-xl glass-strong shadow-lg"
       data-testid="searching-widget"
     >
-      {/* VibeQuant text fill animation */}
+      {/* AutoScholar text fill animation */}
       <div className="relative select-none" style={{ lineHeight: 1 }}>
 
         {/* Ghost outline layer */}
         <span
-          className="block text-5xl font-black"
+          className="block text-5xl font-black tracking-wider"
           style={{
             color: "transparent",
-            WebkitTextStroke: "1px hsl(var(--primary) / 0.2)",
-            letterSpacing: "0.10em",
+            WebkitTextStroke: "1px hsl(var(--primary) / 0.15)",
           }}
         >
-          VibeQuant
+          AutoScholar
         </span>
 
-        {/* Animated fill layer — fills from bottom to top, drains back down */}
+        {/* Animated fill layer */}
         <motion.span
-          className="absolute inset-0 block text-5xl font-black"
+          className="absolute inset-0 block text-5xl font-black tracking-wider"
           style={{
             color: "hsl(var(--primary))",
-            letterSpacing: "0.10em",
           }}
           animate={{
             clipPath: [
-              "inset(100% 0 0% 0)",  // empty — surface at bottom
-              "inset(0%   0 0% 0)",  // full  — surface at top
-              "inset(0%   0 0% 0)",  // hold
-              "inset(100% 0 0% 0)",  // drain — surface back to bottom
+              "inset(100% 0 0% 0)",
+              "inset(0%   0 0% 0)",
+              "inset(0%   0 0% 0)",
+              "inset(100% 0 0% 0)",
             ],
           }}
           transition={{
@@ -47,24 +45,24 @@ export function SearchingWidget() {
             ease: [0.45, 0, 0.55, 1],
           }}
         >
-          VibeQuant
+          AutoScholar
         </motion.span>
       </div>
 
       {/* Subtle pulsing status line */}
       <motion.p
-        className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground"
+        className="text-[10px] font-semibold tracking-[0.35em] uppercase text-muted-foreground"
         animate={{ opacity: [0.3, 0.7, 0.3] }}
         transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
         data-testid="text-searching-subtitle"
       >
-        Analyzing markets
+        Analyzing sources
       </motion.p>
 
-      {/* Thin progress bar */}
-      <div className="relative w-32 h-px bg-border overflow-hidden rounded-full">
+      {/* Progress bar with glow */}
+      <div className="relative w-36 h-0.5 bg-border/60 overflow-hidden rounded-full">
         <motion.div
-          className="absolute inset-y-0 left-0 bg-primary/60 rounded-full"
+          className="absolute inset-y-0 left-0 bg-primary/50 rounded-full"
           animate={{ x: ["-100%", "200%"] }}
           transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
           style={{ width: "50%" }}

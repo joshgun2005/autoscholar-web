@@ -1,0 +1,354 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 6 — DATA & STORAGE ARCHITECTURE
+%% ══════════════════════════════════════════════════════════════
+\chapter{Data and Storage Architecture}
+\label{ch:data-layer}
+
+\section{Overview}
+\label{sec:data:overview}
+
+\autoscholar's data architecture spans three distinct layers: (1) \textbf{external data acquisition} from 15+ API providers, (2) \textbf{transient computational data} flowing through Python subprocesses, and (3) \textbf{persistent storage} in SQLite or PostgreSQL via Drizzle ORM.
+This chapter documents each layer in detail.
+
+\section{External Data Sources}
+\label{sec:data:external}
+
+\subsection{Financial Market Data}
+
+\subsubsection{Financial Modeling Prep (FMP)}
+
+The primary financial data provider, accessed via 230+ endpoints organized into 15 service modules (\file{server/services/fmp/}):
+
+\begin{longtable}{p{4cm}p{9cm}}
+\caption{FMP service modules and coverage.} \label{tab:fmp-modules} \\
+\toprule
+\textbf{Module} & \textbf{Coverage} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Module} & \textbf{Coverage} \\
+\midrule
+\endhead
+\file{company.ts} & Profiles, financials (income/balance/cash flow), TTM variants, as-reported, growth, scores, enterprise values, revenue segmentation \\
+\file{quotes.ts} & Real-time quotes, historical prices, intraday, aftermarket, batch quotes (stocks, ETFs, mutual funds, commodities, crypto, forex, indices), charts \\
+\file{earnings.ts} & Calendar, surprises, analyst estimates, price targets, upgrades/downgrades, transcripts, ratings \\
+\file{search.ts} & Symbol search, name search, exchange filtering, CIK/ISIN/CUSIP lookup \\
+\file{technical.ts} & RSI, MACD, EMA, SMA, ADX, Williams \%R, CCI, Stochastic, WMA, DEMA, TEMA, standard deviation \\
+\file{news.ts} & Stock news, crypto news, forex news, press releases, general financial news \\
+\file{insider.ts} & Insider trading, congressional trading (Senate + House) \\
+\file{sec.ts} & SEC filings (8-K, 10-K, 10-Q), by symbol/CIK/form type, RSS feeds \\
+\file{etf.ts} & ETF holdings, ETF asset exposure, mutual fund disclosures \\
+\file{economic.ts} & Treasury rates, economic calendar, economic indicators, market risk premium \\
+\file{esg.ts} & ESG scores, ESG ratings, ESG benchmarks, ESG disclosures \\
+\file{options.ts} & (placeholder for future FMP options) \\
+\file{cryptoForex.ts} & Crypto quotes and lists, forex pairs and historical data \\
+\file{bulk.ts} & Batch operations, index constituents (S\&P 500, NASDAQ, Dow Jones) \\
+\file{client.ts} & Base HTTP client with v3/v4/stable endpoints and 60s timeout \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{EODHD (End of Day Historical Data)}
+
+\file{eodhd\_service.ts} (289 lines) provides extended historical coverage:
+
+\begin{itemize}
+  \item \textbf{End-of-day prices:} US stocks back to IPO date, non-US from 2000. OHLCV with adjusted close.
+  \item \textbf{Intraday data:} 1-minute, 5-minute, 1-hour bars with pre/after-market data.
+  \item \textbf{Options chains:} US options for 6,000+ stocks with end-of-day Greeks ($\delta$, $\gamma$, $\theta$, $\nu$).
+  \item \textbf{Live quotes:} Real-time price data.
+\end{itemize}
+
+Key implementation details:
+\begin{itemize}
+  \item Auto-normalizes bare tickers to \texttt{.US} suffix format.
+  \item Accepts flexible date inputs (Unix timestamps, ISO strings, datetime objects).
+  \item Sanitizes null/NaN values in options data.
+\end{itemize}
+
+\subsubsection{Financial Data API (Real Options)}
+
+\file{financialDataService.ts} (295 lines) provides real-time options market data:
+
+\begin{itemize}
+  \item \textbf{Option chains:} All available contracts (calls and puts) with identifiers.
+  \item \textbf{Option prices:} Last price, bid/ask, volume, open interest, implied volatility, intrinsic/time value.
+  \item \textbf{Option Greeks:} Delta ($\delta$), Gamma ($\gamma$), Theta ($\theta$), Vega ($\nu$), Rho ($\rho$), plus implied volatility.
+\end{itemize}
+
+All functions validate the OCC identifier format: \texttt{SYMBOL+YYMMDD+C/P+Strike$\times$1000}.
+
+\subsection{Macroeconomic Data}
+
+\subsubsection{FRED (Federal Reserve Economic Data)}
+
+Accessed via the Python client \file{fred\_client.py} (135 lines) and JavaScript service:
+
+\begin{itemize}
+  \item 840,000+ macroeconomic time series.
+  \item Unit transformations (change, percent change, log).
+  \item Frequency aggregation (daily, weekly, monthly, quarterly, annual).
+  \item Series search with tag filtering and sort options.
+  \item Category navigation and release tracking.
+\end{itemize}
+
+\subsubsection{World Bank}
+
+\file{worldBankService.ts} (130 lines), no API key required:
+
+\begin{itemize}
+  \item 16,000+ development indicators across 200+ countries.
+  \item Metadata: countries with income/region filtering, topics, regions, income levels, data sources.
+  \item Client-side keyword search (WB API v2 lacks native search).
+  \item Data retrieval with date ranges, frequency, and source filtering.
+\end{itemize}
+
+\subsubsection{IMF (International Monetary Fund)}
+
+\file{imfService.ts} (93 lines), dual-interface:
+
+\begin{description}
+  \item[DataMapper API:] Simple access to WEO macroeconomic indicators (GDP growth, inflation, unemployment).
+  \item[SDMX 3.0 API:] Advanced multi-dimensional queries across CPI, IFS, BOP, and other datasets. CSV output.
+\end{description}
+
+\subsubsection{OECD}
+
+\file{oecdService.ts} (99 lines), no API key required:
+
+\begin{itemize}
+  \item 1,475+ SDMX dataflows covering economics, health, education, environment.
+  \item Dot-separated dimension filters with CSV-with-labels output.
+  \item Dimension structure and codelist discovery.
+  \item Client-side keyword search across all dataflows.
+\end{itemize}
+
+\subsection{Academic Data Sources}
+
+\file{academicSearchService.ts} (567 lines) provides a unified interface to 5 academic databases:
+
+\begin{table}[H]
+\centering
+\caption{Academic data sources.}
+\label{tab:academic-sources}
+\begin{tabularx}{\textwidth}{lXl}
+\toprule
+\textbf{Source} & \textbf{Capabilities} & \textbf{Auth} \\
+\midrule
+Semantic Scholar & AI-powered search, citation data, paper details, references & API key \\
+OpenAlex & 200M+ works, citation network traversal, institutional data & Free \\
+arXiv & Preprint search, PDF access, category filtering & Free \\
+CrossRef & DOI resolution, 130M+ records, reference expansion & Free \\
+Google Scholar & Full-text search via SerpAPI, citation counts, PDF links & SerpAPI key \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The \func{multiSourceAcademicSearch} function:
+\begin{enumerate}
+  \item Runs all 5 sources in parallel via \texttt{Promise.allSettled}.
+  \item Deduplicates by DOI/title similarity.
+  \item Ensures unique BibTeX cite keys (appending letters for collisions).
+  \item Sorts by citation count.
+  \item Returns combined results with a merged \texttt{bibtex\_block}.
+\end{enumerate}
+
+\subsection{Web Intelligence}
+
+Three web data providers offer complementary capabilities:
+
+\begin{description}
+  \item[Tavily] (\file{tavilyService.ts}, 367 lines) --- 5 endpoints: AI-enhanced search with topic filtering, URL content extraction with relevance ranking, graph-based crawling, site mapping, and autonomous research agent.
+
+  \item[Firecrawl] (\file{firecrawlService.ts}, 530 lines) --- 7 endpoints: single-page scraping (with PDF support), web search with auto-scraping, multi-page crawling (async with polling), AI-powered structured extraction, URL mapping, autonomous AI agent, and batch scraping.
+
+  \item[Exa] (\file{exaService.ts}, 149 lines) --- 2 endpoints: neural/keyword semantic search with domain and category filtering, and URL content extraction with AI summaries.
+\end{description}
+
+\subsection{Prediction Markets}
+
+\file{polymarketService.ts} (140 lines) provides read-only access to Polymarket via 3 public APIs:
+
+\begin{itemize}
+  \item \textbf{Gamma API:} Events, markets, search, tags.
+  \item \textbf{Data API:} Trades, leaderboard.
+  \item \textbf{CLOB API:} Order books, bid/ask prices, price history, spreads.
+\end{itemize}
+
+All endpoints are public with no authentication required.
+
+\section{Transient Computational Data}
+\label{sec:data:transient}
+
+\subsection{Python Execution Environment}
+
+The Python sandbox (\file{customPythonExecutor.py}, 1,774 lines) provides a rich data environment:
+
+\subsubsection{Pre-Loaded API Clients}
+
+\begin{table}[H]
+\centering
+\caption{Pre-loaded Python API clients.}
+\label{tab:python-clients}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Variable} & \textbf{Client} & \textbf{Capabilities} \\
+\midrule
+\texttt{fmp} & \texttt{FMPClient} & Quotes, historical prices, financials, technical indicators \\
+\texttt{fred} & \texttt{FREDClient} & 840K+ series with unit transforms and frequency aggregation \\
+\texttt{eodhd} & \texttt{EODHDClient} & EOD/intraday prices, options chains with Greeks \\
+\texttt{wb/imf/oecd} & \texttt{WorldBankClient} etc. & Macro data (16K+ WB indicators, IMF WEO, OECD SDMX) \\
+\texttt{claude} & \texttt{ClaudeClient} & NLP tasks (summarize, sentiment, classify, extract entities) \\
+\texttt{openrouter} & \texttt{OpenRouterClient} & 400+ LLMs, 12+ embedding models, semantic analysis \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Embedded Databases}
+
+\begin{table}[H]
+\centering
+\caption{Embedded DuckDB databases available in Python.}
+\label{tab:embedded-dbs}
+\begin{tabularx}{\textwidth}{lrX}
+\toprule
+\textbf{Client} & \textbf{Records} & \textbf{Description} \\
+\midrule
+\texttt{sdc\_ipo} & 452K & SDC Platinum IPO data (via DuckDB) \\
+\texttt{housing} & 839K+ & Zillow US housing market data (via DuckDB) \\
+\texttt{hf\_data} & 7.7B & High-frequency tick records \\
+\texttt{options\_data} & 3.8B & Historical options data \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Data Flow Through Python}
+
+\begin{enumerate}
+  \item Claude writes Python code via the \texttt{execute\_custom\_python\_analysis} tool.
+  \item The TypeScript bridge (\file{customPython.ts}) applies automatic patches and spawns the Python subprocess.
+  \item Python code receives context via JSON stdin (API keys, session ID, previous outputs).
+  \item The code executes with access to all pre-loaded clients and databases.
+  \item Results are returned as structured JSON: figures (base64), files (paths), stdout text, and errors.
+  \item The ScriptManager saves the script for potential repair iterations.
+\end{enumerate}
+
+\subsection{Generated Data Files}
+
+The \file{downloads/} directory accumulates generated data files:
+
+\begin{itemize}
+  \item \textbf{CSV files:} Tabular data exports from FMP, FRED, and custom analysis.
+  \item \textbf{XLSX files:} Styled Excel workbooks with conditional formatting.
+  \item \textbf{JSON files:} Metadata sidecars and structured results.
+  \item \textbf{ZIP files:} Reproducible research project archives.
+  \item \textbf{PNG/PDF files:} Generated figures and charts.
+\end{itemize}
+
+Files are named with timestamp prefixes for uniqueness and served via the download endpoint.
+
+\section{Persistent Storage}
+\label{sec:data:persistent}
+
+\subsection{Database Schema}
+
+The database schema (\file{shared/schema-sqlite.ts}, 456 lines; \file{shared/schema.ts}, 357 lines) defines 20+ tables:
+
+\subsubsection{User and Authentication Tables}
+
+\begin{description}
+  \item[\texttt{users}] --- User accounts with username, email, hashed password, display name, institution, department, ORCID, API key, role, and token.
+  \item[\texttt{userProfiles}] --- Extended user profile information.
+  \item[\texttt{emailVerificationTokens}] --- Email verification token tracking.
+  \item[\texttt{passwordResetTokens}] --- Password reset token tracking.
+\end{description}
+
+\subsubsection{Content Tables}
+
+\begin{description}
+  \item[\texttt{messages}] --- Chat messages with session ID, role, content, serialized sources, and timestamps.
+  \item[\texttt{sharedReports}] --- Published research reports with share IDs, questions, answers, sources, tool results, and figures.
+  \item[\texttt{crawledPages}] --- Web page content for indexing.
+  \item[\texttt{embeddings}] --- Vector embeddings for semantic search (stored as JSON text in SQLite, native vector in PostgreSQL).
+\end{description}
+
+\subsubsection{Research Output Tables}
+
+\begin{description}
+  \item[\texttt{publishedPapers}] --- Published papers with title, abstract, domain, template, \LaTeX{} sections (JSON), BibTeX, figure/word/section/line counts, peer review score, project ZIP path, ASID, visibility, and timestamps.
+  \item[\texttt{peerReviews}] --- AI peer review results with scores, recommendation, strengths, weaknesses, detailed scores (JSON), section reviews (JSON), and full report text.
+  \item[\texttt{savedPrompts}] --- Public prompt library entries.
+\end{description}
+
+\subsubsection{Pipeline Management Tables}
+
+\begin{description}
+  \item[\texttt{paperRuns}] --- Pipeline run tracking with status, prompt, session ID, heartbeat, Popper score, governor state (serialized JSON), timestamps.
+  \item[\texttt{governorDecisions}] --- Individual governor decision records with run ID, stage, trigger, action, reasoning, confidence.
+  \item[\texttt{asidCounters}] --- Atomic counters for ASID generation, keyed by year.
+\end{description}
+
+\subsubsection{Analytics Tables}
+
+\begin{description}
+  \item[\texttt{conversationSessions}] --- Session metadata with user ID, session ID, title, message count, token usage, cost, and timestamps.
+  \item[\texttt{activeUsers}] --- Heartbeat-based active user tracking with 2-minute activity window.
+  \item[\texttt{analyticsMetrics}] --- Time-series platform metrics (requests, users, performance, tokens, errors).
+  \item[\texttt{requestLogs}] --- API request audit log with method, path, status, duration, user agent.
+\end{description}
+
+\subsubsection{Administrative Tables}
+
+\begin{description}
+  \item[\texttt{siteConfig}] --- Key-value configuration store with upsert semantics.
+  \item[\texttt{donations}] --- Crypto and fiat donation records.
+  \item[\texttt{apiKeys}] --- Public API keys with SHA-256 hashing, scopes, rate limits, usage tracking.
+\end{description}
+
+\subsection{Storage Layer Implementation}
+
+The storage layer is decomposed into 6 domain-specific modules that are composed into a single \texttt{IStorage} interface (70+ methods):
+
+\begin{description}
+  \item[\file{user-storage.ts}] (49 lines) --- CRUD with cascading session deletion.
+  \item[\file{message-storage.ts}] (64 lines) --- Messages and shared reports.
+  \item[\file{session-storage.ts}] (78 lines) --- Session lifecycle management.
+  \item[\file{paper-storage.ts}] (232 lines) --- Papers, pipeline runs, cost calculation ($5/\$25$ per MTok for Opus 4.6).
+  \item[\file{analytics-storage.ts}] (117 lines) --- Active users, metrics, request logs.
+  \item[\file{admin-storage.ts}] (167 lines) --- Governor state, reviews, donations, API keys, site config.
+\end{description}
+
+\subsection{Database Migrations}
+
+For SQLite, migrations are performed inline in \file{db.ts} (241 lines) via safe \texttt{ALTER TABLE} statements.
+Each migration:
+\begin{enumerate}
+  \item Checks if the column exists using \texttt{PRAGMA table\_info}.
+  \item Adds the column if missing.
+  \item Seeds default data where needed (e.g., initial donation records).
+\end{enumerate}
+
+For PostgreSQL, Drizzle's \texttt{db:push} command handles schema synchronization.
+
+\section{File System Usage}
+\label{sec:data:filesystem}
+
+\begin{description}
+  \item[\texttt{downloads/}] --- Generated files (CSV, XLSX, JSON, ZIP, PNG, PDF). Timestamped filenames for uniqueness.
+  \item[\texttt{public/plots/}] --- Generated matplotlib plots served as static assets. Timestamped PNG files with AutoScholar watermark.
+  \item[\texttt{logs/}] --- Daily log files (\texttt{vibesurf-YYYY-MM-DD.log}).
+  \item[\texttt{/tmp/}] --- Temporary directories for \LaTeX{} compilation, Python script storage, and ZIP extraction. Cleaned up after use.
+  \item[\texttt{local.db}] --- SQLite database file (with WAL journal).
+\end{description}
+
+\section{Data Lifecycle}
+\label{sec:data:lifecycle}
+
+\begin{enumerate}
+  \item \textbf{Acquisition:} External APIs $\to$ JSON responses $\to$ tool results in Claude context.
+  \item \textbf{Processing:} Python subprocesses load, clean, merge, and analyze data.
+  \item \textbf{Intermediate storage:} CSV/JSON files in \texttt{downloads/}, figures in \texttt{public/plots/}.
+  \item \textbf{Paper integration:} Data summaries embedded in \LaTeX{} sections, figures referenced.
+  \item \textbf{Packaging:} All artifacts bundled into the reproducible project ZIP.
+  \item \textbf{Publication:} Paper metadata and ZIP path stored in the database.
+  \item \textbf{Access:} Papers accessible via web UI, REST API, and repository browser.
+\end{enumerate}

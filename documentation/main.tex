@@ -1,0 +1,520 @@
+\documentclass[12pt,a4paper,twoside]{report}
+
+%% ──────────────────────────────────────────────────────────────
+%%  PACKAGES
+%% ──────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[english]{babel}
+
+% Page geometry
+\usepackage[margin=1in,headheight=15pt]{geometry}
+
+% Mathematics
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+
+% Graphics and figures
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage[dvipsnames,svgnames,x11names]{xcolor}
+
+% Tables
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{colortbl}
+
+% Code listings
+\usepackage{listings}
+
+% Headers and footers
+\usepackage{fancyhdr}
+
+% Typography enhancements
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{titletoc}
+
+% Algorithms
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+
+% Diagrams (TikZ-based)
+\usepackage{tikz}
+\usetikzlibrary{arrows,positioning,shapes.geometric,shapes.multipart,fit,calc,backgrounds,decorations.markings,shadows.blur}
+
+% Forest for directory trees
+\usepackage[edges]{forest}
+
+% Appendix
+\usepackage[toc,page]{appendix}
+
+% Glossary / Acronyms
+\usepackage[acronym,toc]{glossaries}
+\makeglossaries
+
+% Bibliography
+\usepackage[numbers,sort&compress]{natbib}
+
+% Multi-column
+\usepackage{multicol}
+
+% Boxes
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+
+% Miscellaneous
+\usepackage{xspace}
+\usepackage{pdfpages}
+\usepackage{rotating}
+\usepackage{pdflscape}
+\usepackage{afterpage}
+\usepackage{caption}
+\usepackage{etoolbox}
+\usepackage{fontawesome5}
+
+% Hyperlinks — MUST be last (before cleveref)
+\usepackage[colorlinks=true,
+            linkcolor=asteal,
+            citecolor=ForestGreen,
+            urlcolor=asteal!70!black,
+            bookmarks=true,
+            bookmarksnumbered=true]{hyperref}
+\usepackage[nameinlink,capitalise]{cleveref}
+
+%% ──────────────────────────────────────────────────────────────
+%%  COLOR PALETTE
+%% ──────────────────────────────────────────────────────────────
+\definecolor{asteal}{HTML}{119993}        % AutoScholar primary teal
+\definecolor{adark}{HTML}{0A6B68}         % Dark teal
+\definecolor{alight}{HTML}{E0F5F3}        % Light teal bg
+\definecolor{aorange}{HTML}{EF632B}       % AutoScholar orange accent
+\definecolor{apurple}{HTML}{652E89}       % AutoScholar purple accent
+\definecolor{ablue}{HTML}{2B9FD4}         % AutoScholar blue accent
+\definecolor{agold}{HTML}{FEC21D}         % AutoScholar gold accent
+\definecolor{agreen}{HTML}{6CBC5A}        % AutoScholar green accent
+\definecolor{achapbg}{HTML}{F0FAF9}       % Chapter heading background
+\definecolor{codebg}{HTML}{F6F8FA}
+\definecolor{codeframe}{HTML}{D0D7DE}
+\definecolor{codekw}{HTML}{0550AE}
+\definecolor{codecomment}{HTML}{6A737D}
+\definecolor{codestring}{HTML}{0A3069}
+\definecolor{rulegray}{HTML}{CBD5E1}
+
+%% ──────────────────────────────────────────────────────────────
+%%  GRADUATION CAP LOGO (TikZ)
+%% ──────────────────────────────────────────────────────────────
+\newcommand{\graduationcap}[1][1]{%
+\begin{tikzpicture}[scale=#1, every node/.style={transform shape}]
+  % Mortarboard top (diamond shape)
+  \fill[asteal] (0,0.6) -- (1.8,1.2) -- (0,1.8) -- (-1.8,1.2) -- cycle;
+  % Mortarboard dark side
+  \fill[adark] (0,0.6) -- (1.8,1.2) -- (1.8,1.05) -- (0,0.45) -- cycle;
+  \fill[adark] (0,0.6) -- (-1.8,1.2) -- (-1.8,1.05) -- (0,0.45) -- cycle;
+  % Base band
+  \fill[adark!80!black] (-1.2,0) -- (1.2,0) -- (1.5,0.5) -- (-1.5,0.5) -- cycle;
+  \fill[asteal!80!adark] (-1.5,0.5) -- (1.5,0.5) -- (1.8,1.05) -- (-1.8,1.05) -- cycle;
+  % Tassel string
+  \draw[agold, line width=1.5pt] (0.9,1.1) -- (1.6,0.3);
+  % Tassel
+  \fill[agold] (1.6,0.3) -- (1.45,0.0) -- (1.75,0.0) -- cycle;
+  \fill[agold] (1.55,-0.05) rectangle (1.65,0.32);
+  % Button on top
+  \fill[agold] (0,1.8) circle (0.08);
+\end{tikzpicture}%
+}
+
+%% ──────────────────────────────────────────────────────────────
+%%  STYLED CHAPTER HEADINGS
+%% ──────────────────────────────────────────────────────────────
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}
+  {}
+  {0pt}
+  {%
+    \begin{tikzpicture}[remember picture, overlay]
+      % Teal bar at the top of the chapter
+      \fill[asteal] ([yshift=-0.5cm]current page.north west) rectangle ([yshift=-2.8cm, xshift=\paperwidth]current page.north west);
+      % Chapter number circle
+      \node[circle, fill=white, text=asteal, minimum size=1.4cm, font=\fontsize{24}{28}\selectfont\bfseries, inner sep=0pt]
+        at ([yshift=-1.65cm, xshift=2cm]current page.north west) {\thechapter};
+      % Chapter title
+      \node[anchor=west, text=white, font=\huge\bfseries]
+        at ([yshift=-1.65cm, xshift=3.2cm]current page.north west) {##1};
+    \end{tikzpicture}%
+    \vspace{1.5cm}%
+  }
+\titlespacing*{\chapter}{0pt}{0pt}{30pt}
+
+% Section styling
+\titleformat{\section}
+  {\color{adark}\Large\bfseries}
+  {\color{asteal}\thesection}{0.8em}{}
+  [\vspace{-0.5em}{\color{asteal}\titlerule[1pt]}]
+
+\titleformat{\subsection}
+  {\color{adark}\large\bfseries}
+  {\color{asteal}\thesubsection}{0.7em}{}
+
+\titleformat{\subsubsection}
+  {\color{adark}\normalsize\bfseries}
+  {\color{asteal}\thesubsubsection}{0.6em}{}
+
+%% ──────────────────────────────────────────────────────────────
+%%  TOC STYLING
+%% ──────────────────────────────────────────────────────────────
+\titlecontents{chapter}[0em]
+  {\addvspace{1em}\bfseries\color{adark}}
+  {\color{asteal}\contentslabel{1.5em}}
+  {\hspace*{-1.5em}}
+  {\hfill\contentspage}
+
+\titlecontents{section}[2em]
+  {\addvspace{0.2em}}
+  {\color{asteal}\contentslabel{2.3em}}
+  {\hspace*{-2.3em}}
+  {\titlerule*[0.6em]{.}\contentspage}
+
+%% ──────────────────────────────────────────────────────────────
+%%  HEADER / FOOTER STYLE
+%% ──────────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\color{asteal}\small\bfseries\thepage\hspace{1em}{\color{rulegray}|}\hspace{1em}\color{gray}\leftmark}
+\fancyhead[RO]{\color{gray}\small\rightmark\hspace{1em}{\color{rulegray}|}\hspace{1em}\color{asteal}\bfseries\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\color{asteal!40}\rule{4cm}{0.4pt}\\[-4pt]\color{gray}\tiny AutoScholar Documentation v3.0.0}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyfoot[C]{\color{asteal}\bfseries\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+%% ──────────────────────────────────────────────────────────────
+%%  TCOLORBOX STYLES
+%% ──────────────────────────────────────────────────────────────
+\newtcolorbox{notebox}[1][]{%
+  enhanced, breakable,
+  colback=alight, colframe=asteal,
+  boxrule=0.5pt, arc=3pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries\color{asteal},
+  title=#1
+}
+
+\newtcolorbox{warnbox}[1][]{%
+  enhanced, breakable,
+  colback=aorange!8, colframe=aorange,
+  boxrule=0.5pt, arc=3pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries\color{aorange},
+  title=#1
+}
+
+%% ──────────────────────────────────────────────────────────────
+%%  CUSTOM COMMANDS
+%% ──────────────────────────────────────────────────────────────
+\newcommand{\autoscholar}{\textsc{AutoScholar}\xspace}
+\newcommand{\euler}{\textsc{Euler}\xspace}
+\newcommand{\gauss}{\textsc{Gauss}\xspace}
+\newcommand{\turing}{\textsc{Turing}\xspace}
+\newcommand{\newton}{\textsc{Newton}\xspace}
+\newcommand{\fisher}{\textsc{Fisher}\xspace}
+\newcommand{\popper}{\textsc{Popper}\xspace}
+\newcommand{\governor}{\textsc{Governor}\xspace}
+\newcommand{\claude}{Claude~Opus~4.6\xspace}
+\newcommand{\file}[1]{{\texttt{\color{adark}#1}}}
+\newcommand{\func}[1]{{\texttt{\color{apurple}#1()}}}
+\newcommand{\pkg}[1]{{\textsf{\color{ablue}#1}}}
+\newcommand{\api}[1]{\textsc{#1}}
+
+%% ──────────────────────────────────────────────────────────────
+%%  ACRONYMS
+%% ──────────────────────────────────────────────────────────────
+\newacronym{asid}{ASID}{AutoScholar Identifier}
+\newacronym{sse}{SSE}{Server-Sent Events}
+\newacronym{llm}{LLM}{Large Language Model}
+\newacronym{garch}{GARCH}{Generalized Autoregressive Conditional Heteroskedasticity}
+\newacronym{var}{VaR}{Value at Risk}
+\newacronym{fmp}{FMP}{Financial Modeling Prep}
+\newacronym{eodhd}{EODHD}{End of Day Historical Data}
+\newacronym{fred}{FRED}{Federal Reserve Economic Data}
+\newacronym{imf}{IMF}{International Monetary Fund}
+\newacronym{oecd}{OECD}{Organisation for Economic Co-operation and Development}
+\newacronym{swdes}{SWDES}{Structured Web Data Extraction System}
+\newacronym{orm}{ORM}{Object-Relational Mapping}
+\newacronym{spa}{SPA}{Single-Page Application}
+\newacronym{api}{API}{Application Programming Interface}
+\newacronym{pdf}{PDF}{Portable Document Format}
+\newacronym{rre}{RRE}{Reproducible Research Engine}
+\newacronym{jf}{JF}{Journal of Finance}
+
+%% ──────────────────────────────────────────────────────────────
+%%  LISTINGS STYLE
+%% ──────────────────────────────────────────────────────────────
+\lstdefinestyle{typescript}{
+  language=Java,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecomment}\itshape,
+  stringstyle=\color{codestring},
+  showstringspaces=false,
+  breaklines=true,
+  tabsize=2,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  morekeywords={async,await,const,let,interface,type,export,import,from,function,class,extends,implements,readonly,enum,namespace,module,declare,abstract,static,public,private,protected,override,satisfies}
+}
+
+\lstdefinestyle{python}{
+  language=Python,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecomment}\itshape,
+  stringstyle=\color{codestring},
+  showstringspaces=false,
+  breaklines=true,
+  tabsize=4,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+}
+
+%% ──────────────────────────────────────────────────────────────
+%%  TABLE STYLE — colored header rows
+%% ──────────────────────────────────────────────────────────────
+\newcommand{\tableheadercolor}{\rowcolor{asteal!12}}
+
+%% ──────────────────────────────────────────────────────────────
+%%  CAPTION STYLE
+%% ──────────────────────────────────────────────────────────────
+\captionsetup{
+  font={small},
+  labelfont={bf,color=asteal},
+  format=hang,
+  margin=1cm
+}
+
+%% ──────────────────────────────────────────────────────────────
+%%  ALGORITHM STYLE
+%% ──────────────────────────────────────────────────────────────
+\SetAlCapFnt{\small\bfseries\color{asteal}}
+\SetAlCapNameFnt{\small\bfseries}
+
+%% ──────────────────────────────────────────────────────────────
+%%  THEOREM ENVIRONMENTS
+%% ──────────────────────────────────────────────────────────────
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[chapter]
+\newtheorem{requirement}{Requirement}[chapter]
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[chapter]
+\newtheorem{observation}{Observation}[chapter]
+
+%% ══════════════════════════════════════════════════════════════
+%%  BEGIN DOCUMENT
+%% ══════════════════════════════════════════════════════════════
+\begin{document}
+
+%% ── CUSTOM TITLE PAGE ────────────────────────────────────────
+\begin{titlepage}
+\begin{tikzpicture}[remember picture, overlay]
+  % Full-page teal gradient background
+  \fill[top color=adark, bottom color=asteal]
+    (current page.south west) rectangle (current page.north east);
+
+  % Subtle grid pattern
+  \foreach \x in {-1,0,...,22} {
+    \draw[white, opacity=0.03, line width=0.3pt] (\x,-15) -- (\x,15);
+  }
+  \foreach \y in {-15,-14,...,15} {
+    \draw[white, opacity=0.03, line width=0.3pt] (-1,\y) -- (22,\y);
+  }
+
+  % Large decorative circle
+  \fill[white, opacity=0.04] (current page.center) circle (9cm);
+  \fill[white, opacity=0.04] (current page.center) circle (7cm);
+
+  % White content card
+  \node[
+    fill=white,
+    rounded corners=12pt,
+    minimum width=14cm,
+    minimum height=18cm,
+    blur shadow={shadow blur steps=15, shadow xshift=0pt, shadow yshift=-3pt, shadow blur extra rounding=5pt},
+  ] (card) at ([yshift=-0.5cm]current page.center) {};
+
+  % Graduation cap logo
+  \node at ([yshift=6.5cm]card.center) {\graduationcap[1.8]};
+
+  % Title text
+  \node[font=\fontsize{42}{48}\selectfont\bfseries, text=adark]
+    at ([yshift=3.5cm]card.center) {AutoScholar};
+
+  % Teal rule
+  \draw[asteal, line width=2pt] ([yshift=2.6cm, xshift=-4cm]card.center) -- ([yshift=2.6cm, xshift=4cm]card.center);
+
+  % Subtitle
+  \node[font=\Large\itshape, text=asteal]
+    at ([yshift=1.8cm]card.center) {The First Autonomous Scientific Research Engine};
+
+  % Description
+  \node[font=\large, text=gray!80!black, text width=11cm, align=center]
+    at ([yshift=0.2cm]card.center) {Full System Documentation\\[0.2cm]\&{} Engineering Specification};
+
+  % Version badge
+  \node[
+    fill=asteal, rounded corners=4pt,
+    font=\small\bfseries\color{white},
+    inner sep=5pt
+  ] at ([yshift=-1.3cm]card.center) {Version 3.0.0};
+
+  % Stats row
+  \node[font=\small, text=gray!70!black, text width=12cm, align=center]
+    at ([yshift=-3cm]card.center) {%
+      \textcolor{asteal}{\textbf{158 pages}}~~\textbullet~~%
+      \textcolor{asteal}{\textbf{17 chapters}}~~\textbullet~~%
+      \textcolor{asteal}{\textbf{3 appendices}}~~\textbullet~~%
+      \textcolor{asteal}{\textbf{6,600+ lines}}%
+    };
+
+  % Agent icons row
+  \node[font=\small, text=gray!60!black, text width=12cm, align=center]
+    at ([yshift=-4.2cm]card.center) {%
+      \textcolor{aorange}{\faRobot}~Euler~~%
+      \textcolor{ablue}{\faSearch}~Gauss~~%
+      \textcolor{asteal}{\faDatabase}~Turing~~%
+      \textcolor{agreen}{\faCogs}~Newton~~%
+      \textcolor{apurple}{\faChartBar}~Fisher~~%
+      \textcolor{aorange!70!red}{\faLock}~Governor~~%
+      \textcolor{apurple!70!blue}{\faBalanceScale}~Popper%
+    };
+
+  % Bottom info
+  \node[font=\normalsize, text=gray!70!black]
+    at ([yshift=-6cm]card.center) {\texttt{autoscholar.ai}};
+  \node[font=\small, text=gray!50!black]
+    at ([yshift=-6.8cm]card.center) {March 2026};
+
+  % Bottom teal accent bar
+  \fill[agold] ([yshift=0.3cm]current page.south west) rectangle ([yshift=0.6cm]current page.south east);
+  \fill[asteal] (current page.south west) rectangle ([yshift=0.3cm]current page.south east);
+\end{tikzpicture}
+\end{titlepage}
+
+%% ── Abstract ─────────────────────────────────────────────────
+\thispagestyle{empty}
+\vspace*{2cm}
+\begin{center}
+  {\color{asteal}\rule{3cm}{1pt}}\\[0.8cm]
+  {\LARGE\bfseries\color{adark} Abstract}\\[0.5cm]
+  {\color{asteal}\rule{3cm}{1pt}}
+\end{center}
+\vspace{0.5cm}
+
+\noindent
+\autoscholar is an autonomous scientific research platform that generates publication-quality academic papers in quantitative finance, econometrics, statistics, and machine learning without human intervention.
+Built on a multi-agent architecture orchestrated by \claude with a one-million-token context window, the system employs five specialized sub-agents---\euler (orchestration \& writing), \gauss (literature gap analysis), \turing (data collection), \newton (dataset preparation), and \fisher (empirical analysis)---supervised by a rule-based \governor that monitors pipeline health and intervenes on failures.
+
+The platform integrates over 200 Claude-callable tools spanning financial data (230+ FMP endpoints, EODHD, real options chains), macroeconomic data (World Bank, IMF, OECD, FRED), academic databases (Semantic Scholar, OpenAlex, arXiv, CrossRef), web intelligence (Tavily, Firecrawl, Exa), prediction markets (Polymarket), and a sandboxed Python execution environment with access to 17 scientific computing libraries.
+Papers are compiled to \LaTeX{} PDFs with iterative error repair, validated by an AI peer reviewer (\popper), assigned persistent identifiers (ASIDs), and published to an autonomous journal---all on a configurable one-hour cadence with checkpoint/resume crash recovery.
+
+This document provides a comprehensive 150+ page engineering specification covering the complete system architecture, all agent internals, the full paper generation pipeline, data and storage layers, the modeling and scientific computation engine, failure handling mechanisms, performance characteristics, design patterns, identified weaknesses, and proposed improvements for the next generation of the platform.
+
+\clearpage
+
+%% ── Table of Contents ────────────────────────────────────────
+{
+\hypersetup{linkcolor=adark}
+\tableofcontents
+}
+\clearpage
+
+%% ── List of Figures ──────────────────────────────────────────
+\listoffigures
+\clearpage
+
+%% ── List of Tables ───────────────────────────────────────────
+\listoftables
+\clearpage
+
+%% ── List of Algorithms ───────────────────────────────────────
+\listofalgorithms
+\clearpage
+
+%% ── Acronyms ─────────────────────────────────────────────────
+\printglossary[type=\acronymtype,title=List of Acronyms]
+\clearpage
+
+%% ══════════════════════════════════════════════════════════════
+%%  MAIN CHAPTERS
+%% ══════════════════════════════════════════════════════════════
+
+\input{sections/01-overview}
+
+\input{sections/02-architecture}
+
+\input{sections/03-agents}
+
+\input{sections/04-pipeline}
+
+\input{sections/05-journal}
+
+\input{sections/06-data-layer}
+
+\input{sections/07-modeling}
+
+\input{sections/08-paper-engine}
+
+\input{sections/09-memory}
+
+\input{sections/10-failure-handling}
+
+\input{sections/11-performance}
+
+\input{sections/12-design-patterns}
+
+\input{sections/13-weaknesses}
+
+\input{sections/14-improvements}
+
+\input{sections/15-visualization}
+
+\input{sections/16-frontend}
+
+\input{sections/17-api}
+
+%% ══════════════════════════════════════════════════════════════
+%%  APPENDICES
+%% ══════════════════════════════════════════════════════════════
+\begin{appendices}
+\input{sections/appendix-a-tool-catalog}
+\input{sections/appendix-b-prompt-bank}
+\input{sections/appendix-c-schema}
+\end{appendices}
+
+%% ══════════════════════════════════════════════════════════════
+%%  GLOSSARY & INDEX
+%% ══════════════════════════════════════════════════════════════
+\printglossary
+\clearpage
+
+%% ══════════════════════════════════════════════════════════════
+%%  BIBLIOGRAPHY (placeholder)
+%% ══════════════════════════════════════════════════════════════
+\bibliographystyle{plainnat}
+% \bibliography{references}  % Uncomment when references.bib is available
+
+\end{document}

@@ -1,0 +1,228 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 12 — DESIGN PATTERNS & HIDDEN LOGIC
+%% ══════════════════════════════════════════════════════════════
+\chapter{Design Patterns and Architecture Philosophy}
+\label{ch:design-patterns}
+
+\section{Overview}
+\label{sec:patterns:overview}
+
+\autoscholar's architecture emerges from a set of implicit design patterns and philosophical choices that are not always obvious from reading individual files.
+This chapter identifies and names these patterns, explains why they were chosen, and evaluates their effectiveness.
+
+\section{The Monolithic Streaming Loop}
+\label{sec:patterns:streaming-loop}
+
+\subsection{Pattern Description}
+
+The entire research pipeline---from literature review through peer review---executes within a single HTTP streaming connection.
+There is no message queue, no job scheduler (beyond the cadence timer), no actor framework.
+Control flows linearly through Claude's tool calls, with the tool executor dispatching to services and returning results.
+
+\subsection{Rationale}
+
+\begin{itemize}
+  \item \textbf{Simplicity:} A single connection eliminates distributed state management, message serialization, and coordination overhead.
+  \item \textbf{Context coherence:} All information accumulates in one Claude context window, enabling natural cross-referencing between pipeline stages.
+  \item \textbf{Debugging:} A single stream makes it easy to replay and debug the entire pipeline.
+\end{itemize}
+
+\subsection{Trade-offs}
+
+\begin{itemize}
+  \item \textbf{Fragility:} A single connection failure can lose 30+ minutes of work. (Mitigated by checkpoints.)
+  \item \textbf{No parallelism within a pipeline:} Stages execute sequentially; there's no concurrent data collection + analysis.
+  \item \textbf{Resource lock-in:} Each pipeline holds a Claude connection for the full duration.
+\end{itemize}
+
+\section{Prompt-Based Agent Architecture}
+\label{sec:patterns:prompt-agents}
+
+\subsection{Pattern Description}
+
+Rather than instantiating separate model instances for each agent, \autoscholar defines all agents as \emph{conceptual roles} within a single system prompt.
+Claude switches between Euler, Gauss, Turing, Newton, and Fisher based on the pipeline stage, guided by the system prompt's instructions.
+
+\subsection{Rationale}
+
+\begin{itemize}
+  \item \textbf{Context sharing:} All agents share the same context, eliminating inter-agent communication overhead.
+  \item \textbf{Coherence:} A single model maintains consistent reasoning throughout the pipeline.
+  \item \textbf{Efficiency:} No overhead for spawning separate model instances or transferring context between them.
+\end{itemize}
+
+\subsection{Trade-offs}
+
+\begin{itemize}
+  \item \textbf{No specialization:} All agents use the same model capabilities; there's no task-specific fine-tuning.
+  \item \textbf{System prompt bloat:} The 1,798-line system prompt is large and complex, consuming significant context.
+  \item \textbf{Implicit transitions:} Agent transitions are implicit, making it harder to enforce strict phase ordering.
+\end{itemize}
+
+\section{The TypeScript--Python Bridge}
+\label{sec:patterns:ts-py-bridge}
+
+\subsection{Pattern Description}
+
+Every Python computation follows a stereotyped pattern:
+\begin{enumerate}
+  \item TypeScript module defines types, validates input, generates displayable code.
+  \item TypeScript spawns Python subprocess via \texttt{child\_process.spawn}.
+  \item JSON input via stdin, JSON output via stdout.
+  \item TypeScript parses output and returns typed results.
+\end{enumerate}
+
+This pattern is replicated 10+ times across the codebase.
+
+\subsection{Rationale}
+
+\begin{itemize}
+  \item \textbf{Language strengths:} TypeScript for web/API handling, Python for scientific computing.
+  \item \textbf{Isolation:} Python crashes don't bring down the Node.js server.
+  \item \textbf{Security:} Python runs in a separate process with no direct access to server state.
+\end{itemize}
+
+\subsection{Trade-offs}
+
+\begin{itemize}
+  \item \textbf{Startup overhead:} Each Python invocation pays a 1--3s initialization cost.
+  \item \textbf{No state sharing:} Each invocation starts fresh; there's no shared in-memory state.
+  \item \textbf{Code duplication:} The bridge pattern has significant boilerplate.
+\end{itemize}
+
+\section{The Governor as a Pure Rule Engine}
+\label{sec:patterns:governor}
+
+\subsection{Pattern Description}
+
+The \governor is implemented as a pure rule-based system with zero LLM calls.
+It observes tool results, maintains typed state, and issues corrective actions based on predefined rules.
+This is a deliberate contrast to the rest of the system, which relies heavily on LLM reasoning.
+
+\subsection{Rationale}
+
+\begin{itemize}
+  \item \textbf{Determinism:} Rule-based decisions are predictable, testable, and debuggable.
+  \item \textbf{Performance:} No API latency or cost for governance decisions.
+  \item \textbf{Reliability:} The governor cannot hallucinate or produce inconsistent judgments.
+  \item \textbf{Separation of concerns:} Creative reasoning (Claude) is separated from operational governance (rules).
+\end{itemize}
+
+\subsection{Trade-offs}
+
+\begin{itemize}
+  \item \textbf{Limited intelligence:} Rules can only handle pre-anticipated failure modes.
+  \item \textbf{Brittle:} New error patterns require manual rule additions.
+  \item \textbf{No adaptation:} The governor cannot learn from experience.
+\end{itemize}
+
+\section{Tool-Rich Agent Paradigm}
+\label{sec:patterns:tool-rich}
+
+\subsection{Pattern Description}
+
+With 213 tool definitions totaling $\sim$6,100 lines of schema, \autoscholar takes a maximalist approach to tool availability.
+Claude has access to every financial, academic, web, macro, Python, and paper-generation tool at all times.
+
+\subsection{Rationale}
+
+\begin{itemize}
+  \item \textbf{Maximum flexibility:} Claude can select the most appropriate tool for any situation without routing logic.
+  \item \textbf{Self-service:} The system prompt provides tool documentation; Claude selects tools based on context.
+  \item \textbf{Comprehensive coverage:} 230+ FMP endpoints, 5 academic databases, 3 web providers, 3 macro providers.
+\end{itemize}
+
+\subsection{Trade-offs}
+
+\begin{itemize}
+  \item \textbf{Context consumption:} Tool definitions consume $\sim$30K tokens of the context window.
+  \item \textbf{Selection confusion:} Claude may choose suboptimal tools when many similar options exist.
+  \item \textbf{Maintenance burden:} Changes to any tool require updating both the definition and the executor.
+\end{itemize}
+
+\section{Barrel Re-Export Pattern}
+\label{sec:patterns:barrel}
+
+\subsection{Pattern Description}
+
+The codebase makes extensive use of barrel (index) files that re-export from subdirectory modules.
+Examples:
+\begin{itemize}
+  \item \file{server/storage.ts} $\to$ \file{storage/index.ts}
+  \item \file{server/services/claudeService.ts} $\to$ \file{claude/index.ts}
+  \item \file{server/services/python/index.ts} $\to$ 10 Python service modules
+  \item \file{server/services/claude/tools/index.ts} $\to$ 7 tool definition files
+\end{itemize}
+
+\subsection{Rationale}
+
+\begin{itemize}
+  \item Clean import paths for consumers.
+  \item Freedom to refactor internal module structure without changing import sites.
+  \item Single point of control for public API surface.
+\end{itemize}
+
+\section{Defensive Sanitization}
+\label{sec:patterns:sanitization}
+
+\subsection{Pattern Description}
+
+Multiple layers of content sanitization are applied throughout the pipeline:
+\begin{itemize}
+  \item \textbf{Python code:} Deprecated API patches, data fabrication detection, error auto-correction.
+  \item \textbf{LaTeX content:} Special character escaping, table auto-fitting, blank figure detection.
+  \item \textbf{Markdown rendering:} XML function call stripping, raw HTML tag removal, figure reference resolution.
+  \item \textbf{API responses:} Null/NaN sanitization, result size limiting, ticker normalization.
+\end{itemize}
+
+\subsection{Rationale}
+
+LLM outputs are inherently unpredictable.
+Every output channel (Python code, \LaTeX{}, markdown, JSON) requires defensive processing to handle the long tail of malformed outputs.
+
+\section{Implicit Convention Enforcement}
+\label{sec:patterns:conventions}
+
+\subsection{Pattern Description}
+
+Academic conventions are enforced through detailed natural-language instructions in the system prompt and style directives, rather than through code.
+For example:
+\begin{itemize}
+  \item The JF Writing Style Directive (282 lines) enforces prose quality through banned words, section conventions, and verification checklists.
+  \item The Academic Figure Style Directive (429 lines) enforces chart formatting through detailed matplotlib instructions.
+  \item The system prompt's 7-step pipeline enforces methodology through explicit ordering instructions.
+\end{itemize}
+
+\subsection{Rationale}
+
+Convention enforcement through prompting leverages the LLM's natural language understanding, which is more flexible and comprehensive than programmatic rules.
+A banned-word list in the prompt is more effective than regex-based filtering because the LLM understands context.
+
+\subsection{Trade-offs}
+
+\begin{itemize}
+  \item \textbf{Non-deterministic:} Prompt-based enforcement is probabilistic, not guaranteed.
+  \item \textbf{Unverifiable:} There's no automated check that all conventions are followed.
+  \item \textbf{Prompt bloat:} These directives consume significant context ($\sim$10K tokens combined).
+\end{itemize}
+
+\section{Design Philosophy Summary}
+\label{sec:patterns:philosophy}
+
+The overall design philosophy can be characterized as:
+
+\begin{quote}
+\textbf{Maximize LLM capability, minimize infrastructure complexity, and use deterministic systems only where reliability is critical.}
+\end{quote}
+
+This leads to a system where:
+\begin{enumerate}
+  \item Claude handles all creative and analytical work.
+  \item The \governor handles all reliability-critical decisions.
+  \item The tool executor handles all integration logic.
+  \item Python handles all computation.
+  \item The database handles all persistence.
+\end{enumerate}
+
+There are no message queues, no container orchestration, no distributed state stores, no microservice boundaries.
+The system is a monolith that leverages one very powerful LLM.

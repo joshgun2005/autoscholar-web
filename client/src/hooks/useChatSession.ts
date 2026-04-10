@@ -4,65 +4,21 @@ import { useChatMutation } from "./useChatMutation";
 import { useAnalytics } from "./useAnalytics";
 import type { SearchResult } from "@shared/types";
 import type { AgentStep } from "@/components/chat/agent-steps";
+import {
+  type SearchQuery,
+  type ToolResult,
+  type ConversationMessage,
+  type FigureBatch,
+  type PythonCodeEntry,
+} from "./chatSessionTypes";
+import { createSSEEventHandler } from "./sseEventHandlers";
 
-export interface SearchQuery {
-  query: string;
-  results?: SearchResult[];
-}
+// Re-export types so existing consumers keep working
+export type { SearchQuery, ToolResult, ConversationMessage, FigureBatch, PythonCodeEntry };
 
-export interface ToolResult {
-  tool: string;
-  result: unknown;
-}
-
-export interface ConversationMessage {
-  question: string;
-  answer: string;
-}
-
-export interface FigureBatch {
-  id: string;
-  figures: string[];
-  output?: string;
-  description?: string;
-}
-
-const FMP_TOOLS = [
-  'get_company_profile', 'get_income_statement', 'get_balance_sheet',
-  'get_cash_flow', 'get_key_metrics', 'get_financial_ratios',
-  'get_stock_quote', 'get_historical_price', 'search_companies',
-  'get_stock_peers', 'get_financial_news', 'get_rsi', 'get_macd',
-  'get_ema', 'get_sma', 'get_adx', 'get_williams_r', 'get_cci',
-  'get_stochastic', 'get_economic_calendar', 'get_earnings_calendar',
-  'get_insider_trading', 'get_forex_quote', 'get_commodity_quotes',
-  'get_treasury_rates', 'get_economic_indicator', 'get_earnings_surprises',
-  'get_analyst_estimates', 'get_cot_report', 'get_press_releases',
-  'get_dividend_history', 'get_stock_split_history', 'get_ipo_calendar',
-  'create_plot', 'estimate_garch_volatility', 'calculate_var',
-  'optimize_portfolio', 'analyze_risk_metrics', 'firecrawl_scrape',
-  'firecrawl_crawl',
-] as const;
-
-function resetChatState() {
-  return {
-    streamingAnswer: "",
-    sources: [] as SearchResult[],
-    searchQueries: [] as SearchQuery[],
-    toolResults: [] as ToolResult[],
-    agentSteps: [] as AgentStep[],
-    statusMessage: "",
-    currentSearchIndex: 0,
-    pythonCode: "",
-    monteCarloResults: null as unknown,
-    optionsPricingResults: null as unknown,
-    customPythonFigures: [] as FigureBatch[],
-    figureRegistry: new Map<string, string>(),
-    figureUrls: [] as string[],
-  };
-}
-
-const SESSION_STORAGE_KEY = 'vquant_active_session';
-const CONTINUE_FROM_SHARE_KEY = 'vquant_continue_from_share';
+const SESSION_STORAGE_KEY = 'autoscholar_active_session';
+const CONTINUE_FROM_SHARE_KEY = 'autoscholar_continue_from_share';
+const PENDING_PROMPT_KEY = 'autoscholar-pending-prompt';
 
 export function useChatSession() {
   const queryClient = useQueryClient();
@@ -92,6 +48,7 @@ export function useChatSession() {
   const [customPythonFigures, setCustomPythonFigures] = useState<FigureBatch[]>([]);
   const [figureRegistry, setFigureRegistry] = useState<Map<string, string>>(new Map());
   const [figureUrls, setFigureUrls] = useState<string[]>([]);
+  const [pythonCodeHistory, setPythonCodeHistory] = useState<PythonCodeEntry[]>([]);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // ─── Persist session ID ─────────────────────────────────
@@ -120,6 +77,25 @@ export function useChatSession() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ─── Load pending prompt + optional revision session ────────────
+  const pendingPromptRef = useRef<string | null>(null);
+  const revisionSessionRef = useRef<string | null>(null);
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem(PENDING_PROMPT_KEY);
+      if (pending) {
+        sessionStorage.removeItem(PENDING_PROMPT_KEY);
+        pendingPromptRef.current = pending;
+      }
+      // Check if we need to load a specific session first (peer review revision)
+      const revSession = sessionStorage.getItem('autoscholar-revision-session');
+      if (revSession) {
+        sessionStorage.removeItem('autoscholar-revision-session');
+        revisionSessionRef.current = revSession;
+      }
+    } catch { /* noop */ }
+  }, []);
+
   // ─── Auth ───────────────────────────────────────────────
   const { data: authData } = useQuery<{ user: { id: string; displayName: string } | null }>({
     queryKey: ['/api/auth/me'],
@@ -127,104 +103,24 @@ export function useChatSession() {
   const currentUser = authData?.user ?? null;
 
   // ─── SSE event handler ──────────────────────────────────
-  const chatMutation = useChatMutation((event) => {
-    switch (event.type) {
-      case 'text':
-        setStreamingAnswer(prev => prev + event.content);
-        break;
-      case 'retry':
-        // Server is retrying after ECONNRESET — discard partial text from failed attempt
-        if (event.discardLength > 0) {
-          setStreamingAnswer(prev => prev.substring(0, prev.length - event.discardLength));
-        }
-        break;
-      case 'sources':
-        setSources(event.sources);
-        break;
-      case 'done':
-        if (event.sessionId && !currentSessionId) {
-          setCurrentSessionId(event.sessionId);
-        }
-        break;
-      case 'status':
-        setStatusMessage(event.message);
-        break;
-      case 'search_queries':
-        setSearchQueries(event.queries.map((q: string) => ({ query: q })));
-        setStatusMessage(event.message);
-        break;
-      case 'search_progress':
-        setCurrentSearchIndex(event.index);
-        setStatusMessage(`Search ${event.index}/${event.total}: ${event.query}`);
-        break;
-      case 'search_result':
-        setSearchQueries(prev => {
-          const updated = [...prev];
-          if (updated[event.index - 1]) {
-            updated[event.index - 1].results = event.results;
-          }
-          return updated;
-        });
-        break;
-      case 'tool_start':
-        setAgentSteps(prev => [...prev, {
-          tool: event.tool,
-          status: 'running',
-          input: event.input,
-        }]);
-        break;
-      case 'tool_complete':
-        setAgentSteps(prev => prev.map(step =>
-          step.tool === event.tool && step.status === 'running'
-            ? { ...step, status: 'completed', duration: event.duration }
-            : step,
-        ));
-        break;
-      case 'tool_error':
-        setAgentSteps(prev => prev.map(step =>
-          step.tool === event.tool && step.status === 'running'
-            ? { ...step, status: 'error', error: event.error }
-            : step,
-        ));
-        break;
-      case 'python_code':
-        setPythonCode(event.code);
-        break;
-      case 'custom_python_figures': {
-        const figId = event.figureId || `fig-${Date.now()}`;
-        const isPlotTool = figId.startsWith('plot-');
-
-        if (!isPlotTool) {
-          setCustomPythonFigures(prev => [...prev, {
-            id: figId,
-            figures: event.figures || [],
-            output: event.output,
-            description: event.description,
-          }]);
-        }
-
-        const urls = event.figureUrls || event.figures || [];
-        if (urls.length > 0) {
-          setFigureRegistry(prev => {
-            const next = new Map(prev);
-            urls.forEach((url: string, idx: number) => next.set(`${figId}-${idx}`, url));
-            return next;
-          });
-          setFigureUrls(prev => [...prev, ...urls]);
-        }
-        break;
-      }
-      case 'tool_result':
-        if (event.tool === 'run_monte_carlo_simulation') {
-          setMonteCarloResults(event.result);
-        } else if (event.tool === 'calculate_options_price') {
-          setOptionsPricingResults(event.result);
-        } else if (FMP_TOOLS.includes(event.tool)) {
-          setToolResults(prev => [...prev, { tool: event.tool, result: event.result }]);
-        }
-        break;
-    }
-  });
+  const chatMutation = useChatMutation(createSSEEventHandler({
+    setStreamingAnswer,
+    setSources,
+    setSearchQueries,
+    setToolResults,
+    setAgentSteps,
+    setStatusMessage,
+    setCurrentSearchIndex,
+    setPythonCode,
+    setMonteCarloResults,
+    setOptionsPricingResults,
+    setCustomPythonFigures,
+    setFigureRegistry,
+    setFigureUrls,
+    setPythonCodeHistory,
+    currentSessionId,
+    setCurrentSessionId,
+  }));
 
   // ─── Analytics ──────────────────────────────────────────
   const analyticsStatus = chatMutation.isPending ? 'generating' : chatMutation.isError ? 'error' : 'idle';
@@ -248,6 +144,7 @@ export function useChatSession() {
     setCustomPythonFigures([]);
     setFigureRegistry(new Map());
     setFigureUrls([]);
+    setPythonCodeHistory([]);
   }, []);
 
   const handleSearch = useCallback((query: string, imageData?: string, imageMimeType?: string) => {
@@ -261,6 +158,13 @@ export function useChatSession() {
     setCurrentQuestion(query);
     clearResponseState();
 
+    // Read author profile from localStorage
+    let authorProfile: { name: string; university: string; department: string; email: string } | undefined;
+    try {
+      const raw = localStorage.getItem('autoscholar_author_profile');
+      if (raw) authorProfile = JSON.parse(raw);
+    } catch { /* noop */ }
+
     chatMutation.mutate({
       query,
       history: currentQuestion && streamingAnswer
@@ -269,8 +173,74 @@ export function useChatSession() {
       sessionId: currentSessionId || undefined,
       imageData,
       imageMimeType,
+      authorProfile,
     });
   }, [currentQuestion, streamingAnswer, conversationHistory, currentSessionId, clearResponseState, chatMutation]);
+
+  // ─── Stable ref to chatMutation so async callbacks always use latest ──
+  const chatMutationRef = useRef(chatMutation);
+  chatMutationRef.current = chatMutation;
+
+  // ─── Fire pending prompt (+ optional revision session load) ────────
+  const pendingFiredRef = useRef(false);
+  useEffect(() => {
+    if (pendingPromptRef.current && !pendingFiredRef.current) {
+      pendingFiredRef.current = true;
+      const prompt = pendingPromptRef.current;
+      const revSession = revisionSessionRef.current;
+      pendingPromptRef.current = null;
+      revisionSessionRef.current = null;
+
+      if (revSession) {
+        // Load the original conversation session, then fire revision prompt
+        (async () => {
+          let loadedSessionId: string | null = null;
+          let loadedHistory: ConversationMessage[] = [];
+          try {
+            const response = await fetch(`/api/sessions/${revSession}`);
+            if (response.ok) {
+              const session = await response.json();
+              loadedSessionId = session.sessionId;
+              setCurrentSessionId(session.sessionId);
+              if (session.messages) {
+                const msgs = typeof session.messages === 'string' ? JSON.parse(session.messages) : session.messages;
+                loadedHistory = msgs.map((m: { question?: string; answer?: string }) => ({
+                  question: m.question || '',
+                  answer: m.answer || '',
+                }));
+                setConversationHistory(loadedHistory);
+              }
+            }
+          } catch (err) {
+            console.warn('[useChatSession] Failed to load revision session:', err);
+          }
+
+          // Read author profile
+          let authorProfile: { name: string; university: string; department: string; email: string } | undefined;
+          try {
+            const raw = localStorage.getItem('autoscholar_author_profile');
+            if (raw) authorProfile = JSON.parse(raw);
+          } catch { /* noop */ }
+
+          // Fire mutation directly using ref (always latest instance, never stale)
+          setCurrentQuestion(prompt);
+          clearResponseState();
+          console.log('[useChatSession] Firing revision prompt, sessionId:', loadedSessionId, 'history length:', loadedHistory.length);
+          chatMutationRef.current.mutate({
+            query: prompt,
+            history: loadedHistory,
+            sessionId: loadedSessionId || undefined,
+            authorProfile,
+          });
+        })();
+      } else {
+        // Normal pending prompt (prompt library, etc.) — fire directly
+        const timer = setTimeout(() => handleSearch(prompt), 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRetry = useCallback(() => {
     chatMutation.reset();
@@ -304,6 +274,26 @@ export function useChatSession() {
           question: m.question || '',
           answer: m.answer || '',
         })));
+
+        // Restore Python code history from all messages
+        const allCodeEntries: PythonCodeEntry[] = [];
+        for (const m of msgs) {
+          if (m.pythonCodeEntries && Array.isArray(m.pythonCodeEntries)) {
+            for (const entry of m.pythonCodeEntries) {
+              if (!entry.code) continue;
+              allCodeEntries.push({
+                id: entry.id || `py-restored-${allCodeEntries.length}`,
+                code: entry.code,
+                description: entry.description || 'Python analysis',
+                timestamp: entry.timestamp || 0,
+                status: entry.status === 'error' ? 'error' : 'completed',
+                error: entry.error,
+                duration: entry.duration,
+              });
+            }
+          }
+        }
+        setPythonCodeHistory(allCodeEntries);
       }
       setHistoryOpen(false);
     } catch (error) {
@@ -338,6 +328,7 @@ export function useChatSession() {
     customPythonFigures,
     figureRegistry,
     figureUrls,
+    pythonCodeHistory,
     resultsRef,
 
     // Mutation state

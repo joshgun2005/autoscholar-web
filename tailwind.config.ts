@@ -6,9 +6,13 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: "0.75rem", /* 12px - for search bar and major cards */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        "4xl": "1.5rem",
+        "3xl": "1.25rem",
+        "2xl": "1rem",
+        xl: "0.75rem",
+        lg: "0.5rem",
+        md: "0.375rem",
+        sm: "0.25rem",
       },
       colors: {
         background: "hsl(var(--background) / <alpha-value>)",
@@ -97,6 +101,7 @@ export default {
         sans: ["var(--font-sans)"],
         display: ["var(--font-display)"],
         serif: ["var(--font-serif)"],
+        heading: ["var(--font-heading)"],
         mono: ["var(--font-mono)"],
       },
       keyframes: {
@@ -109,17 +114,38 @@ export default {
           to: { height: "0" },
         },
         "fade-in-up": {
-          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "0%": { opacity: "0", transform: "translateY(12px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "slide-in-right": {
+          "0%": { opacity: "0", transform: "translateX(20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "gold-pulse": {
+          "0%, 100%": { opacity: "0.6" },
+          "50%": { opacity: "1" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in-up": "fade-in-up 0.3s ease-out",
+        "fade-in-up": "fade-in-up 0.4s ease-out",
+        "scale-in": "scale-in 0.3s ease-out",
+        "slide-in-right": "slide-in-right 0.3s ease-out",
       },
       backdropBlur: {
         xs: "2px",
+      },
+      transitionTimingFunction: {
+        "out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },
   },

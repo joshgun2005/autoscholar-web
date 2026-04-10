@@ -1,0 +1,33 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Top-level repository structure of the \textsc {AutoScholar}\xspace codebase.}}{23}{figure.caption.8}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces High-level system architecture of \textsc {AutoScholar}\xspace .}}{26}{figure.caption.9}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces Layered dependency structure.}}{31}{figure.caption.11}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Pipeline run state machine.}}{61}{figure.caption.25}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {15.1}{\ignorespaces Complete \textsc {AutoScholar}\xspace system architecture diagram showing all agents, services, storage, and external integrations.}}{126}{figure.caption.76}%
+\contentsline {figure}{\numberline {15.2}{\ignorespaces End-to-end paper generation pipeline with all 10 phases.}}{127}{figure.caption.77}%
+\contentsline {figure}{\numberline {15.3}{\ignorespaces Agent interaction patterns showing sequential handoff (blue), governor oversight (red dashed), and Popper review feedback (purple).}}{127}{figure.caption.78}%
+\contentsline {figure}{\numberline {15.4}{\ignorespaces Data flow from external sources through processing stages to persistent storage.}}{128}{figure.caption.79}%
+\contentsline {figure}{\numberline {15.5}{\ignorespaces Governor decision flow showing error detection, budget checking, and action selection.}}{128}{figure.caption.80}%
+\contentsline {figure}{\numberline {15.6}{\ignorespaces Core database schema relationships (simplified, 20+ tables total).}}{129}{figure.caption.81}%
+\contentsline {figure}{\numberline {15.7}{\ignorespaces Tool ecosystem organized by category showing the breadth of \textsc {AutoScholar}\xspace 's capabilities.}}{129}{figure.caption.82}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsfinish 

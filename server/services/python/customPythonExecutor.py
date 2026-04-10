@@ -17,504 +17,63 @@ from contextlib import redirect_stdout, redirect_stderr
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')  # Suppress warnings for cleaner output
 
-# Create a comprehensive FMP API client class
-class FMPClient:
-    """Comprehensive FMP API client for Python custom code"""
-
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.base_url = 'https://financialmodelingprep.com/api/v3'
-        self.base_url_stable = 'https://financialmodelingprep.com/stable'
-
-    def _request(self, endpoint, params=None):
-        """Make API request"""
-        import requests
-        if params is None:
-            params = {}
-        params['apikey'] = self.api_key
-
-        url = f"{self.base_url}{endpoint}"
-        response = requests.get(url, params=params, timeout=15)
-        response.raise_for_status()
-        return response.json()
-
-    def _request_stable(self, endpoint, params=None):
-        """Make API request to stable endpoint"""
-        import requests
-        if params is None:
-            params = {}
-        params['apikey'] = self.api_key
-
-        url = f"{self.base_url_stable}{endpoint}"
-        response = requests.get(url, params=params, timeout=15)
-        response.raise_for_status()
-        return response.json()
-
-    # ===== MOST USED METHODS =====
-
-    def get_quote(self, symbol):
-        """Get current stock quote"""
-        data = self._request(f'/quote/{symbol}')
-        return data[0] if data else None
-
-    def get_historical_prices(self, symbol, from_date=None, to_date=None):
-        """Get historical prices - returns dict with 'historical' array"""
-        params = {}
-        if from_date:
-            params['from'] = from_date
-        if to_date:
-            params['to'] = to_date
-        return self._request(f'/historical-price-full/{symbol}', params)
-
-    def get_income_statement(self, symbol, period='annual', limit=5):
-        """Get income statement"""
-        return self._request(f'/income-statement/{symbol}', {'period': period, 'limit': limit})
-
-    def get_balance_sheet(self, symbol, period='annual', limit=5):
-        """Get balance sheet"""
-        return self._request(f'/balance-sheet-statement/{symbol}', {'period': period, 'limit': limit})
-
-    def get_cash_flow(self, symbol, period='annual', limit=5):
-        """Get cash flow statement"""
-        return self._request(f'/cash-flow-statement/{symbol}', {'period': period, 'limit': limit})
-
-    def get_key_metrics(self, symbol, period='annual', limit=5):
-        """Get key metrics"""
-        return self._request(f'/key-metrics/{symbol}', {'period': period, 'limit': limit})
-
-    def get_financial_ratios(self, symbol, period='annual', limit=5):
-        """Get financial ratios"""
-        return self._request(f'/ratios/{symbol}', {'period': period, 'limit': limit})
-
-    def get_company_profile(self, symbol):
-        """Get company profile"""
-        return self._request(f'/profile/{symbol}')
-
-    def get_stock_news(self, symbol, limit=20):
-        """Get stock news"""
-        return self._request(f'/stock_news', {'tickers': symbol, 'limit': limit})
-
-    def get_rsi(self, symbol, period=14, time_period='daily'):
-        """Get RSI indicator"""
-        data = self._request(f'/technical_indicator/{time_period}/{symbol}', {'type': 'rsi', 'period': period})
-        return data[:10]  # Limit for performance
-
-    def get_macd(self, symbol, time_period='daily'):
-        """Get MACD indicator"""
-        data = self._request(f'/technical_indicator/{time_period}/{symbol}', {'type': 'macd'})
-        return data[:10]
-
-    def search(self, query, limit=10):
-        """Search for companies"""
-        return self._request('/search', {'query': query, 'limit': limit})
-
-# Create a comprehensive FRED API client class
-class FREDClient:
-    """FRED (Federal Reserve Economic Data) API client — 840,000+ macroeconomic series"""
-
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.base_url = 'https://api.stlouisfed.org/fred'
-
-    def _request(self, endpoint, params=None):
-        """Make API request to FRED"""
-        import requests
-        if params is None:
-            params = {}
-        params['api_key'] = self.api_key
-        params['file_type'] = 'json'
-
-        url = f"{self.base_url}{endpoint}"
-        response = requests.get(url, params=params, timeout=15)
-        response.raise_for_status()
-        return response.json()
-
-    # ===== CORE DATA METHODS =====
-
-    def get_series_observations(self, series_id, observation_start=None, observation_end=None,
-                                 units=None, frequency=None, aggregation_method=None):
-        """Get raw observations for a FRED series.
-        Args:
-            series_id: e.g. 'GDP', 'CPIAUCSL', 'UNRATE', 'DFF'
-            observation_start/end: 'YYYY-MM-DD'
-            units: 'lin' (default), 'chg', 'ch1', 'pch', 'pc1', 'pca', 'cch', 'cca', 'log'
-            frequency: 'd','w','bw','m','q','sa','a' (aggregate to lower frequency)
-            aggregation_method: 'avg','sum','eop' (used with frequency)
-        """
-        params = {'series_id': series_id}
-        if observation_start:
-            params['observation_start'] = observation_start
-        if observation_end:
-            params['observation_end'] = observation_end
-        if units:
-            params['units'] = units
-        if frequency:
-            params['frequency'] = frequency
-        if aggregation_method:
-            params['aggregation_method'] = aggregation_method
-        data = self._request('/series/observations', params)
-        return data.get('observations', [])
-
-    def get_series_df(self, series_id, observation_start=None, observation_end=None,
-                       units=None, frequency=None, aggregation_method=None):
-        """Get observations as a pandas DataFrame with 'date' (datetime) and 'value' (float) columns.
-        Missing values (reported as '.') are converted to NaN.
-        This is the RECOMMENDED method for analysis — returns clean, ready-to-use data.
-        """
-        obs = self.get_series_observations(
-            series_id,
-            observation_start=observation_start,
-            observation_end=observation_end,
-            units=units,
-            frequency=frequency,
-            aggregation_method=aggregation_method,
-        )
-        df = pd.DataFrame(obs)
-        if df.empty:
-            return df
-        df['date'] = pd.to_datetime(df['date'])
-        df['value'] = pd.to_numeric(df['value'], errors='coerce')  # '.' → NaN
-        return df[['date', 'value']]
-
-    # ===== METADATA =====
-
-    def get_series(self, series_id):
-        """Get metadata for a series (title, units, frequency, seasonal adjustment, etc.)"""
-        data = self._request('/series', {'series_id': series_id})
-        serieses = data.get('serieses', [])
-        return serieses[0] if serieses else data
-
-    def search_series(self, search_text, limit=20, order_by='search_rank',
-                       filter_variable=None, filter_value=None, tag_names=None):
-        """Search for FRED series by keyword.
-        Args:
-            search_text: keywords (e.g. 'housing starts', 'inflation expectations')
-            limit: max results (default 20)
-            order_by: 'search_rank','series_id','title','units','frequency',
-                      'seasonal_adjustment','realtime_start','realtime_end',
-                      'last_updated','observation_start','observation_end','popularity'
-            filter_variable/filter_value: e.g. filter_variable='frequency', filter_value='Monthly'
-            tag_names: semicolon-separated tags (e.g. 'monetary aggregates;weekly')
-        """
-        params = {'search_text': search_text, 'limit': limit, 'order_by': order_by}
-        if filter_variable:
-            params['filter_variable'] = filter_variable
-        if filter_value:
-            params['filter_value'] = filter_value
-        if tag_names:
-            params['tag_names'] = tag_names
-        data = self._request('/series/search', params)
-        return data.get('serieses', [])
-
-    # ===== CATEGORIES =====
-
-    def get_category(self, category_id=0):
-        """Get a FRED category (default 0 = root)"""
-        data = self._request('/category', {'category_id': category_id})
-        return data.get('categories', [])
-
-    def get_category_series(self, category_id, limit=100):
-        """Get all series in a category"""
-        data = self._request('/category/series', {'category_id': category_id, 'limit': limit})
-        return data.get('serieses', [])
-
-    # ===== RELEASES =====
-
-    def get_releases(self):
-        """Get all FRED data releases"""
-        data = self._request('/releases')
-        return data.get('releases', [])
-
-    def get_release_series(self, release_id, limit=100):
-        """Get series belonging to a specific release"""
-        data = self._request('/release/series', {'release_id': release_id, 'limit': limit})
-        return data.get('serieses', [])
-
-    # ===== SERIES RELATED =====
-
-    def get_series_categories(self, series_id):
-        """Get categories a series belongs to"""
-        data = self._request('/series/categories', {'series_id': series_id})
-        return data.get('categories', [])
-
-    def get_series_tags(self, series_id):
-        """Get tags for a series"""
-        data = self._request('/series/tags', {'series_id': series_id})
-        return data.get('tags', [])
-
-
-class EODHDClient:
-    """EODHD API client — intraday historical data + US options chains with Greeks.
-
-    Ticker format:  always use exchange suffix, e.g. 'AAPL.US', 'MSFT.US', 'SPY.US'.
-    Bare tickers like 'AAPL' are auto-converted to 'AAPL.US'.
-
-    Date/time inputs: all methods accept any of these for date parameters:
-        - Unix timestamp (int or float)
-        - ISO date string: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS'
-        - Python datetime / pandas Timestamp / numpy datetime64
-
-    Timezone note: EODHD returns datetimes in the exchange's local time (not UTC).
-    For US intraday, times are already in US/Eastern — no conversion needed.
-    """
-
-    BASE_URL = 'https://eodhd.com/api'
-
-    def __init__(self, api_key):
-        self.api_key = api_key
-
-    # ── Internal helpers ───────────────────────────────────────────────────────
-
-    def _request(self, endpoint, params=None):
-        import requests
-        if params is None:
-            params = {}
-        params.setdefault('api_token', self.api_key)
-        params.setdefault('fmt', 'json')
-        url = f"{self.BASE_URL}{endpoint}"
-        response = requests.get(url, params=params, timeout=20)
-        response.raise_for_status()
-        return response.json()
-
-    @staticmethod
-    def _to_unix(value):
-        """Convert any date/time representation to a Unix timestamp (int).
-
-        Accepts: int/float (already a timestamp), str ('YYYY-MM-DD' or
-        'YYYY-MM-DD HH:MM:SS'), datetime, pd.Timestamp, np.datetime64.
-        Returns None if value is None.
-        """
-        if value is None:
-            return None
-        if isinstance(value, (int, float)):
-            return int(value)
-        # string → pd.Timestamp → unix
-        ts = pd.Timestamp(value)
-        # if tz-naive assume local time
-        if ts.tzinfo is None:
-            ts = ts.tz_localize('UTC')
-        return int(ts.timestamp())
-
-    @staticmethod
-    def _normalize_ticker(ticker):
-        """Append '.US' exchange suffix when no suffix is present.
-
-        Examples:  'AAPL' → 'AAPL.US',  'AAPL.US' → 'AAPL.US'
-        Non-US tickers already have a suffix: 'VOD.LSE' → unchanged.
-        """
-        return ticker if '.' in ticker else ticker + '.US'
-
-    # ── Intraday ──────────────────────────────────────────────────────────────
-
-    def get_intraday(self, ticker, interval='5m',
-                     from_ts=None, to_ts=None,
-                     from_date=None, to_date=None):
-        """Fetch intraday OHLCV bars from EODHD.
-
-        Args:
-            ticker    : e.g. 'AAPL.US' or bare 'AAPL' (auto-normalized)
-            interval  : '1m' (US only, since 2004), '5m', or '1h'
-            from_ts   : start — Unix int, 'YYYY-MM-DD', 'YYYY-MM-DD HH:MM', or datetime
-            to_ts     : end   — same formats
-            from_date : alias for from_ts
-            to_date   : alias for to_ts
-
-        Returns:
-            list of dicts — datetime (exchange local time), gmtoffset,
-            open, high, low, close, volume
-
-        Note:
-            Each request costs 5 EODHD API credits.
-            For FOMC / event studies, pass exact window timestamps to limit data.
-        """
-        ticker = self._normalize_ticker(ticker)
-        start = self._to_unix(from_ts or from_date)
-        end   = self._to_unix(to_ts   or to_date)
-
-        params = {'interval': interval}
-        if start is not None:
-            params['from'] = start
-        if end is not None:
-            params['to'] = end
-
-        data = self._request(f'/intraday/{ticker}', params)
-
-        if not data:
-            print(f"⚠️  EODHD intraday: empty response for {ticker} "
-                  f"(interval={interval}, from={from_ts or from_date}, to={to_ts or to_date}).\n"
-                  f"   → Check ticker (needs '.US' suffix for US stocks) and date range.\n"
-                  f"   → 1m data available for US stocks since 2004; 5m/1h since 2020.")
-        return data if isinstance(data, list) else []
-
-    def get_intraday_df(self, ticker, interval='5m',
-                        from_ts=None, to_ts=None,
-                        from_date=None, to_date=None):
-        """Same as get_intraday() but returns a pandas DataFrame.
-
-        Returns a DataFrame indexed by datetime (exchange local time, tz-naive)
-        with columns: open, high, low, close, volume.
-        Sorted ascending by time.
-
-        Note on timezones:
-            EODHD returns US intraday times already in US/Eastern (NYSE/NASDAQ).
-            No conversion is needed for FOMC event studies — 14:00 ET in the
-            data is exactly 14:00 Federal Reserve announcement time.
-        """
-        data = self.get_intraday(ticker, interval=interval,
-                                 from_ts=from_ts, to_ts=to_ts,
-                                 from_date=from_date, to_date=to_date)
-        if not data:
-            return pd.DataFrame()
-        df = pd.DataFrame(data)
-        df['datetime'] = pd.to_datetime(df['datetime'])
-        df = df.set_index('datetime').sort_index()
-        for col in ['open', 'high', 'low', 'close', 'volume']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        return df
-
-    # ── End-of-Day ────────────────────────────────────────────────────────────
-
-    def get_eod(self, ticker, from_date=None, to_date=None, period='d', order='a'):
-        """Fetch EOD historical prices.
-
-        Args:
-            ticker   : e.g. 'AAPL.US' or bare 'AAPL'
-            from_date: start — 'YYYY-MM-DD', datetime, or Unix timestamp
-            to_date  : end   — same formats
-            period   : 'd' daily (default), 'w' weekly, 'm' monthly
-            order    : 'a' ascending (default), 'd' descending
-
-        Returns:
-            list of dicts with date, open, high, low, close, adjusted_close, volume
-        """
-        ticker = self._normalize_ticker(ticker)
-        params = {'period': period, 'order': order}
-        # EOD endpoint uses YYYY-MM-DD strings (not Unix timestamps)
-        if from_date is not None:
-            v = from_date
-            if isinstance(v, (int, float)):
-                v = pd.Timestamp(v, unit='s').strftime('%Y-%m-%d')
-            elif hasattr(v, 'strftime'):
-                v = v.strftime('%Y-%m-%d')
-            else:
-                v = str(pd.Timestamp(v).date())
-            params['from'] = v
-        if to_date is not None:
-            v = to_date
-            if isinstance(v, (int, float)):
-                v = pd.Timestamp(v, unit='s').strftime('%Y-%m-%d')
-            elif hasattr(v, 'strftime'):
-                v = v.strftime('%Y-%m-%d')
-            else:
-                v = str(pd.Timestamp(v).date())
-            params['to'] = v
-        return self._request(f'/eod/{ticker}', params)
-
-    def get_eod_df(self, ticker, from_date=None, to_date=None, period='d', order='a'):
-        """Same as get_eod() but returns a pandas DataFrame with a DatetimeIndex."""
-        data = self.get_eod(ticker, from_date=from_date, to_date=to_date,
-                            period=period, order=order)
-        if not data:
-            return pd.DataFrame()
-        df = pd.DataFrame(data)
-        df['date'] = pd.to_datetime(df['date'])
-        df = df.set_index('date').sort_index()
-        for col in ['open', 'high', 'low', 'close', 'adjusted_close', 'volume']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        return df
-
-    # ── Options ───────────────────────────────────────────────────────────────
-
-    def get_options(self, ticker, from_date=None, to_date=None,
-                    contract_name=None, expiration_date_from=None, expiration_date_to=None):
-        """Fetch US options chain with Greeks (EOD).
-
-        Args:
-            ticker              : e.g. 'AAPL.US'
-            from_date           : 'YYYY-MM-DD' trade date start
-            to_date             : 'YYYY-MM-DD' trade date end
-            contract_name       : specific contract, e.g. 'AAPL230616C00150000'
-            expiration_date_from: 'YYYY-MM-DD' filter expiry
-            expiration_date_to  : 'YYYY-MM-DD' filter expiry
-
-        Returns:
-            dict with keys:
-              - 'code'        : ticker
-              - 'exchange'    : exchange code
-              - 'lastTradeDate': most recent trade date
-              - 'data'        : list of expiration buckets, each containing:
-                  - 'expirationDate'
-                  - 'options': {'CALL': [...], 'PUT': [...]}
-                  Each contract has: contractName, lastTradeDate, strike, currency,
-                  lastPrice, bid, ask, change, changePercent, volume, openInterest,
-                  impliedVolatility, delta, gamma, theta, vega, rho, inTheMoney
-        """
-        params = {}
-        if from_date:
-            params['from'] = from_date
-        if to_date:
-            params['to'] = to_date
-        if contract_name:
-            params['contract_name'] = contract_name
-        if expiration_date_from:
-            params['expiration_date_from'] = expiration_date_from
-        if expiration_date_to:
-            params['expiration_date_to'] = expiration_date_to
-        return self._request(f'/options/{ticker}', params)
-
-    def get_options_df(self, ticker, from_date=None, to_date=None,
-                       option_type=None, expiration_date_from=None, expiration_date_to=None):
-        """Flatten options chain into a single pandas DataFrame.
-
-        Args:
-            option_type: 'CALL', 'PUT', or None for both
-
-        Returns:
-            DataFrame with columns: expirationDate, type, contractName, strike, lastPrice,
-            bid, ask, volume, openInterest, impliedVolatility, delta, gamma, theta, vega, rho, inTheMoney
-        """
-        raw = self.get_options(ticker, from_date=from_date, to_date=to_date,
-                               expiration_date_from=expiration_date_from,
-                               expiration_date_to=expiration_date_to)
-        rows = []
-        for bucket in raw.get('data', []):
-            exp = bucket.get('expirationDate', '')
-            opts = bucket.get('options', {})
-            types = ['CALL', 'PUT'] if option_type is None else [option_type.upper()]
-            for t in types:
-                for contract in opts.get(t, []):
-                    contract['expirationDate'] = exp
-                    contract['type'] = t
-                    rows.append(contract)
-        if not rows:
-            return pd.DataFrame()
-        df = pd.DataFrame(rows)
-        numeric_cols = ['strike', 'lastPrice', 'bid', 'ask', 'change', 'changePercent',
-                        'volume', 'openInterest', 'impliedVolatility',
-                        'delta', 'gamma', 'theta', 'vega', 'rho']
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        return df
-
-    # ── Live Quote ────────────────────────────────────────────────────────────
-
-    def get_live_quote(self, ticker):
-        """Get live (delayed ~15 min) quote for a ticker.
-
-        Returns dict with: code, timestamp, gmtoffset, open, high, low, close,
-        volume, previousClose, change, change_p
-        """
-        return self._request(f'/real-time/{ticker}')
-
+# Monkey-patch plt.tight_layout to silently ignore Colorbar layout conflicts
+_original_tight_layout = plt.tight_layout
+def _safe_tight_layout(*args, **kwargs):
+    try:
+        _original_tight_layout(*args, **kwargs)
+    except RuntimeError as e:
+        if 'Colorbar' in str(e):
+            pass  # Silently skip — colorbar is incompatible with tight_layout
+        else:
+            raise
+plt.tight_layout = _safe_tight_layout
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Add this directory to sys.path so sub-packages (clients/, exporters/, figures/)
+# are importable when this script is executed as a subprocess.
+# ─────────────────────────────────────────────────────────────────────────────
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Matplotlib academic style (Journal of Finance)
+# ─────────────────────────────────────────────────────────────────────────────
+from figures.matplotlib_config import _JF_COLORS
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Figure capture utilities
+# ─────────────────────────────────────────────────────────────────────────────
+from figures.figure_capture import is_figure_empty, add_watermark, capture_figures
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API client classes
+# ─────────────────────────────────────────────────────────────────────────────
+from clients.fmp_client import FMPClient
+from clients.fred_client import FREDClient
+from clients.eodhd_client import EODHDClient
+from clients.macro_clients import WorldBankClient, IMFClient, OECDClient, PolymarketClient
+from clients.claude_client import ClaudeClient
+from clients.openrouter_client import OpenRouterClient
+
+# ─────────────────────────────────────────────────────────────────────────────
+# File export functions
+# ─────────────────────────────────────────────────────────────────────────────
+from exporters.file_exporters import (
+    save_excel as _save_excel_impl,
+    save_word as _save_word_impl,
+    save_latex as _save_latex_impl,
+    df_to_latex,
+    _convert_numpy,
+    _detect_number_format,
+    _escape_latex,
+)
 
 # Import additional libraries (optional - fail silently if not available)
 AVAILABLE_LIBS = {}
@@ -759,20 +318,983 @@ try:
 except ImportError:
     pass
 
+# === linearmodels (Panel Data, IV, GMM) ===
+try:
+    from linearmodels.panel import PanelOLS, RandomEffects, PooledOLS, BetweenOLS, FirstDifferenceOLS
+    from linearmodels.panel.results import PanelEffectsResults
+    from linearmodels.iv import IV2SLS, IVGMM, IVLIML
+    from linearmodels.iv.results import IVResults
+    AVAILABLE_LIBS['PanelOLS'] = PanelOLS
+    AVAILABLE_LIBS['RandomEffects'] = RandomEffects
+    AVAILABLE_LIBS['PooledOLS'] = PooledOLS
+    AVAILABLE_LIBS['BetweenOLS'] = BetweenOLS
+    AVAILABLE_LIBS['FirstDifferenceOLS'] = FirstDifferenceOLS
+    AVAILABLE_LIBS['IV2SLS'] = IV2SLS
+    AVAILABLE_LIBS['IVGMM'] = IVGMM
+    AVAILABLE_LIBS['IVLIML'] = IVLIML
+except ImportError:
+    pass
+
+# === pyfixest (Two-Way Fixed Effects, DiD, Event Study) ===
+try:
+    import pyfixest as pf
+    from pyfixest.estimation import feols, fepois
+    AVAILABLE_LIBS['pf'] = pf
+    AVAILABLE_LIBS['pyfixest'] = pf
+    AVAILABLE_LIBS['feols'] = feols
+    AVAILABLE_LIBS['fepois'] = fepois
+except ImportError:
+    pass
+
+# === statsmodels extras (DiD, Quantile Regression, Cointegration, GMM) ===
+try:
+    from statsmodels.tsa.stattools import coint, grangercausalitytests, kpss
+    from statsmodels.tsa.vector_ar.vecm import VECM, select_coint_rank
+    from statsmodels.regression.quantile_regression import QuantReg
+    from statsmodels.stats.sandwich_covariance import cov_hac, cov_cluster
+    from statsmodels.stats.diagnostic import het_breuschpagan, acorr_ljungbox
+    from statsmodels.stats.stattools import durbin_watson
+    from statsmodels.tsa.filters.hp_filter import hpfilter
+    from statsmodels.sandbox.regression.gmm import GMM
+    AVAILABLE_LIBS['coint'] = coint
+    AVAILABLE_LIBS['grangercausalitytests'] = grangercausalitytests
+    AVAILABLE_LIBS['kpss'] = kpss
+    AVAILABLE_LIBS['VECM'] = VECM
+    AVAILABLE_LIBS['select_coint_rank'] = select_coint_rank
+    AVAILABLE_LIBS['QuantReg'] = QuantReg
+    AVAILABLE_LIBS['cov_hac'] = cov_hac
+    AVAILABLE_LIBS['cov_cluster'] = cov_cluster
+    AVAILABLE_LIBS['het_breuschpagan'] = het_breuschpagan
+    AVAILABLE_LIBS['acorr_ljungbox'] = acorr_ljungbox
+    AVAILABLE_LIBS['durbin_watson'] = durbin_watson
+    AVAILABLE_LIBS['hpfilter'] = hpfilter
+    AVAILABLE_LIBS['GMM'] = GMM
+except ImportError:
+    pass
+
+# === arch extras (EGARCH, GJR-GARCH, DCC, RealGARCH) ===
+try:
+    from arch.univariate import EGARCH, GARCH, FIGARCH, EWMAVariance, RiskMetrics2006
+    from arch.univariate import Normal, StudentsT, SkewStudent, GeneralizedError
+    AVAILABLE_LIBS['EGARCH'] = EGARCH
+    AVAILABLE_LIBS['FIGARCH'] = FIGARCH
+    AVAILABLE_LIBS['EWMAVariance'] = EWMAVariance
+    AVAILABLE_LIBS['StudentsT'] = StudentsT
+    AVAILABLE_LIBS['SkewStudent'] = SkewStudent
+    AVAILABLE_LIBS['GeneralizedError'] = GeneralizedError
+except ImportError:
+    pass
+
+# === causalinference / DoWhy (Causal Inference) ===
+try:
+    import dowhy
+    from dowhy import CausalModel
+    AVAILABLE_LIBS['dowhy'] = dowhy
+    AVAILABLE_LIBS['CausalModel'] = CausalModel
+except ImportError:
+    pass
+
+# === scikit-learn extras (not yet exposed) ===
+try:
+    from sklearn.linear_model import (
+        Lasso, Ridge, ElasticNet, LassoCV, RidgeCV, ElasticNetCV,
+        LogisticRegression, BayesianRidge, HuberRegressor, QuantileRegressor
+    )
+    from sklearn.ensemble import (
+        AdaBoostRegressor, AdaBoostClassifier,
+        BaggingRegressor, BaggingClassifier,
+        ExtraTreesRegressor, ExtraTreesClassifier,
+        IsolationForest
+    )
+    from sklearn.svm import SVR, SVC
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import PolynomialFeatures, MinMaxScaler, RobustScaler
+    from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_regression
+    from sklearn.inspection import permutation_importance
+    AVAILABLE_LIBS['Lasso'] = Lasso
+    AVAILABLE_LIBS['Ridge'] = Ridge
+    AVAILABLE_LIBS['ElasticNet'] = ElasticNet
+    AVAILABLE_LIBS['LassoCV'] = LassoCV
+    AVAILABLE_LIBS['RidgeCV'] = RidgeCV
+    AVAILABLE_LIBS['ElasticNetCV'] = ElasticNetCV
+    AVAILABLE_LIBS['LogisticRegression'] = LogisticRegression
+    AVAILABLE_LIBS['BayesianRidge'] = BayesianRidge
+    AVAILABLE_LIBS['HuberRegressor'] = HuberRegressor
+    AVAILABLE_LIBS['QuantileRegressor'] = QuantileRegressor
+    AVAILABLE_LIBS['AdaBoostRegressor'] = AdaBoostRegressor
+    AVAILABLE_LIBS['IsolationForest'] = IsolationForest
+    AVAILABLE_LIBS['SVR'] = SVR
+    AVAILABLE_LIBS['SVC'] = SVC
+    AVAILABLE_LIBS['Pipeline'] = Pipeline
+    AVAILABLE_LIBS['PolynomialFeatures'] = PolynomialFeatures
+    AVAILABLE_LIBS['MinMaxScaler'] = MinMaxScaler
+    AVAILABLE_LIBS['RobustScaler'] = RobustScaler
+    AVAILABLE_LIBS['SelectKBest'] = SelectKBest
+    AVAILABLE_LIBS['f_regression'] = f_regression
+    AVAILABLE_LIBS['mutual_info_regression'] = mutual_info_regression
+    AVAILABLE_LIBS['permutation_importance'] = permutation_importance
+except ImportError:
+    pass
+
+# === pingouin (Statistical Tests) ===
+try:
+    import pingouin as pg
+    AVAILABLE_LIBS['pg'] = pg
+    AVAILABLE_LIBS['pingouin'] = pg
+except ImportError:
+    pass
+
+# === pymc (Bayesian Econometrics) ===
+try:
+    import pymc as pymc_lib
+    AVAILABLE_LIBS['pymc'] = pymc_lib
+except ImportError:
+    pass
+
+# === shap (Model Explainability) ===
+try:
+    import shap
+    AVAILABLE_LIBS['shap'] = shap
+except ImportError:
+    pass
+
+# === duckdb (HF data queries) ===
+try:
+    import duckdb as _duckdb
+    AVAILABLE_LIBS['duckdb'] = _duckdb
+except ImportError:
+    pass
+
+
+# ═══════════════════════════════════════════════════════════════════
+# HF Data Client — DuckDB-backed high-frequency OHLCV data
+# ═══════════════════════════════════════════════════════════════════
+
+class HFDataClient:
+    """
+    High-frequency OHLCV data client backed by DuckDB.
+    Supports two resolutions: 1-minute and 5-minute.
+
+    6 asset classes: crypto, futures, fx, index, etf, stock
+    5min: ~1.76 BILLION rows, 12,500+ symbols, data from 2000-2026.
+    1min: ~5.93 BILLION rows, 13,270+ symbols, data from 2000-2026.
+
+    Usage (default resolution = '5min'):
+        hfdb.symbols('crypto')                                → list crypto symbols
+        hfdb.get('stock', 'AAPL')                             → AAPL 5min OHLCV
+        hfdb.get('stock', 'AAPL', resolution='1min', start='2024-01-01')  → AAPL 1min from 2024
+        hfdb.get('etf', 'SPY', start='2024-01-01', freq='1h')
+        hfdb.get('crypto', 'BTC', resolution='1min')          → BTC 1-minute bars
+        hfdb.query('crypto', "SELECT * FROM ohlcv WHERE symbol='ETH' LIMIT 100")
+        hfdb.query('crypto', "SELECT * FROM crypto_1min WHERE ticker='ETH' LIMIT 100", resolution='1min')
+    """
+
+    DATABASES_5MIN = {
+        'crypto': 'crypto_5min.duckdb',
+        'futures': 'futures_5min.duckdb',
+        'fx': 'fx_5min.duckdb',
+        'index': 'index_5min.duckdb',
+        'etf': 'etf_5min.duckdb',
+        'stock': 'stock_5min.duckdb',
+    }
+
+    DATABASES_1MIN = {
+        'crypto': 'crypto_1min.duckdb',
+        'futures': 'futures_1min.duckdb',
+        'fx': 'fx_1min.duckdb',
+        'index': 'index_1min.duckdb',
+        'etf': 'etf_1min.duckdb',
+        'stock': 'stock_1min.duckdb',
+    }
+
+    # 1min DBs use table named '{asset}_1min' with column 'ticker'
+    # 5min DBs use table 'ohlcv' with column 'symbol'
+    TABLE_1MIN = {
+        'crypto': 'crypto_1min',
+        'futures': 'futures_1min',
+        'fx': 'fx_1min',
+        'index': 'index_1min',
+        'etf': 'etf_1min',
+        'stock': 'stock_1min',
+    }
+
+    def __init__(self, base_dir=None):
+        if base_dir:
+            self.base_dir = base_dir
+        else:
+            candidates = [
+                os.environ.get('HF_DATA_DIR', ''),
+                os.path.join(os.getcwd(), 'hf_data'),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'hf_data'),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'hf_data'),
+                os.path.expanduser('~/Desktop/hf_data'),
+            ]
+            candidates = [c for c in candidates if c]  # remove empty
+            self.base_dir = next((c for c in candidates if os.path.isdir(c)), candidates[0])
+
+    def _resolve(self, db_name, resolution='5min'):
+        """Return (filename, table_name, symbol_col) for the given resolution."""
+        if resolution == '1min':
+            db_map = self.DATABASES_1MIN
+            table = self.TABLE_1MIN.get(db_name)
+            sym_col = 'ticker'
+        else:
+            db_map = self.DATABASES_5MIN
+            table = 'ohlcv'
+            sym_col = 'symbol'
+        filename = db_map.get(db_name)
+        if not filename:
+            raise ValueError(f"Unknown database '{db_name}'. Available: {list(db_map.keys())}")
+        return filename, table, sym_col
+
+    def _connect(self, db_name, resolution='5min'):
+        """Get a read-only DuckDB connection."""
+        try:
+            import duckdb
+        except ImportError:
+            raise ImportError("duckdb not installed. Run: pip install duckdb")
+        filename, _, _ = self._resolve(db_name, resolution)
+        path = os.path.join(self.base_dir, filename)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Database file not found: {path}")
+        return duckdb.connect(path, read_only=True)
+
+    def symbols(self, db_name, resolution='5min'):
+        """List all available symbols in a database. Returns list of strings."""
+        _, table, sym_col = self._resolve(db_name, resolution)
+        con = self._connect(db_name, resolution)
+        try:
+            result = con.execute(f"SELECT DISTINCT {sym_col} FROM {table} ORDER BY {sym_col}").fetchall()
+            return [row[0] for row in result]
+        finally:
+            con.close()
+
+    def info(self, db_name, symbol=None, resolution='5min'):
+        """Get row count, date range, and symbol count. If symbol given, info for that symbol only."""
+        _, table, sym_col = self._resolve(db_name, resolution)
+        con = self._connect(db_name, resolution)
+        try:
+            if symbol:
+                result = con.execute(
+                    f"SELECT COUNT(*) AS rows, MIN(datetime) AS first, MAX(datetime) AS last FROM {table} WHERE {sym_col} = ?",
+                    [symbol]
+                ).fetchdf()
+            else:
+                result = con.execute(
+                    f"SELECT COUNT(*) AS rows, COUNT(DISTINCT {sym_col}) AS symbols, MIN(datetime) AS first, MAX(datetime) AS last FROM {table}"
+                ).fetchdf()
+            return result
+        finally:
+            con.close()
+
+    def get(self, db_name, symbol, start=None, end=None, freq=None, resolution='5min'):
+        """
+        Get OHLCV data for a symbol as a pandas DataFrame.
+
+        Args:
+            db_name: 'crypto', 'futures', 'fx', 'index', 'etf', 'stock'
+            symbol: e.g. 'BTC', 'ES', 'EURUSD', 'SPX', 'AAPL'
+            start: optional start date string (e.g. '2024-01-01')
+            end: optional end date string (e.g. '2024-12-31')
+            freq: optional resample frequency: '5min', '15min', '30min', '1h', '4h', '1D', '1W'
+            resolution: '5min' (default) or '1min' — selects the underlying database
+
+        Returns:
+            pandas DataFrame with columns: datetime, open, high, low, close, volume
+        """
+        _, table, sym_col = self._resolve(db_name, resolution)
+        con = self._connect(db_name, resolution)
+        try:
+            conditions = [f"{sym_col} = ?"]
+            params = [symbol]
+            if start:
+                conditions.append("datetime >= ?")
+                params.append(start)
+            if end:
+                conditions.append("datetime <= ?")
+                params.append(end)
+
+            where = " AND ".join(conditions)
+
+            native_freq = '1min' if resolution == '1min' else '5min'
+            if freq and freq != native_freq:
+                interval_map = {
+                    '1min': '1 minute', '2min': '2 minutes', '3min': '3 minutes',
+                    '5min': '5 minutes', '10min': '10 minutes',
+                    '15min': '15 minutes', '30min': '30 minutes',
+                    '1h': '1 hour', '2h': '2 hours', '4h': '4 hours',
+                    '1D': '1 day', '1W': '1 week', '1M': '1 month',
+                }
+                interval = interval_map.get(freq)
+                if not interval:
+                    raise ValueError(f"Unknown freq '{freq}'. Use: {list(interval_map.keys())}")
+
+                sql = f"""
+                    SELECT
+                        time_bucket(INTERVAL '{interval}', datetime) AS datetime,
+                        FIRST(open) AS open,
+                        MAX(high) AS high,
+                        MIN(low) AS low,
+                        LAST(close) AS close,
+                        SUM(volume) AS volume
+                    FROM {table}
+                    WHERE {where}
+                    GROUP BY 1
+                    ORDER BY 1
+                """
+            else:
+                sql = f"SELECT datetime, open, high, low, close, volume FROM {table} WHERE {where} ORDER BY datetime"
+
+            df = con.execute(sql, params).fetchdf()
+            if 'datetime' in df.columns:
+                df['datetime'] = pd.to_datetime(df['datetime'])
+                df = df.set_index('datetime')
+            return df
+        finally:
+            con.close()
+
+    def query(self, db_name, sql, resolution='5min'):
+        """Run arbitrary SQL on a database. Returns pandas DataFrame."""
+        con = self._connect(db_name, resolution)
+        try:
+            return con.execute(sql).fetchdf()
+        finally:
+            con.close()
+
+    def __repr__(self):
+        lines = ["HFDataClient (1min + 5min OHLCV)"]
+        for res, db_map in [('5min', self.DATABASES_5MIN), ('1min', self.DATABASES_1MIN)]:
+            for name, fname in db_map.items():
+                path = os.path.join(self.base_dir, fname)
+                exists = "OK" if os.path.exists(path) else "MISSING"
+                lines.append(f"  {name} ({res}): {exists}")
+        return "\\n".join(lines)
+
+
+class OptionsDataClient:
+    """
+    Options chain data client backed by DuckDB.
+
+    3.83 BILLION rows of daily option chain snapshots for 11,077 US tickers.
+    Coverage: 2010-01-04 to 2025-12-31, partitioned by quarter.
+
+    Table: option_chain
+    Columns: ticker, quarter, trade_date, strike, expiry_date, call_put,
+             last_trade_price, bid_price, ask_price, bid_iv, ask_iv,
+             open_interest, volume, delta, gamma, vega, theta, rho
+
+    Usage:
+        optdb.tickers()                                       → list all 11,077 tickers
+        optdb.get('AAPL', '2024-01-01', '2024-03-31')        → AAPL chain for Q1 2024
+        optdb.get('SPY', '2024-06-01', '2024-06-30', call_put='c')  → SPY calls June 2024
+        optdb.get('TSLA', '2024-01-15', '2024-01-15', strike_min=200, strike_max=300)
+        optdb.surface('AAPL', '2024-06-15')                   → IV surface snapshot for a single date
+        optdb.query("SELECT * FROM option_chain WHERE ticker='AAPL' AND trade_date='2024-06-15' LIMIT 10")
+    """
+
+    def __init__(self, base_dir=None):
+        if base_dir:
+            self.base_dir = base_dir
+        else:
+            candidates = [
+                os.environ.get('HF_DATA_DIR', ''),
+                os.path.join(os.getcwd(), 'hf_data'),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'hf_data'),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'hf_data'),
+                os.path.expanduser('~/Desktop/hf_data'),
+            ]
+            candidates = [c for c in candidates if c]  # remove empty
+            self.base_dir = next((c for c in candidates if os.path.isdir(c)), candidates[0])
+
+    def _connect(self):
+        try:
+            import duckdb
+        except ImportError:
+            raise ImportError("duckdb not installed. Run: pip install duckdb")
+        path = os.path.join(self.base_dir, 'options.duckdb')
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Options database not found: {path}")
+        return duckdb.connect(path, read_only=True)
+
+    def tickers(self):
+        """List all available tickers. Returns list of strings."""
+        con = self._connect()
+        try:
+            result = con.execute("SELECT DISTINCT ticker FROM option_chain ORDER BY ticker").fetchall()
+            return [row[0] for row in result]
+        finally:
+            con.close()
+
+    def get(self, ticker, start_date, end_date, call_put=None, strike_min=None, strike_max=None, expiry_min=None, expiry_max=None):
+        """
+        Get option chain data for a ticker within a date range.
+
+        Args:
+            ticker: e.g. 'AAPL', 'SPY', 'TSLA'
+            start_date: trade date start (e.g. '2024-01-01')
+            end_date: trade date end (e.g. '2024-03-31')
+            call_put: optional 'c' for calls or 'p' for puts
+            strike_min: optional minimum strike price
+            strike_max: optional maximum strike price
+            expiry_min: optional minimum expiry date
+            expiry_max: optional maximum expiry date
+
+        Returns:
+            pandas DataFrame with all option chain columns
+        """
+        con = self._connect()
+        try:
+            conditions = ["ticker = ?", "trade_date >= ?", "trade_date <= ?"]
+            params = [ticker, start_date, end_date]
+            if call_put:
+                conditions.append("call_put = ?")
+                params.append(call_put)
+            if strike_min is not None:
+                conditions.append("strike >= ?")
+                params.append(strike_min)
+            if strike_max is not None:
+                conditions.append("strike <= ?")
+                params.append(strike_max)
+            if expiry_min:
+                conditions.append("expiry_date >= ?")
+                params.append(expiry_min)
+            if expiry_max:
+                conditions.append("expiry_date <= ?")
+                params.append(expiry_max)
+
+            where = " AND ".join(conditions)
+            sql = f"SELECT * FROM option_chain WHERE {where} ORDER BY trade_date, expiry_date, strike, call_put"
+            df = con.execute(sql, params).fetchdf()
+            if 'trade_date' in df.columns:
+                df['trade_date'] = pd.to_datetime(df['trade_date'])
+            if 'expiry_date' in df.columns:
+                df['expiry_date'] = pd.to_datetime(df['expiry_date'])
+            return df
+        finally:
+            con.close()
+
+    def surface(self, ticker, trade_date, call_put='c'):
+        """
+        Get implied volatility surface for a single trade date.
+        Returns DataFrame with columns: strike, expiry_date, bid_iv, ask_iv, mid_iv, delta, gamma, vega, theta.
+        """
+        con = self._connect()
+        try:
+            sql = """
+                SELECT strike, expiry_date, bid_iv, ask_iv,
+                       (bid_iv + ask_iv) / 2.0 AS mid_iv,
+                       delta, gamma, vega, theta, open_interest, volume
+                FROM option_chain
+                WHERE ticker = ? AND trade_date = ? AND call_put = ?
+                ORDER BY expiry_date, strike
+            """
+            df = con.execute(sql, [ticker, trade_date, call_put]).fetchdf()
+            if 'expiry_date' in df.columns:
+                df['expiry_date'] = pd.to_datetime(df['expiry_date'])
+            return df
+        finally:
+            con.close()
+
+    def query(self, sql):
+        """Run arbitrary SQL on the options database. Returns pandas DataFrame."""
+        con = self._connect()
+        try:
+            return con.execute(sql).fetchdf()
+        finally:
+            con.close()
+
+    def __repr__(self):
+        path = os.path.join(self.base_dir, 'options.duckdb')
+        exists = "OK" if os.path.exists(path) else "MISSING"
+        return f"OptionsDataClient (3.8B rows, 11,077 tickers, 2010-2025): {exists}"
+
+
+class SDCIPOClient:
+    """
+    SDC Platinum IPO database client backed by DuckDB.
+
+    452,475 IPO records from 1963–2024, covering global markets.
+    Table: sdc_ipo — 538 columns including issuer info, financials, pricing,
+    underpricing returns, fees, underwriters, SIC codes, industries, and more.
+
+    Usage:
+        sdc_ipo.info()                          → row count, year range
+        sdc_ipo.columns()                       → list all 538 column names
+        sdc_ipo.search_columns('price')         → find columns matching keyword
+        sdc_ipo.sample(5)                       → random sample of 5 rows (key columns)
+        sdc_ipo.query("SELECT * FROM sdc_ipo WHERE dates_offer_year_ccyy='2020' LIMIT 10")
+        sdc_ipo.get(year_start='2000', year_end='2010', nation='United States', exchange='NYSE')
+        sdc_ipo.get(industry='Technology', min_proceeds=100)
+    """
+
+    KEY_COLUMNS = [
+        'issuerborrower_name_full', 'new_issues_ticker_symbol', 'isin',
+        'dates_issue_date', 'first_trade_date', 'dates_offer_year_ccyy',
+        'adjusted_offer_price_usd', 'proceeds_amount_all_markets_usd_millions',
+        'percent_change_offer_price_to_closing_price_at_offerfirst_trade',
+        'percent_change_offer_price_to_price_1_day_after_offer',
+        'percent_change_offer_price_to_price_1_week_after_offer',
+        'percent_change_offer_price_to_price_4_weeks_after_offer',
+        'percent_change_offer_price_to_price_180_days_after_offer',
+        'percent_change_offer_price_to_price_365_days_after_offer',
+        'issuerborrower_nation', 'issuerborrower_nation_region',
+        'new_issues_stock_exchange', 'new_issues_sdc_industry',
+        'new_issues_macro_industry', 'sic',
+        'blank_check_spac_involvement_yn',
+        'bookrunner_short_name',
+        'financials_total_assets_before_offering_usd_millions',
+        'financials_total_revenues_before_offering_usd_millions',
+        'financials_net_income_after_taxes_before_offering_usd_millions',
+        'financials_shares_outstanding_after_offer',
+        'new_issues_fees_gross_spread_as_pct_of_offer_price',
+        'new_issues_number_of_employees',
+        'new_issues_date_company_founded',
+        'transaction_status',
+    ]
+
+    def __init__(self, base_dir=None):
+        if base_dir:
+            self.base_dir = base_dir
+        else:
+            candidates = [
+                os.environ.get('SDC_IPO_DIR', ''),
+                os.path.join(os.getcwd(), 'SDC_IPO'),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'SDC_IPO'),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'SDC_IPO'),
+            ]
+            candidates = [c for c in candidates if c]  # remove empty
+            self.base_dir = next((c for c in candidates if os.path.isdir(c)), candidates[0])
+
+    def _connect(self):
+        """Get a read-only DuckDB connection."""
+        try:
+            import duckdb
+        except ImportError:
+            raise ImportError("duckdb not installed. Run: pip install duckdb")
+        path = os.path.join(self.base_dir, 'sdc_ipo.duckdb')
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"SDC IPO database not found: {path}")
+        return duckdb.connect(path, read_only=True)
+
+    def info(self):
+        """Get row count, year range, nation count, and industry count."""
+        con = self._connect()
+        try:
+            return con.execute("""
+                SELECT
+                    COUNT(*) AS total_ipos,
+                    MIN(dates_offer_year_ccyy) AS first_year,
+                    MAX(dates_offer_year_ccyy) AS last_year,
+                    COUNT(DISTINCT issuerborrower_nation) AS nations,
+                    COUNT(DISTINCT new_issues_sdc_industry) AS industries,
+                    COUNT(DISTINCT new_issues_stock_exchange) AS exchanges
+                FROM sdc_ipo
+                WHERE dates_offer_year_ccyy IS NOT NULL
+            """).fetchdf()
+        finally:
+            con.close()
+
+    def columns(self):
+        """List all column names in the sdc_ipo table."""
+        con = self._connect()
+        try:
+            cols = con.execute("DESCRIBE sdc_ipo").fetchall()
+            return [c[0] for c in cols]
+        finally:
+            con.close()
+
+    def search_columns(self, keyword):
+        """Find columns whose name contains the keyword (case-insensitive)."""
+        kw = keyword.lower()
+        return [c for c in self.columns() if kw in c.lower()]
+
+    def sample(self, n=5):
+        """Random sample of n rows with key columns only."""
+        con = self._connect()
+        try:
+            cols_str = ', '.join(f'"{c}"' for c in self.KEY_COLUMNS)
+            return con.execute(f"SELECT {cols_str} FROM sdc_ipo USING SAMPLE {n}").fetchdf()
+        finally:
+            con.close()
+
+    def get(self, year_start=None, year_end=None, nation=None, exchange=None,
+            industry=None, ticker=None, issuer_name=None, spac=None,
+            min_proceeds=None, max_proceeds=None, columns=None, limit=None):
+        """
+        Query IPOs with filters. Returns pandas DataFrame.
+
+        Args:
+            year_start: Minimum offer year (e.g. '2000' or 2000)
+            year_end: Maximum offer year (e.g. '2023' or 2023)
+            nation: Issuer nation filter (e.g. 'United States', 'Japan')
+            exchange: Stock exchange filter (contains, e.g. 'NYSE', 'NASDAQ')
+            industry: SDC industry filter (contains, e.g. 'Technology', 'Manufacturing')
+            ticker: Ticker symbol filter (exact or LIKE pattern)
+            issuer_name: Issuer name filter (contains, case-insensitive)
+            spac: Filter by SPAC ('Y' or 'N')
+            min_proceeds: Minimum proceeds in USD millions
+            max_proceeds: Maximum proceeds in USD millions
+            columns: List of column names to return (default: KEY_COLUMNS)
+            limit: Max rows to return (default: no limit)
+
+        Returns:
+            pandas DataFrame
+        """
+        con = self._connect()
+        try:
+            conditions = []
+            params = []
+
+            if year_start is not None:
+                conditions.append("dates_offer_year_ccyy >= ?")
+                params.append(str(year_start))
+            if year_end is not None:
+                conditions.append("dates_offer_year_ccyy <= ?")
+                params.append(str(year_end))
+            if nation:
+                conditions.append("issuerborrower_nation ILIKE ?")
+                params.append(f"%{nation}%")
+            if exchange:
+                conditions.append("new_issues_stock_exchange ILIKE ?")
+                params.append(f"%{exchange}%")
+            if industry:
+                conditions.append("(new_issues_sdc_industry ILIKE ? OR new_issues_macro_industry ILIKE ?)")
+                params.extend([f"%{industry}%", f"%{industry}%"])
+            if ticker:
+                conditions.append("new_issues_ticker_symbol ILIKE ?")
+                params.append(f"%{ticker}%")
+            if issuer_name:
+                conditions.append("issuerborrower_name_full ILIKE ?")
+                params.append(f"%{issuer_name}%")
+            if spac:
+                conditions.append("blank_check_spac_involvement_yn = ?")
+                params.append(spac)
+            if min_proceeds is not None:
+                conditions.append("TRY_CAST(proceeds_amount_all_markets_usd_millions AS DOUBLE) >= ?")
+                params.append(float(min_proceeds))
+            if max_proceeds is not None:
+                conditions.append("TRY_CAST(proceeds_amount_all_markets_usd_millions AS DOUBLE) <= ?")
+                params.append(float(max_proceeds))
+
+            cols = columns or self.KEY_COLUMNS
+            cols_str = ', '.join(f'"{c}"' for c in cols)
+
+            where = " AND ".join(conditions) if conditions else "1=1"
+            sql = f"SELECT {cols_str} FROM sdc_ipo WHERE {where} ORDER BY dates_offer_year_ccyy DESC, dates_issue_date DESC"
+            if limit:
+                sql += f" LIMIT {int(limit)}"
+
+            return con.execute(sql, params).fetchdf()
+        finally:
+            con.close()
+
+    def query(self, sql):
+        """Run arbitrary SQL on the sdc_ipo database. Returns pandas DataFrame."""
+        con = self._connect()
+        try:
+            return con.execute(sql).fetchdf()
+        finally:
+            con.close()
+
+    def describe_column(self, column_name):
+        """Get unique value counts and sample values for a specific column."""
+        con = self._connect()
+        try:
+            stats = con.execute(f"""
+                SELECT
+                    COUNT(*) AS total_rows,
+                    COUNT("{column_name}") AS non_null,
+                    COUNT(DISTINCT "{column_name}") AS unique_values
+                FROM sdc_ipo
+            """).fetchdf()
+            top_values = con.execute(f"""
+                SELECT "{column_name}" AS value, COUNT(*) AS cnt
+                FROM sdc_ipo
+                WHERE "{column_name}" IS NOT NULL
+                GROUP BY 1 ORDER BY 2 DESC LIMIT 20
+            """).fetchdf()
+            return {'stats': stats, 'top_values': top_values}
+        finally:
+            con.close()
+
+    def yearly_counts(self, nation=None, exchange=None):
+        """Get IPO counts by year, optionally filtered by nation or exchange."""
+        con = self._connect()
+        try:
+            conditions = ["dates_offer_year_ccyy IS NOT NULL"]
+            params = []
+            if nation:
+                conditions.append("issuerborrower_nation ILIKE ?")
+                params.append(f"%{nation}%")
+            if exchange:
+                conditions.append("new_issues_stock_exchange ILIKE ?")
+                params.append(f"%{exchange}%")
+            where = " AND ".join(conditions)
+            return con.execute(f"""
+                SELECT dates_offer_year_ccyy AS year, COUNT(*) AS ipo_count,
+                       AVG(TRY_CAST(proceeds_amount_all_markets_usd_millions AS DOUBLE)) AS avg_proceeds_usd_m,
+                       SUM(TRY_CAST(proceeds_amount_all_markets_usd_millions AS DOUBLE)) AS total_proceeds_usd_m,
+                       AVG(TRY_CAST(percent_change_offer_price_to_closing_price_at_offerfirst_trade AS DOUBLE)) AS avg_first_day_return_pct
+                FROM sdc_ipo WHERE {where}
+                GROUP BY 1 ORDER BY 1
+            """, params).fetchdf()
+        finally:
+            con.close()
+
+    def __repr__(self):
+        path = os.path.join(self.base_dir, 'sdc_ipo.duckdb')
+        exists = "OK" if os.path.exists(path) else "MISSING"
+        return f"SDCIPOClient (452K IPOs, 1963-2024): {exists}"
+
+
+class USHousingClient:
+    """
+    US Housing data client backed by DuckDB.
+
+    839,313 property listings across all 50 US states (Zillow data).
+    5 tables: properties (116 cols), price_history, tax_history, schools, meta_columns.
+
+    Ideal for hedonic pricing models, housing market analysis, spatial econometrics,
+    property valuation, and real estate research.
+
+    Usage:
+        housing.info()                                      -> row counts, state coverage
+        housing.tables()                                    -> list all tables
+        housing.columns(table='properties')                 -> column names for a table
+        housing.search_columns('price')                     -> find columns matching keyword
+        housing.describe_column('home_type')                -> unique values & counts
+        housing.sample(5)                                   -> random sample of 5 properties (key columns)
+        housing.get(state='FL', city='Miami', home_type='SINGLE_FAMILY', min_price=200000, max_price=500000, limit=1000)
+        housing.query("SELECT address_state, AVG(price) FROM properties GROUP BY 1 ORDER BY 2 DESC")
+        housing.price_history(zpid=12345678)                -> price history for a property
+        housing.tax_history(zpid=12345678)                  -> tax history for a property
+        housing.schools(zpid=12345678)                      -> nearby schools for a property
+    """
+
+    KEY_COLUMNS = [
+        'zpid', 'address_street', 'address_city', 'address_state', 'address_zipcode',
+        'price', 'zestimate', 'bedrooms', 'bathrooms', 'living_area_sqft', 'lot_size_sqft',
+        'year_built', 'home_type', 'home_status', 'price_per_sqft', 'days_on_zillow',
+    ]
+
+    def __init__(self, base_dir=None):
+        if base_dir:
+            self.base_dir = base_dir
+        else:
+            candidates = [
+                os.path.join(os.getcwd(), 'us_housing_data'),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'us_housing_data'),
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'us_housing_data'),
+            ]
+            self.base_dir = next((c for c in candidates if os.path.isdir(c)), candidates[0])
+
+    def _connect(self):
+        """Get a read-only DuckDB connection."""
+        try:
+            import duckdb
+        except ImportError:
+            raise ImportError("duckdb not installed. Run: pip install duckdb")
+        path = os.path.join(self.base_dir, 'us_housing.duckdb')
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"US Housing database not found: {path}")
+        return duckdb.connect(path, read_only=True)
+
+    def info(self):
+        """Get summary: row counts per table, state coverage, home type distribution."""
+        con = self._connect()
+        try:
+            props = con.execute("SELECT COUNT(*) FROM properties").fetchone()[0]
+            states = con.execute("SELECT COUNT(DISTINCT address_state) FROM properties").fetchone()[0]
+            cities = con.execute("SELECT COUNT(DISTINCT address_city) FROM properties").fetchone()[0]
+            price_hist = con.execute("SELECT COUNT(*) FROM price_history").fetchone()[0]
+            tax_hist = con.execute("SELECT COUNT(*) FROM tax_history").fetchone()[0]
+            schools = con.execute("SELECT COUNT(*) FROM schools").fetchone()[0]
+            top_states = con.execute(
+                "SELECT address_state, COUNT(*) as cnt FROM properties GROUP BY 1 ORDER BY 2 DESC LIMIT 10"
+            ).fetchall()
+            home_types = con.execute(
+                "SELECT home_type, COUNT(*) as cnt FROM properties GROUP BY 1 ORDER BY 2 DESC LIMIT 10"
+            ).fetchall()
+            price_stats = con.execute(
+                "SELECT MIN(price), AVG(price), MEDIAN(price), MAX(price) FROM properties WHERE price IS NOT NULL"
+            ).fetchone()
+            return {
+                'properties': props, 'price_history_rows': price_hist,
+                'tax_history_rows': tax_hist, 'school_rows': schools,
+                'states': states, 'cities': cities,
+                'top_states': {r[0]: r[1] for r in top_states},
+                'home_types': {r[0]: r[1] for r in home_types},
+                'price_min': price_stats[0], 'price_avg': price_stats[1],
+                'price_median': price_stats[2], 'price_max': price_stats[3],
+            }
+        finally:
+            con.close()
+
+    def tables(self):
+        """List all tables in the database."""
+        con = self._connect()
+        try:
+            return [r[0] for r in con.execute("SHOW TABLES").fetchall()]
+        finally:
+            con.close()
+
+    def columns(self, table='properties'):
+        """List all column names and types for a table."""
+        con = self._connect()
+        try:
+            cols = con.execute(f"DESCRIBE {table}").fetchall()
+            return [(c[0], c[1]) for c in cols]
+        finally:
+            con.close()
+
+    def search_columns(self, keyword, table='properties'):
+        """Search column names matching a keyword (case-insensitive)."""
+        con = self._connect()
+        try:
+            cols = con.execute(f"DESCRIBE {table}").fetchall()
+            kw = keyword.lower()
+            return [(c[0], c[1]) for c in cols if kw in c[0].lower()]
+        finally:
+            con.close()
+
+    def describe_column(self, column, table='properties'):
+        """Get unique value counts and top 20 values for a column."""
+        con = self._connect()
+        try:
+            n_unique = con.execute(f"SELECT COUNT(DISTINCT {column}) FROM {table}").fetchone()[0]
+            n_null = con.execute(f"SELECT COUNT(*) FROM {table} WHERE {column} IS NULL").fetchone()[0]
+            top = con.execute(
+                f"SELECT {column}, COUNT(*) as cnt FROM {table} WHERE {column} IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 20"
+            ).fetchall()
+            return {'unique': n_unique, 'nulls': n_null, 'top_20': {str(r[0]): r[1] for r in top}}
+        finally:
+            con.close()
+
+    def sample(self, n=5):
+        """Random sample of n properties (key columns). Returns pandas DataFrame."""
+        con = self._connect()
+        try:
+            cols_str = ', '.join(self.KEY_COLUMNS)
+            return con.execute(f"SELECT {cols_str} FROM properties USING SAMPLE {n}").fetchdf()
+        finally:
+            con.close()
+
+    def get(self, state=None, city=None, zipcode=None, home_type=None, home_status=None,
+            min_price=None, max_price=None, min_sqft=None, max_sqft=None,
+            min_bedrooms=None, max_bedrooms=None, min_year_built=None, max_year_built=None,
+            columns=None, limit=5000):
+        """Filtered query on properties table. Returns pandas DataFrame."""
+        con = self._connect()
+        try:
+            cols_str = ', '.join(columns) if columns else '*'
+            where = []
+            params = []
+            if state:
+                where.append("address_state = ?")
+                params.append(state)
+            if city:
+                where.append("address_city ILIKE ?")
+                params.append(f"%{city}%")
+            if zipcode:
+                where.append("address_zipcode = ?")
+                params.append(str(zipcode))
+            if home_type:
+                where.append("home_type = ?")
+                params.append(home_type)
+            if home_status:
+                where.append("home_status = ?")
+                params.append(home_status)
+            if min_price is not None:
+                where.append("price >= ?")
+                params.append(min_price)
+            if max_price is not None:
+                where.append("price <= ?")
+                params.append(max_price)
+            if min_sqft is not None:
+                where.append("living_area_sqft >= ?")
+                params.append(min_sqft)
+            if max_sqft is not None:
+                where.append("living_area_sqft <= ?")
+                params.append(max_sqft)
+            if min_bedrooms is not None:
+                where.append("bedrooms >= ?")
+                params.append(min_bedrooms)
+            if max_bedrooms is not None:
+                where.append("bedrooms <= ?")
+                params.append(max_bedrooms)
+            if min_year_built is not None:
+                where.append("year_built >= ?")
+                params.append(min_year_built)
+            if max_year_built is not None:
+                where.append("year_built <= ?")
+                params.append(max_year_built)
+            where_clause = " AND ".join(where) if where else "1=1"
+            sql = f"SELECT {cols_str} FROM properties WHERE {where_clause} LIMIT {limit}"
+            return con.execute(sql, params).fetchdf()
+        finally:
+            con.close()
+
+    def price_history(self, zpid):
+        """Get price history for a property by zpid. Returns pandas DataFrame."""
+        con = self._connect()
+        try:
+            return con.execute("SELECT * FROM price_history WHERE zpid = ?", [zpid]).fetchdf()
+        finally:
+            con.close()
+
+    def tax_history(self, zpid):
+        """Get tax history for a property by zpid. Returns pandas DataFrame."""
+        con = self._connect()
+        try:
+            return con.execute("SELECT * FROM tax_history WHERE zpid = ?", [zpid]).fetchdf()
+        finally:
+            con.close()
+
+    def schools(self, zpid):
+        """Get nearby schools for a property by zpid. Returns pandas DataFrame."""
+        con = self._connect()
+        try:
+            return con.execute("SELECT * FROM schools WHERE zpid = ?", [zpid]).fetchdf()
+        finally:
+            con.close()
+
+    def query(self, sql):
+        """Run arbitrary SQL on the US Housing database. Returns pandas DataFrame."""
+        con = self._connect()
+        try:
+            return con.execute(sql).fetchdf()
+        finally:
+            con.close()
+
+    def __repr__(self):
+        path = os.path.join(self.base_dir, 'us_housing.duckdb')
+        exists = "OK" if os.path.exists(path) else "MISSING"
+        return f"USHousingClient (839K properties, 50 US states): {exists}"
+
 
 class CustomPythonExecutor:
     """Executor for custom Python code with FMP & FRED API access"""
 
-    def __init__(self, fmp_api_key=None, fred_api_key=None, eodhd_api_key=None):
+    def __init__(self, fmp_api_key=None, fred_api_key=None, eodhd_api_key=None, anthropic_api_key=None, openrouter_api_key=None):
         self.fmp_api_key = fmp_api_key or os.getenv('FMP_API_KEY')
         self.fmp = FMPClient(self.fmp_api_key) if FMPClient and self.fmp_api_key else None
         self.fred_api_key = fred_api_key or os.getenv('FRED_API_KEY')
         self.fred = FREDClient(self.fred_api_key) if FREDClient and self.fred_api_key else None
         self.eodhd_api_key = eodhd_api_key or os.getenv('EODHD_API_KEY')
         self.eodhd = EODHDClient(self.eodhd_api_key) if self.eodhd_api_key else None
+        self.anthropic_api_key = anthropic_api_key or os.getenv('ANTHROPIC_API_KEY')
+        self.claude = ClaudeClient(self.anthropic_api_key) if self.anthropic_api_key else None
+        self.openrouter_api_key = openrouter_api_key or os.getenv('OPENROUTER_API_KEY')
+        self.openrouter = OpenRouterClient(self.openrouter_api_key) if self.openrouter_api_key else None
+        self.wb = WorldBankClient()
+        self.imf = IMFClient()
+        self.oecd = OECDClient()
+        self.polymarket = PolymarketClient()
         self.output_text = []
         self.figures = []
         self.files = []
+        self.metadata_entries = []
+        self.data_dir = tempfile.mkdtemp(prefix='autoscholar_data_')
 
     def execute(self, code: str, context: dict = None) -> dict:
         """
@@ -791,1010 +1313,222 @@ class CustomPythonExecutor:
                 - error: str (if failed)
         """
         try:
-            # Prepare safe execution environment with all available libraries
-
-            def _convert_numpy(val):
-                """Convert numpy types to Python native types for openpyxl compatibility"""
-                if val is None or (hasattr(val, '__class__') and val.__class__.__name__ in ('NaT', 'NaTType')):
-                    return None
-                if hasattr(np, 'integer') and isinstance(val, np.integer):
-                    return int(val)
-                if hasattr(np, 'floating') and isinstance(val, np.floating):
-                    if np.isnan(val) or np.isinf(val):
-                        return None
-                    return float(val)
-                if hasattr(np, 'bool_') and isinstance(val, np.bool_):
-                    return bool(val)
-                if hasattr(np, 'ndarray') and isinstance(val, np.ndarray):
-                    return val.tolist()
-                if isinstance(val, pd.Timestamp):
-                    return val.to_pydatetime()
-                if hasattr(val, 'item'):
-                    return val.item()
-                return val
-
-            def _detect_number_format(col_name):
-                """Auto-detect number format based on column name"""
-                col_lower = str(col_name).lower()
-                pct_keywords = ['pct', 'percent', 'return', 'margin', 'yield', 'rate', 'ratio',
-                                'growth', 'change', 'weight', 'allocation', 'drawdown', 'sharpe',
-                                'sortino', 'alpha', 'beta', 'volatility', 'vol']
-                if any(kw in col_lower for kw in pct_keywords):
-                    return '0.00%'
-                price_keywords = ['price', 'close', 'open', 'high', 'low', 'adj', 'value',
-                                  'revenue', 'income', 'profit', 'cost', 'expense', 'ebitda',
-                                  'earnings', 'sales', 'assets', 'liabilities', 'equity',
-                                  'market_cap', 'marketcap', 'nav', 'amount']
-                if any(kw in col_lower for kw in price_keywords):
-                    return '#,##0.00'
-                vol_keywords = ['volume', 'shares', 'count', 'qty', 'quantity']
-                if any(kw in col_lower for kw in vol_keywords):
-                    return '#,##0'
-                return None
-
+            # Create bound wrappers for the export functions that pass self.files
             def save_excel(data, filename='analysis.xlsx', sheet_name='Sheet1', index=False,
                            title=None, summary=True, conditional_formatting=True, formulas=None):
-                """Save DataFrame(s) as a professionally styled Excel file with formulas and conditional formatting.
+                return _save_excel_impl(self.files, data, filename=filename, sheet_name=sheet_name,
+                                        index=index, title=title, summary=summary,
+                                        conditional_formatting=conditional_formatting, formulas=formulas)
+
+            def save_word(content, filename='document.docx'):
+                return _save_word_impl(self.files, content, filename=filename)
+
+            def save_latex(content, filename='report.pdf', figures='auto', template='financial',
+                           author=None, company=None, logo=None, title=None, bibtex=None, **kwargs):
+                return _save_latex_impl(self.files, content, filename=filename, figures=figures,
+                                        template=template, author=author, company=company,
+                                        logo=logo, title=title, bibtex=bibtex, **kwargs)
+
+            # ── Data provenance helpers (Reproducible Research Engine) ──
+
+            def save_raw_data(data, filename, source='unknown', method='api', agent=None, description=None):
+                """Save raw data with provenance metadata for reproducibility.
 
                 Args:
-                    data: DataFrame for single sheet, or dict {sheet_name: DataFrame} for multi-sheet
-                    filename: Output filename (.xlsx)
-                    sheet_name: Sheet name (only used if data is a single DataFrame)
-                    index: Whether to include the DataFrame index
-                    title: Title row text (defaults to sheet name)
-                    summary: True (all), False (none), or list like ['sum', 'average'] for selected stats
-                    conditional_formatting: True to auto-apply color scales and data bars
-                    formulas: List of dicts [{"col": "Total", "formula": "=B{row}+C{row}", "format": "#,##0.00"}]
+                    data: DataFrame, dict, or list to save
+                    filename: Output filename (e.g. 'stock_prices.csv')
+                    source: Data source identifier (e.g. 'EODHD API', 'https://...')
+                    method: 'api' or 'web'
+                    agent: Agent name (e.g. 'turing')
+                    description: Optional description of the data
+                Returns:
+                    filepath of the saved data file
                 """
-                from openpyxl import Workbook
-                from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
-                from openpyxl.utils import get_column_letter
-                from openpyxl.formatting.rule import ColorScaleRule, DataBarRule
+                subdir = 'raw/web' if method in ('web', 'scrape') else 'raw/api'
+                out_dir = os.path.join(self.data_dir, subdir)
+                os.makedirs(out_dir, exist_ok=True)
 
-                if not filename.endswith('.xlsx'):
-                    filename += '.xlsx'
-                safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
-                filepath = os.path.join(tempfile.gettempdir(), f'vq_{int(time.time())}_{safe_name}')
+                # Convert to DataFrame if needed
+                if isinstance(data, (dict, list)):
+                    data = pd.DataFrame(data)
 
-                # Normalize input to dict of DataFrames
-                if isinstance(data, pd.DataFrame):
-                    sheets = {sheet_name: data}
-                elif isinstance(data, dict):
-                    sheets = data
+                stem, ext = os.path.splitext(filename)
+                if not ext:
+                    ext = '.csv'
+                    filename = stem + ext
+
+                filepath = os.path.join(out_dir, filename)
+                if ext.lower() == '.parquet':
+                    data.to_parquet(filepath, index=False)
                 else:
-                    raise ValueError("save_excel expects a DataFrame or dict of DataFrames")
+                    data.to_csv(filepath, index=False)
 
-                wb = Workbook()
-                first = True
+                # Create provenance metadata
+                meta = {
+                    'source': source,
+                    'timestamp': datetime.now().isoformat(),
+                    'method': method,
+                    'agent': agent or 'turing',
+                    'transformation': 'none',
+                    'rows': int(len(data)),
+                    'columns': int(len(data.columns)) if hasattr(data, 'columns') else 0,
+                    'filename': filename,
+                    'description': description,
+                }
+                meta_path = os.path.join(out_dir, f'{stem}_metadata.json')
+                with open(meta_path, 'w') as f:
+                    json.dump(meta, f, indent=2, default=str)
 
-                # Styles
-                teal_hex = '119993'
-                header_fill = PatternFill(start_color=teal_hex, end_color=teal_hex, fill_type='solid')
-                header_font = Font(bold=True, color='FFFFFF', size=11, name='Calibri')
-                header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-                thin_border = Border(
-                    left=Side(style='thin', color='D0D0D0'),
-                    right=Side(style='thin', color='D0D0D0'),
-                    top=Side(style='thin', color='D0D0D0'),
-                    bottom=Side(style='thin', color='D0D0D0'),
-                )
-                even_fill = PatternFill(start_color='F2F9F9', end_color='F2F9F9', fill_type='solid')
-                data_font = Font(size=10, name='Calibri')
-                data_alignment = Alignment(vertical='center')
-                title_font = Font(bold=True, color=teal_hex, size=14, name='Calibri')
-                subtitle_font = Font(italic=True, color='888888', size=9, name='Calibri')
-                summary_label_font = Font(bold=True, size=10, name='Calibri', color='333333')
-                summary_value_font = Font(bold=True, size=10, name='Calibri', color=teal_hex)
-                summary_fill = PatternFill(start_color='F0F0F0', end_color='F0F0F0', fill_type='solid')
-                teal_top_border = Border(top=Side(style='thin', color=teal_hex))
+                # Track files for ZIP inclusion
+                self.files.append({'filename': filename, 'filepath': filepath, 'data_type': subdir})
+                self.files.append({'filename': f'{stem}_metadata.json', 'filepath': meta_path, 'data_type': subdir})
+                self.metadata_entries.append(meta)
 
-                # Determine which summary rows to include
-                all_summary_funcs = ['sum', 'average', 'min', 'max', 'count']
-                if summary is True:
-                    active_summaries = all_summary_funcs
-                elif summary is False or summary is None:
-                    active_summaries = []
-                elif isinstance(summary, (list, tuple)):
-                    active_summaries = [s.lower() for s in summary if s.lower() in all_summary_funcs]
+                self._custom_print(f"[DATA] Saved {subdir}/{filename} ({len(data)} rows) — source: {source}")
+                return filepath
+
+            def save_processed_data(data, filename, source_files=None, transformation=None, agent=None):
+                """Save processed/cleaned data with lineage metadata.
+
+                Args:
+                    data: DataFrame to save
+                    filename: Output filename (e.g. 'final_dataset.csv')
+                    source_files: List of raw filenames this derives from
+                    transformation: Description of transformations applied
+                    agent: Agent name (e.g. 'newton')
+                Returns:
+                    filepath of the saved data file
+                """
+                out_dir = os.path.join(self.data_dir, 'processed')
+                os.makedirs(out_dir, exist_ok=True)
+
+                if isinstance(data, (dict, list)):
+                    data = pd.DataFrame(data)
+
+                stem, ext = os.path.splitext(filename)
+                if not ext:
+                    ext = '.csv'
+                    filename = stem + ext
+
+                filepath = os.path.join(out_dir, filename)
+                if ext.lower() == '.parquet':
+                    data.to_parquet(filepath, index=False)
                 else:
-                    active_summaries = all_summary_funcs
+                    data.to_csv(filepath, index=False)
 
-                summary_labels = {
-                    'sum': 'SUM', 'average': 'AVERAGE', 'min': 'MIN', 'max': 'MAX', 'count': 'COUNT'
-                }
-                summary_excel_funcs = {
-                    'sum': 'SUM', 'average': 'AVERAGE', 'min': 'MIN', 'max': 'MAX', 'count': 'COUNT'
-                }
-
-                def _classify_column(col_name):
-                    """Classify column for conditional formatting: 'return', 'volume', 'price', or None"""
-                    col_lower = str(col_name).lower()
-                    return_kw = ['return', 'performance', 'pnl', 'gain', 'loss', 'change', 'alpha',
-                                 'excess', 'spread', 'drawdown']
-                    if any(kw in col_lower for kw in return_kw):
-                        return 'return'
-                    vol_kw = ['volume', 'quantity', 'qty', 'count', 'shares', 'trades', 'transactions']
-                    if any(kw in col_lower for kw in vol_kw):
-                        return 'volume'
-                    price_kw = ['price', 'close', 'open', 'high', 'low', 'value', 'nav', 'amount',
-                                'revenue', 'income', 'cost', 'expense', 'assets', 'equity', 'market_cap']
-                    if any(kw in col_lower for kw in price_kw):
-                        return 'price'
-                    return None
-
-                for sname, df in sheets.items():
-                    if not isinstance(df, pd.DataFrame):
-                        continue
-                    if first:
-                        ws = wb.active
-                        ws.title = sname[:31]
-                        first = False
-                    else:
-                        ws = wb.create_sheet(title=sname[:31])
-
-                    # Tab color (teal)
+                # Also save parquet version alongside CSV for reproducibility
+                if ext.lower() == '.csv':
                     try:
-                        ws.sheet_properties.tabColor = teal_hex
+                        data.to_parquet(os.path.join(out_dir, f'{stem}.parquet'), index=False)
+                        pq_path = os.path.join(out_dir, f'{stem}.parquet')
+                        self.files.append({'filename': f'{stem}.parquet', 'filepath': pq_path, 'data_type': 'processed'})
+                    except Exception:
+                        pass  # pyarrow may not be available
+
+                meta = {
+                    'source': 'processed',
+                    'timestamp': datetime.now().isoformat(),
+                    'method': 'pipeline',
+                    'agent': agent or 'newton',
+                    'transformation': transformation or 'cleaned and merged',
+                    'source_files': source_files or [],
+                    'rows': int(len(data)),
+                    'columns': int(len(data.columns)) if hasattr(data, 'columns') else 0,
+                    'filename': filename,
+                }
+                meta_path = os.path.join(out_dir, f'{stem}_metadata.json')
+                with open(meta_path, 'w') as f:
+                    json.dump(meta, f, indent=2, default=str)
+
+                self.files.append({'filename': filename, 'filepath': filepath, 'data_type': 'processed'})
+                self.files.append({'filename': f'{stem}_metadata.json', 'filepath': meta_path, 'data_type': 'processed'})
+                self.metadata_entries.append(meta)
+
+                self._custom_print(f"[DATA] Saved processed/{filename} ({len(data)} rows) — {transformation or 'processed'}")
+                return filepath
+
+            def save_metadata(metadata_dict, filename):
+                """Save arbitrary metadata JSON for reproducibility.
+
+                Args:
+                    metadata_dict: Dictionary to save as JSON
+                    filename: Output filename (e.g. 'pipeline_config.json')
+                Returns:
+                    filepath of the saved metadata file
+                """
+                out_dir = os.path.join(self.data_dir, 'metadata')
+                os.makedirs(out_dir, exist_ok=True)
+                filepath = os.path.join(out_dir, filename)
+                with open(filepath, 'w') as f:
+                    json.dump(metadata_dict, f, indent=2, default=str)
+                self.files.append({'filename': filename, 'filepath': filepath, 'data_type': 'metadata'})
+                self.metadata_entries.append(metadata_dict)
+                return filepath
+
+            # ── Structured results store ──
+            # Lets Fisher scripts export regression results as structured data
+            # so Claude can extract exact numbers without parsing text.
+            _structured_results = []
+
+            def _store_results(model_name, model_obj=None, **kwargs):
+                """Store structured regression/test results for Claude.
+
+                Usage 1 — pass a statsmodels result object:
+                    store_results("OLS Baseline", model)
+
+                Usage 2 — pass explicit values:
+                    store_results("Breusch-Pagan", statistic=12.3, p_value=0.002, interpretation="Reject H0")
+                """
+                entry = {'model': model_name}
+
+                if model_obj is not None:
+                    try:
+                        # Extract from statsmodels-like result objects
+                        params = model_obj.params
+                        entry['coefficients'] = {}
+                        # Handle both Series (named) and ndarray (positional)
+                        is_series = hasattr(params, 'index')
+                        if is_series:
+                            var_names = [str(v) for v in params.index]
+                        else:
+                            var_names = [f'x{i}' for i in range(len(params))]
+                        for i, var in enumerate(var_names):
+                            key = var if is_series else i  # Series uses label, array uses int
+                            coef_entry = {'coef': float(params[key])}
+                            if hasattr(model_obj, 'bse'):
+                                coef_entry['se'] = float(model_obj.bse[key])
+                            if hasattr(model_obj, 'tvalues'):
+                                coef_entry['t'] = float(model_obj.tvalues[key])
+                            if hasattr(model_obj, 'pvalues'):
+                                p = float(model_obj.pvalues[key])
+                                coef_entry['p'] = p
+                                if p < 0.01:
+                                    coef_entry['stars'] = '***'
+                                elif p < 0.05:
+                                    coef_entry['stars'] = '**'
+                                elif p < 0.10:
+                                    coef_entry['stars'] = '*'
+                            entry['coefficients'][str(var)] = coef_entry
+                        if hasattr(model_obj, 'nobs'):
+                            entry['N'] = int(model_obj.nobs)
+                        if hasattr(model_obj, 'rsquared'):
+                            entry['R2'] = float(model_obj.rsquared)
+                        if hasattr(model_obj, 'rsquared_adj'):
+                            entry['R2_adj'] = float(model_obj.rsquared_adj)
+                        if hasattr(model_obj, 'fvalue') and model_obj.fvalue is not None:
+                            entry['F_stat'] = float(model_obj.fvalue)
+                        if hasattr(model_obj, 'f_pvalue') and model_obj.f_pvalue is not None:
+                            entry['F_pvalue'] = float(model_obj.f_pvalue)
+                        if hasattr(model_obj, 'aic'):
+                            entry['AIC'] = float(model_obj.aic)
+                        if hasattr(model_obj, 'bic'):
+                            entry['BIC'] = float(model_obj.bic)
                     except Exception:
                         pass
 
-                    # Optionally reset index
-                    if index and df.index.name:
-                        df = df.reset_index()
-
-                    cols = list(df.columns)
-
-                    # Handle empty DataFrame
-                    if len(df) == 0 or len(cols) == 0:
-                        ws.cell(row=1, column=1, value=title or sname).font = title_font
-                        ws.cell(row=2, column=1, value=f"Generated: {datetime.now().strftime('%B %d, %Y')}").font = subtitle_font
-                        ws.cell(row=4, column=1, value="No data").font = data_font
-                        continue
-
-                    num_formats = [_detect_number_format(c) for c in cols]
-
-                    # === TITLE ROWS (rows 1-3) ===
-                    sheet_title = title or sname
-                    # Row 1: Merged title
-                    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(cols))
-                    title_cell = ws.cell(row=1, column=1, value=sheet_title)
-                    title_cell.font = title_font
-                    title_cell.alignment = Alignment(horizontal='left', vertical='center')
-
-                    # Row 2: Subtitle with date
-                    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(cols))
-                    subtitle_cell = ws.cell(row=2, column=1, value=f"Generated: {datetime.now().strftime('%B %d, %Y')}")
-                    subtitle_cell.font = subtitle_font
-                    subtitle_cell.alignment = Alignment(horizontal='left', vertical='center')
-
-                    # Row 3: Spacer
-                    ws.row_dimensions[3].height = 6
-
-                    # === HEADERS (row 4) ===
-                    header_row = 4
-                    data_start_row = 5
-
-                    for col_idx, col_name in enumerate(cols, 1):
-                        cell = ws.cell(row=header_row, column=col_idx, value=str(col_name))
-                        cell.font = header_font
-                        cell.fill = header_fill
-                        cell.alignment = header_alignment
-                        cell.border = thin_border
-
-                    # === CUSTOM FORMULA COLUMNS ===
-                    formula_cols = []
-                    if formulas and isinstance(formulas, list):
-                        for f_def in formulas:
-                            try:
-                                f_col_name = f_def.get('col', 'Calculated')
-                                f_formula_tpl = f_def.get('formula', '')
-                                f_format = f_def.get('format', None)
-                                cols.append(f_col_name)
-                                formula_cols.append({
-                                    'col_idx': len(cols),
-                                    'name': f_col_name,
-                                    'template': f_formula_tpl,
-                                    'format': f_format
-                                })
-                                num_formats.append(None)
-                                # Write header for formula column
-                                cell = ws.cell(row=header_row, column=len(cols), value=str(f_col_name))
-                                cell.font = header_font
-                                cell.fill = header_fill
-                                cell.alignment = header_alignment
-                                cell.border = thin_border
-                            except Exception:
-                                pass
-
-                    # === DATA ROWS (starting at row 5) ===
-                    for row_idx_0, (_, row) in enumerate(df.iterrows()):
-                        excel_row = data_start_row + row_idx_0
-                        for col_idx, col_name in enumerate(list(df.columns), 1):
-                            val = _convert_numpy(row[col_name])
-                            cell = ws.cell(row=excel_row, column=col_idx, value=val)
-                            cell.font = data_font
-                            cell.alignment = data_alignment
-                            cell.border = thin_border
-                            # Zebra striping
-                            if row_idx_0 % 2 == 1:
-                                cell.fill = even_fill
-                            # Number format
-                            fmt = num_formats[col_idx - 1]
-                            if fmt and isinstance(val, (int, float)):
-                                cell.number_format = fmt
-
-                        # Write formula columns for this row
-                        for fc in formula_cols:
-                            try:
-                                formula_str = fc['template'].replace('{row}', str(excel_row))
-                                cell = ws.cell(row=excel_row, column=fc['col_idx'], value=formula_str)
-                                cell.font = data_font
-                                cell.alignment = data_alignment
-                                cell.border = thin_border
-                                if row_idx_0 % 2 == 1:
-                                    cell.fill = even_fill
-                                if fc['format']:
-                                    cell.number_format = fc['format']
-                            except Exception:
-                                pass
-
-                    last_data_row = data_start_row + len(df) - 1
-
-                    # === SUMMARY FORMULAS ===
-                    # Detect numeric columns
-                    numeric_col_indices = []
-                    for col_idx, col_name in enumerate(list(df.columns), 1):
-                        try:
-                            if pd.api.types.is_numeric_dtype(df[col_name]):
-                                numeric_col_indices.append(col_idx)
-                        except Exception:
-                            pass
-                    # Also include formula columns as numeric for summary
-                    for fc in formula_cols:
-                        numeric_col_indices.append(fc['col_idx'])
-
-                    if active_summaries and numeric_col_indices and len(df) > 0:
-                        summary_start = last_data_row + 2  # One blank row separator
-
-                        for s_offset, func_key in enumerate(active_summaries):
-                            s_row = summary_start + s_offset
-                            excel_func = summary_excel_funcs[func_key]
-                            label_text = summary_labels[func_key]
-
-                            # Label in column A
-                            label_cell = ws.cell(row=s_row, column=1, value=label_text)
-                            label_cell.font = summary_label_font
-                            label_cell.fill = summary_fill
-                            if s_offset == 0:
-                                label_cell.border = teal_top_border
-
-                            # Formulas for numeric columns
-                            for col_idx in numeric_col_indices:
-                                col_letter = get_column_letter(col_idx)
-                                formula = f"={excel_func}({col_letter}{data_start_row}:{col_letter}{last_data_row})"
-                                cell = ws.cell(row=s_row, column=col_idx, value=formula)
-                                cell.font = summary_value_font
-                                cell.fill = summary_fill
-                                if s_offset == 0:
-                                    cell.border = teal_top_border
-                                # Apply same number format as the column
-                                if col_idx <= len(num_formats) and num_formats[col_idx - 1]:
-                                    cell.number_format = num_formats[col_idx - 1]
-
-                    # === CONDITIONAL FORMATTING ===
-                    if conditional_formatting and len(df) > 0:
-                        for col_idx, col_name in enumerate(list(df.columns), 1):
-                            try:
-                                if not pd.api.types.is_numeric_dtype(df[col_name]):
-                                    continue
-                            except Exception:
-                                continue
-
-                            col_letter = get_column_letter(col_idx)
-                            cell_range = f"{col_letter}{data_start_row}:{col_letter}{last_data_row}"
-                            col_type = _classify_column(col_name)
-
-                            try:
-                                if col_type == 'return':
-                                    # Green/white/red scale for returns
-                                    ws.conditional_formatting.add(cell_range, ColorScaleRule(
-                                        start_type='min', start_color='F8696B',
-                                        mid_type='num', mid_value=0, mid_color='FFFFFF',
-                                        end_type='max', end_color='63BE7B'
-                                    ))
-                                elif col_type == 'volume':
-                                    # Teal data bars for volume
-                                    ws.conditional_formatting.add(cell_range, DataBarRule(
-                                        start_type='min', end_type='max',
-                                        color=teal_hex
-                                    ))
-                                elif col_type == 'price':
-                                    # Teal gradient for price/value
-                                    ws.conditional_formatting.add(cell_range, ColorScaleRule(
-                                        start_type='min', start_color='E8F5F4',
-                                        end_type='max', end_color='119993'
-                                    ))
-                            except Exception:
-                                pass
-
-                    # === FREEZE PANES on A5 ===
-                    ws.freeze_panes = 'A5'
-
-                    # === AUTO-WIDTH COLUMNS ===
-                    for col_idx, col_name in enumerate(cols, 1):
-                        max_len = len(str(col_name))
-                        for r in range(data_start_row, min(last_data_row + 1, data_start_row + 100)):
-                            cell_val = ws.cell(row=r, column=col_idx).value
-                            if cell_val is not None:
-                                max_len = max(max_len, len(str(cell_val)))
-                        adjusted_width = min(max_len + 3, 50)
-                        ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
-
-                wb.save(filepath)
-                self.files.append({'filename': safe_name, 'filepath': filepath})
-                sheet_count = len(sheets)
-                features = []
-                if active_summaries:
-                    features.append(f"formulas: {', '.join(active_summaries).upper()}")
-                if conditional_formatting:
-                    features.append("conditional formatting")
-                if formulas:
-                    features.append(f"{len(formulas)} calculated column(s)")
-                feat_str = f" — {', '.join(features)}" if features else ""
-                return f"Excel saved: {safe_name} ({sheet_count} sheet{'s' if sheet_count > 1 else ''}{feat_str})"
-
-            def save_word(content, filename='document.docx'):
-                """Generate a professionally styled Word document.
-
-                Args:
-                    content: Either a markdown string OR a dict with structure:
-                        {"title": "...", "sections": [{"heading": "...", "body": "...", "table": DataFrame}]}
-                    filename: Output filename (.docx)
-                """
-                try:
-                    from docx import Document as _DocxDoc
-                    from docx.shared import Pt as _Pt, RGBColor as _RGB, Inches as _Inches
-                    from docx.enum.text import WD_ALIGN_PARAGRAPH as _ALIGN
-                except ImportError:
-                    return "Error: python-docx is not installed. Cannot generate Word documents."
-
-                if not filename.endswith('.docx'):
-                    filename += '.docx'
-                safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
-                filepath = os.path.join(tempfile.gettempdir(), f'vq_{int(time.time())}_{safe_name}')
-
-                doc = _DocxDoc()
-
-                # Set default font
-                style = doc.styles['Normal']
-                font = style.font
-                font.name = 'Calibri'
-                font.size = _Pt(10)
-
-                teal = _RGB(0x11, 0x99, 0x93)
-                dark_gray = _RGB(0x33, 0x33, 0x33)
-
-                def _add_branded_header(doc, title_text='VQuant Report'):
-                    """Add VQuant branded header"""
-                    title_para = doc.add_paragraph()
-                    title_para.alignment = _ALIGN.LEFT
-                    run = title_para.add_run(title_text)
-                    run.font.size = _Pt(24)
-                    run.font.color.rgb = teal
-                    run.font.bold = True
-
-                    subtitle = doc.add_paragraph()
-                    subtitle.alignment = _ALIGN.LEFT
-                    run = subtitle.add_run('VQuant Financial Analytics')
-                    run.font.size = _Pt(10)
-                    run.font.color.rgb = _RGB(0x88, 0x88, 0x88)
-
-                    date_para = doc.add_paragraph()
-                    date_para.alignment = _ALIGN.LEFT
-                    run = date_para.add_run(f'Generated: {datetime.now().strftime("%B %d, %Y")}')
-                    run.font.size = _Pt(9)
-                    run.font.color.rgb = _RGB(0xAA, 0xAA, 0xAA)
-                    run.font.italic = True
-
-                    # Add a thin line separator
-                    border_para = doc.add_paragraph()
-                    border_para.alignment = _ALIGN.LEFT
-                    run = border_para.add_run('_' * 70)
-                    run.font.color.rgb = _RGB(0xDD, 0xDD, 0xDD)
-                    run.font.size = _Pt(6)
-                    doc.add_paragraph()  # Spacer
-
-                def _add_df_table(doc, df, max_rows=200):
-                    """Add a styled DataFrame table to the document"""
-                    if not isinstance(df, pd.DataFrame) or df.empty:
-                        return
-                    df_display = df.head(max_rows)
-                    cols = list(df_display.columns)
-                    table = doc.add_table(rows=1 + len(df_display), cols=len(cols))
-                    table.style = 'Table Grid'
-
-                    # Header row
-                    for i, col in enumerate(cols):
-                        cell = table.rows[0].cells[i]
-                        cell.text = str(col)
-                        for paragraph in cell.paragraphs:
-                            for run in paragraph.runs:
-                                run.font.bold = True
-                                run.font.color.rgb = _RGB(0xFF, 0xFF, 0xFF)
-                                run.font.size = _Pt(9)
-                        from docx.oxml.ns import qn
-                        shading = cell._element.get_or_add_tcPr()
-                        shading_elm = shading.makeelement(qn('w:shd'), {
-                            qn('w:fill'): '119993',
-                            qn('w:val'): 'clear',
-                        })
-                        shading.append(shading_elm)
-
-                    # Data rows
-                    for row_idx, (_, row) in enumerate(df_display.iterrows()):
-                        for col_idx, col in enumerate(cols):
-                            val = _convert_numpy(row[col])
-                            cell = table.rows[row_idx + 1].cells[col_idx]
-                            cell.text = str(val) if val is not None else ''
-                            for paragraph in cell.paragraphs:
-                                for run in paragraph.runs:
-                                    run.font.size = _Pt(8)
-
-                def _parse_markdown(doc, text):
-                    """Parse basic markdown and add to document"""
-                    lines = text.split('\n')
-                    i = 0
-                    while i < len(lines):
-                        line = lines[i]
-                        stripped = line.strip()
-
-                        # Headings
-                        if stripped.startswith('### '):
-                            h = doc.add_heading(stripped[4:], level=3)
-                            for run in h.runs:
-                                run.font.color.rgb = dark_gray
-                        elif stripped.startswith('## '):
-                            h = doc.add_heading(stripped[3:], level=2)
-                            for run in h.runs:
-                                run.font.color.rgb = teal
-                        elif stripped.startswith('# '):
-                            h = doc.add_heading(stripped[2:], level=1)
-                            for run in h.runs:
-                                run.font.color.rgb = teal
-                        # List items
-                        elif stripped.startswith('- ') or stripped.startswith('* '):
-                            text_content = stripped[2:]
-                            para = doc.add_paragraph(style='List Bullet')
-                            _add_formatted_runs(para, text_content)
-                        elif re.match(r'^\d+\.\s', stripped):
-                            text_content = re.sub(r'^\d+\.\s', '', stripped)
-                            para = doc.add_paragraph(style='List Number')
-                            _add_formatted_runs(para, text_content)
-                        # Empty line
-                        elif not stripped:
-                            pass  # Skip empty lines (paragraph spacing handles this)
-                        # Regular text
-                        else:
-                            para = doc.add_paragraph()
-                            _add_formatted_runs(para, stripped)
-                        i += 1
-
-                def _add_formatted_runs(para, text):
-                    """Parse bold (**text**) and add as runs"""
-                    parts = re.split(r'(\*\*[^*]+\*\*)', text)
-                    for part in parts:
-                        if part.startswith('**') and part.endswith('**'):
-                            run = para.add_run(part[2:-2])
-                            run.bold = True
-                            run.font.size = _Pt(10)
-                        else:
-                            run = para.add_run(part)
-                            run.font.size = _Pt(10)
-
-                # Handle structured dict input
-                if isinstance(content, dict):
-                    title = content.get('title', 'VQuant Report')
-                    _add_branded_header(doc, title)
-
-                    for section in content.get('sections', []):
-                        if 'heading' in section:
-                            h = doc.add_heading(section['heading'], level=2)
-                            for run in h.runs:
-                                run.font.color.rgb = teal
-                        if 'body' in section:
-                            _parse_markdown(doc, section['body'])
-                        if 'table' in section and isinstance(section['table'], pd.DataFrame):
-                            _add_df_table(doc, section['table'])
-                            doc.add_paragraph()  # Spacer after table
-
-                # Handle markdown string input
-                elif isinstance(content, str):
-                    # Extract title from first heading if present
-                    first_line = content.strip().split('\n')[0]
-                    if first_line.startswith('# '):
-                        title = first_line[2:].strip()
-                        _add_branded_header(doc, title)
-                        remaining = '\n'.join(content.strip().split('\n')[1:])
-                        _parse_markdown(doc, remaining)
-                    else:
-                        _add_branded_header(doc)
-                        _parse_markdown(doc, content)
-                else:
-                    return "Error: save_word expects a string or dict"
-
-                doc.save(filepath)
-                self.files.append({'filename': safe_name, 'filepath': filepath})
-                return f"Word document saved: {safe_name}"
-
-            # ── LaTeX helpers ────────────────────────────────────
-
-            def _escape_latex(text):
-                """Escape special LaTeX characters in plain text."""
-                if not isinstance(text, str):
-                    text = str(text)
-                specials = {
-                    '&': r'\&', '%': r'\%', '$': r'\$', '#': r'\#',
-                    '_': r'\_', '{': r'\{', '}': r'\}', '~': r'\textasciitilde{}',
-                    '^': r'\textasciicircum{}',
-                }
-                for char, replacement in specials.items():
-                    text = text.replace(char, replacement)
-                return text
-
-            def df_to_latex(df, caption=None, label=None, max_rows=200):
-                r"""Convert a DataFrame to a LaTeX booktabs table with teal headers and zebra striping.
-
-                Args:
-                    df: pandas DataFrame
-                    caption: Optional table caption
-                    label: Optional \label for cross-referencing
-                    max_rows: Maximum rows to include (default 200)
-
-                Returns:
-                    str: LaTeX table code ready for embedding
-                """
-                if not isinstance(df, pd.DataFrame) or df.empty:
-                    return '% Empty DataFrame — no table generated'
-
-                df_display = df.head(max_rows)
-                cols = list(df_display.columns)
-                num_cols = len(cols)
-
-                lines = []
-                lines.append(r'\begin{table}[H]')
-                lines.append(r'\centering')
-                lines.append(r'\rowcolors{2}{gray!8}{white}')
-                col_spec = 'l' + 'r' * (num_cols - 1)
-                lines.append(r'\begin{tabular}{' + col_spec + '}')
-                lines.append(r'\toprule')
-                # Header row with teal background
-                header_cells = [r'\textbf{\textcolor{white}{' + _escape_latex(str(c)) + '}}' for c in cols]
-                lines.append(r'\rowcolor{vqteal}')
-                lines.append(' & '.join(header_cells) + r' \\')
-                lines.append(r'\midrule')
-                # Data rows
-                for _, row in df_display.iterrows():
-                    cells = []
-                    for c in cols:
-                        val = row[c]
-                        if val is None or (isinstance(val, float) and (np.isnan(val) or np.isinf(val))):
-                            cells.append('—')
-                        elif isinstance(val, float):
-                            cells.append(f'{val:,.2f}')
-                        else:
-                            cells.append(_escape_latex(str(val)))
-                    lines.append(' & '.join(cells) + r' \\')
-                lines.append(r'\bottomrule')
-                lines.append(r'\end{tabular}')
-                if caption:
-                    lines.append(r'\caption{' + _escape_latex(caption) + '}')
-                if label:
-                    lines.append(r'\label{' + label + '}')
-                lines.append(r'\end{table}')
-                return '\n'.join(lines)
-
-            def save_latex(content, filename='report.pdf', figures='auto', template='financial',
-                           author=None, company=None, logo=None, title=None, **kwargs):
-                r"""Generate a professional PDF report via LaTeX compilation.
-
-                If content contains \documentclass, it is treated as raw LaTeX and compiled as-is.
-                Otherwise the content is treated as the body and wrapped in a professional VQuant template.
-
-                Figure placeholders: use {{FIG:0}}, {{FIG:1}}, etc. in the content to insert
-                the corresponding open matplotlib figures (numbered by creation order).
-
-                Args:
-                    content: LaTeX body text or full LaTeX document
-                    filename: Output filename (forced to .pdf)
-                    figures: 'auto' (save all open figs) or 'none'
-                    template: 'financial' (full branding) or 'minimal' (clean, no title page)
-                    author: Author name for the title page and PDF metadata
-                    company: Company name for the title page and headers
-                    logo: URL to a company logo image (PNG/JPG) for the title page
-                    title: Custom subtitle for the title page (default: 'Financial Intelligence Report')
-
-                Returns:
-                    str: confirmation message
-                """
-                import subprocess
-                import shutil
-
-                # Force .pdf extension
-                base = os.path.splitext(filename)[0]
-                if not base:
-                    base = 'report'
-                pdf_name = re.sub(r'[^a-zA-Z0-9._-]', '_', base) + '.pdf'
-
-                work_dir = tempfile.mkdtemp(prefix='vq_latex_')
-
-                # ── Download company logo if provided ──
-                logo_path = None
-                if logo:
-                    try:
-                        import requests as _req
-                        resp = _req.get(logo, timeout=10)
-                        resp.raise_for_status()
-                        ctype = resp.headers.get('content-type', '').lower()
-                        if 'svg' in ctype:
-                            raise ValueError('SVG logos are not supported; use PNG or JPG')
-                        ext = '.jpg' if 'jpeg' in ctype or 'jpg' in ctype else '.png'
-                        logo_file = os.path.join(work_dir, f'company_logo{ext}')
-                        with open(logo_file, 'wb') as lf:
-                            lf.write(resp.content)
-                        if os.path.getsize(logo_file) > 100:
-                            logo_path = logo_file
-                    except Exception:
-                        logo_path = None  # graceful fallback
-
-                # ── Escape branding strings for LaTeX safety ──
-                safe_company = _escape_latex(company) if company else None
-                safe_author = _escape_latex(author) if author else None
-
-                # Plain-text versions for PDF metadata (hypersetup cannot contain LaTeX commands)
-                def _sanitize_pdf_meta(text):
-                    """Strip characters that break pdflatex hypersetup metadata."""
-                    if not text:
-                        return ''
-                    # Remove characters that break \hypersetup (keep basic ASCII + spaces)
-                    return re.sub(r'[^\x20-\x7E]', '', text).replace('\\', '')
-
-                # ── Save open matplotlib figures as PNGs ──
-                fig_paths = []
-                if figures != 'none':
-                    fig_nums = plt.get_fignums()
-                    for idx, fnum in enumerate(fig_nums):
-                        fig = plt.figure(fnum)
-                        # Add VibeQuant watermark
-                        fig.text(
-                            0.99, 0.01, 'VibeQuant',
-                            fontsize=9, color='#119993', alpha=0.6,
-                            ha='right', va='bottom',
-                            transform=fig.transFigure,
-                            fontweight='bold', style='italic'
-                        )
-                        fig_file = os.path.join(work_dir, f'fig_{idx}.png')
-                        fig.savefig(fig_file, format='png', dpi=300, bbox_inches='tight',
-                                    facecolor='white', edgecolor='none')
-                        fig_paths.append(fig_file)
-
-                # ── Replace {{FIG:N}} placeholders ──
-                referenced_figs = set()
-                def _replace_fig_placeholders(text):
-                    import re as _re
-                    def _fig_repl(m):
-                        idx = int(m.group(1))
-                        if idx < len(fig_paths):
-                            referenced_figs.add(idx)
-                            fname = os.path.basename(fig_paths[idx])
-                            return (
-                                r'\begin{figure}[H]' '\n'
-                                r'\centering' '\n'
-                                r'\includegraphics[width=\linewidth]{' + fname + '}\n'
-                                r'\end{figure}'
-                            )
-                        return m.group(0)  # leave unresolved placeholders as-is
-                    return _re.sub(r'\{\{FIG:(\d+)\}\}', _fig_repl, text)
-
-                content = _replace_fig_placeholders(content)
-
-                # ── Auto-append unreferenced figures at end of content ──
-                if fig_paths:
-                    unreferenced = [i for i in range(len(fig_paths)) if i not in referenced_figs]
-                    if unreferenced:
-                        fig_blocks = []
-                        for idx in unreferenced:
-                            fname = os.path.basename(fig_paths[idx])
-                            fig_blocks.append(
-                                r'\begin{figure}[H]' '\n'
-                                r'\centering' '\n'
-                                r'\includegraphics[width=\linewidth]{' + fname + '}\n'
-                                r'\end{figure}'
-                            )
-                        content = content + '\n\n' + '\n\n'.join(fig_blocks)
-
-                # ── Detect raw vs template mode ──
-                is_raw = r'\documentclass' in content
-
-                if is_raw:
-                    full_latex = content
-                else:
-                    today_str = datetime.now().strftime('%B %d, %Y')
-
-                    # Branding: company name for header, or default
-                    header_company = safe_company if safe_company else 'VQuant'
-                    # Custom subtitle
-                    safe_title = _escape_latex(title) if title else 'Financial Intelligence Report'
-                    # PDF metadata (plain ASCII — no LaTeX commands, no Unicode)
-                    meta_company = _sanitize_pdf_meta(company) if company else 'VQuant'
-                    pdf_author = _sanitize_pdf_meta(author) if author else 'VQuant Analytics'
-                    meta_title_str = _sanitize_pdf_meta(title) if title else 'Financial Intelligence Report'
-                    pdf_title = f'{meta_company} - {meta_title_str}'
-
-                    if template == 'minimal':
-                        full_latex = r"""\documentclass[11pt,a4paper]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage{newtxtext}
-\usepackage{newtxmath}
-\usepackage[sfdefault,scale=0.92]{sourcesanspro}
-\usepackage{microtype}
-\usepackage[margin=2.5cm]{geometry}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage[table]{xcolor}
-\usepackage{float}
-\usepackage{amsmath}
-\usepackage{parskip}
-\usepackage{hyperref}
-
-\definecolor{vqteal}{HTML}{119993}
-
-\hypersetup{colorlinks=true,linkcolor=vqteal,urlcolor=vqteal,citecolor=vqteal,
-  pdfauthor={""" + pdf_author + r"""},pdftitle={""" + pdf_title + r"""}}
-
-\begin{document}
-""" + content + r"""
-\end{document}
-"""
-                    else:
-                        # ── Logo include command ──
-                        logo_include = ''
-                        if logo_path:
-                            logo_basename = os.path.basename(logo_path)
-                            logo_include = (
-                                r'\includegraphics[height=2cm]{' + logo_basename + r'}'
-                                '\n' r'\vspace{0.8cm}' '\n'
-                            )
-
-                        # ── Title-page blocks ──
-                        company_block = (
-                            r'{\fontsize{36}{42}\selectfont\sffamily\bfseries\textcolor{vqcharcoal}{'
-                            + header_company + r'}\par}'
-                        )
-                        subtitle_block = (
-                            r'\vspace{0.4cm}' '\n'
-                            r'{\Large\sffamily\textcolor{vqsubtitle}{' + safe_title + r'}\par}'
-                        )
-                        author_block = ''
-                        if safe_author:
-                            author_block = (
-                                r'\vspace{0.6cm}' '\n'
-                                r'{\large\sffamily\textcolor{vqsubtitle}{Prepared by ' + safe_author + r'}\par}'
-                            )
-
-                        # Full financial template — pro styling
-                        full_latex = r"""\documentclass[11pt,a4paper]{article}
-
-%% ── Encoding & Fonts ──
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage{newtxtext}
-\usepackage{newtxmath}
-\usepackage[sfdefault,scale=0.92]{sourcesanspro}
-
-%% ── Micro-typography ──
-\usepackage{microtype}
-
-%% ── Layout ──
-\usepackage[margin=2.5cm]{geometry}
-\usepackage{parskip}
-\usepackage{setspace}
-\setstretch{1.15}
-
-%% ── Colors ──
-\usepackage[table]{xcolor}
-\definecolor{vqteal}{HTML}{119993}
-\definecolor{vqdark}{HTML}{1A1A2E}
-\definecolor{vqgray}{HTML}{666666}
-\definecolor{vqlight}{HTML}{F2F9F9}
-\definecolor{vqcharcoal}{HTML}{3C3C3C}
-\definecolor{vqrule}{HTML}{BFBFBF}
-\definecolor{vqsubtitle}{HTML}{5A6A72}
-
-%% ── Graphics & Floats ──
-\usepackage{graphicx}
-\usepackage{float}
-
-%% ── Tables ──
-\usepackage{booktabs}
-\usepackage{tabularx}
-
-%% ── Lists ──
-\usepackage{enumitem}
-\setlist{nosep,leftmargin=1.5em}
-
-%% ── Math ──
-\usepackage{amsmath}
-
-%% ── Page count ──
-\usepackage{lastpage}
-
-%% ── Headers/Footers ──
-\usepackage{fancyhdr}
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{\small\sffamily\textcolor{vqteal}{\textbf{""" + header_company + r"""}} \textcolor{vqrule}{|} \textcolor{vqsubtitle}{Financial Intelligence}}
-\fancyhead[R]{\small\sffamily\textcolor{vqsubtitle}{""" + today_str + r"""}}
-\fancyfoot[C]{\small\sffamily\textcolor{vqsubtitle}{Page \thepage\ / \pageref{LastPage}}}
-\renewcommand{\headrulewidth}{0.4pt}
-\renewcommand{\headrule}{\hbox to\headwidth{\color{vqteal}\leaders\hrule height \headrulewidth\hfill}}
-\renewcommand{\footrulewidth}{0pt}
-
-%% ── Section Styling ──
-\usepackage{titlesec}
-\titleformat{\section}{\Large\sffamily\bfseries\color{vqteal}}{\thesection}{1em}{}[\vspace{2pt}{\color{vqteal}\titlerule[0.4pt]}]
-\titleformat{\subsection}{\large\sffamily\bfseries\color{vqdark}}{\thesubsection}{1em}{}
-\titleformat{\subsubsection}{\normalsize\sffamily\bfseries\color{vqsubtitle}}{\thesubsubsection}{1em}{}
-
-%% ── Callout Boxes ──
-\usepackage{tcolorbox}
-\tcbuselibrary{skins,breakable}
-\newtcolorbox{keyinsight}{
-  colback=vqlight,colframe=vqteal,
-  fonttitle=\sffamily\bfseries,title=Key Insight,
-  boxrule=0.5pt,arc=3pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
-  breakable
-}
-\newtcolorbox{warningbox}{
-  colback=red!5,colframe=red!60!black,
-  fonttitle=\sffamily\bfseries,title=Warning,
-  boxrule=0.5pt,arc=3pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
-  breakable
-}
-\newtcolorbox{summarybox}[1][Executive Summary]{
-  colback=vqteal!4,colframe=vqteal,
-  fonttitle=\sffamily\bfseries\large,title=#1,
-  boxrule=0.6pt,arc=4pt,left=10pt,right=10pt,top=8pt,bottom=8pt,
-  toptitle=4pt,bottomtitle=4pt,
-  breakable
-}
-
-%% ── Links ──
-\usepackage{hyperref}
-\hypersetup{colorlinks=true,linkcolor=vqteal,urlcolor=vqteal,citecolor=vqteal,
-  pdfauthor={""" + pdf_author + r"""},pdftitle={""" + pdf_title + r"""}}
-
-%% ── Title Page ──
-\begin{document}
-
-\begin{titlepage}
-\centering
-\vspace*{2cm}
-""" + logo_include + r"""
-""" + company_block + r"""
-""" + subtitle_block + r"""
-\vspace{2cm}
-{\large\sffamily\textcolor{vqcharcoal}{""" + today_str + r"""}\par}
-\vspace{0.8cm}
-\textcolor{vqteal}{\rule{0.6\textwidth}{0.8pt}}
-""" + author_block + r"""
-\vfill
-{\footnotesize\sffamily\textcolor{vqrule}{Confidential — For intended recipients only}\par}
-\vspace{0.3cm}
-{\footnotesize\sffamily\textcolor{vqsubtitle}{Generated by VQuant Analytics Platform}\par}
-\end{titlepage}
-
-%% ── Table of Contents ──
-\tableofcontents
-\newpage
-
-""" + content + r"""
-
-\end{document}
-"""
-
-                # ── Write .tex file ──
-                tex_path = os.path.join(work_dir, 'report.tex')
-                with open(tex_path, 'w', encoding='utf-8') as f:
-                    f.write(full_latex)
-
-                # ── Find pdflatex ──
-                # Augment PATH with known MacTeX/TeX Live locations so shutil.which
-                # and pdflatex's own sub-tools (kpsewhich, etc.) are all reachable.
-                tex_bin_candidates = [
-                    '/Library/TeX/texbin',
-                    '/usr/local/texlive/2025/bin/universal-darwin',
-                    '/usr/local/texlive/2024/bin/universal-darwin',
-                    '/usr/local/texlive/2025/bin/x86_64-darwin',
-                    '/usr/local/texlive/2024/bin/x86_64-darwin',
-                    '/usr/texbin',
-                ]
-                tex_env = os.environ.copy()
-                extra_paths = [p for p in tex_bin_candidates if os.path.isdir(p)]
-                if extra_paths:
-                    tex_env['PATH'] = ':'.join(extra_paths) + ':' + tex_env.get('PATH', '/usr/bin:/bin')
-
-                pdflatex = shutil.which('pdflatex', path=tex_env['PATH'])
-                if not pdflatex:
-                    # Final hard-coded MacTeX fallback
-                    for candidate in ['/Library/TeX/texbin/pdflatex'] + [
-                        os.path.join(p, 'pdflatex') for p in tex_bin_candidates
-                    ]:
-                        if os.path.isfile(candidate):
-                            pdflatex = candidate
-                            break
-                if not pdflatex:
-                    raise RuntimeError(
-                        'pdflatex not found. Install MacTeX (brew install --cask mactex) '
-                        'or TeX Live to compile LaTeX documents.'
-                    )
-
-                # ── Compile (2 passes for TOC & cross-refs) ──
-                for pass_num in range(2):
-                    proc = subprocess.run(
-                        [pdflatex, '-interaction=nonstopmode', '-halt-on-error', 'report.tex'],
-                        cwd=work_dir,
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                        env=tex_env,  # pass augmented PATH so pdflatex finds its tools
-                    )
-                    if proc.returncode != 0 and pass_num == 1:
-                        # Read log tail for diagnostics
-                        log_path = os.path.join(work_dir, 'report.log')
-                        log_tail = ''
-                        if os.path.isfile(log_path):
-                            with open(log_path, 'r', errors='replace') as lf:
-                                log_lines = lf.readlines()
-                                # Find lines with '!' (LaTeX errors)
-                                error_lines = [l.rstrip() for l in log_lines if l.startswith('!')]
-                                if error_lines:
-                                    log_tail = '\n'.join(error_lines[:10])
-                                else:
-                                    log_tail = ''.join(log_lines[-30:])
-                        raise RuntimeError(
-                            f'pdflatex compilation failed (pass {pass_num + 1}).\n'
-                            f'--- Log ---\n{log_tail}\n'
-                            f'--- stderr ---\n{proc.stderr[-500:] if proc.stderr else "(empty)"}'
-                        )
-
-                # ── Collect output PDF ──
-                compiled_pdf = os.path.join(work_dir, 'report.pdf')
-                if not os.path.isfile(compiled_pdf):
-                    raise RuntimeError('pdflatex ran but report.pdf was not produced.')
-
-                dest_path = os.path.join(tempfile.gettempdir(), f'vq_{int(time.time())}_{pdf_name}')
-                shutil.copy2(compiled_pdf, dest_path)
-
-                # Cleanup work directory (best-effort)
-                try:
-                    shutil.rmtree(work_dir)
-                except Exception:
-                    pass
-
-                self.files.append({'filename': pdf_name, 'filepath': dest_path})
-                n_figs = len(fig_paths)
-                fig_info = f", {n_figs} figure{'s' if n_figs != 1 else ''}" if n_figs else ""
-                tmpl_info = f"template={template}" if not is_raw else "raw LaTeX"
-                brand_parts = []
-                if company:
-                    brand_parts.append(f"company={company}")
-                if author:
-                    brand_parts.append(f"author={author}")
-                if logo_path:
-                    brand_parts.append("logo=yes")
-                brand_info = f", {', '.join(brand_parts)}" if brand_parts else ""
-                return f"LaTeX PDF saved: {pdf_name} ({tmpl_info}{fig_info}{brand_info})"
+                # Merge any explicit kwargs
+                entry.update({k: v for k, v in kwargs.items() if v is not None})
+                _structured_results.append(entry)
 
             exec_globals = {
                 '__builtins__': __builtins__,
@@ -1811,13 +1545,33 @@ class CustomPythonExecutor:
                 'fmp': self.fmp,
                 'fred': self.fred,
                 'eodhd': self.eodhd,
+                'wb': self.wb,
+                'imf': self.imf,
+                'oecd': self.oecd,
+                'polymarket': self.polymarket,
+                'claude': self.claude,
+                'openrouter': self.openrouter,
+                'hfdb': HFDataClient(),
+                'optdb': OptionsDataClient(),
+                'sdc_ipo': SDCIPOClient(),
+                'housing': USHousingClient(),
                 # Custom print
                 'print': self._custom_print,
+                # Structured results export
+                'store_results': _store_results,
+                # Journal of Finance style palette (pre-set in rcParams, also accessible directly)
+                'JF_COLORS': _JF_COLORS,
+                'mticker': mticker,
                 # File export helpers
                 'save_excel': save_excel,
                 'save_word': save_word,
                 'save_latex': save_latex,
                 'df_to_latex': df_to_latex,
+                # Data provenance helpers (Reproducible Research Engine)
+                'save_raw_data': save_raw_data,
+                'save_processed_data': save_processed_data,
+                'save_metadata': save_metadata,
+                'DATA_DIR': self.data_dir,
                 # Helper functions for common tasks
                 'convert_to_datetime': lambda x: pd.to_datetime(x, errors='coerce'),
                 'safe_strftime': lambda dt, fmt: dt.strftime(fmt) if pd.notna(dt) and hasattr(dt, 'strftime') else str(dt),
@@ -1849,6 +1603,43 @@ class CustomPythonExecutor:
                 # Capture any matplotlib figures
                 self._capture_figures()
 
+                # ── Auto-capture DataFrames not explicitly saved ──────────
+                # Scans exec namespace for pd.DataFrame variables that weren't
+                # already saved via save_raw_data / save_processed_data, and
+                # persists them so they end up in the project ZIP.
+                saved_filenames = {f['filename'] for f in self.files}
+                _auto_save_skip = {
+                    'pd', 'np', 'plt', 'sns', 'scipy', 'os', 'sys', 'json',
+                    'math', 'datetime', 're', 'io', 'base64', 'warnings',
+                    'fmp', 'fred', 'eodhd', 'wb', 'imf', 'oecd', 'polymarket',
+                    'claude', 'openrouter', 'hfdb', 'optdb', 'sdc_ipo', 'housing',
+                    'save_raw_data', 'save_processed_data', 'save_metadata',
+                    'save_excel', 'save_word', 'save_latex', 'store_results',
+                    'df_to_latex', 'print', 'DATA_DIR', 'JF_COLORS', 'mticker',
+                    'convert_to_datetime', 'safe_strftime', '__builtins__',
+                }
+                try:
+                    for var_name, var_val in exec_globals.items():
+                        if var_name.startswith('_') or var_name in _auto_save_skip:
+                            continue
+                        if isinstance(var_val, pd.DataFrame) and len(var_val) > 0:
+                            # Sanitize filename
+                            safe_name = var_name.replace(' ', '_')[:60]
+                            csv_name = f'{safe_name}.csv'
+                            if csv_name not in saved_filenames:
+                                out_dir = os.path.join(self.data_dir, 'processed')
+                                os.makedirs(out_dir, exist_ok=True)
+                                fpath = os.path.join(out_dir, csv_name)
+                                try:
+                                    var_val.to_csv(fpath, index=False)
+                                    self.files.append({'filename': csv_name, 'filepath': fpath, 'data_type': 'processed'})
+                                    saved_filenames.add(csv_name)
+                                    self._custom_print(f"[AUTO-SAVE] {csv_name} ({len(var_val)} rows)")
+                                except Exception:
+                                    pass  # skip unsaveable DataFrames
+                except Exception:
+                    pass  # never let auto-save crash the executor
+
             # Get captured output
             stdout_text = stdout_capture.getvalue()
             stderr_text = stderr_capture.getvalue()
@@ -1859,23 +1650,69 @@ class CustomPythonExecutor:
             if stderr_text and not stderr_text.strip().startswith('WARNING'):
                 combined_output += '\nStderr: ' + stderr_text
 
+            # Append structured results if any were stored via store_results()
+            if _structured_results:
+                combined_output += '\n\n=== STRUCTURED RESULTS (use exact numbers for LaTeX tables) ===\n'
+                combined_output += json.dumps(_structured_results, indent=2, default=str)
+
             return {
                 'success': True,
                 'output': combined_output.strip(),
                 'result': result_value,
                 'figures': self.figures,
                 'files': self.files,
+                'metadata': self.metadata_entries,
                 'error': None
             }
 
         except Exception as e:
             error_msg = f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}"
+
+            # Smart suggestions for common errors
+            suggestions = []
+            if isinstance(e, ModuleNotFoundError):
+                missing_module = str(e).replace("No module named '", "").replace("'", "").split('.')[0]
+                MODULE_ALTERNATIVES = {
+                    'torch': 'Use sklearn.ensemble.GradientBoostingRegressor, xgboost, or lightgbm instead of PyTorch neural networks',
+                    'pytorch': 'Use sklearn.ensemble.GradientBoostingRegressor, xgboost, or lightgbm instead of PyTorch',
+                    'tensorflow': 'Use sklearn, xgboost, or lightgbm instead of TensorFlow',
+                    'tf': 'Use sklearn, xgboost, or lightgbm instead of TensorFlow',
+                    'keras': 'Use sklearn, xgboost, or lightgbm instead of Keras',
+                    'jax': 'Use numpy + scipy for numerical computing instead of JAX',
+                    'flax': 'Use sklearn instead of Flax',
+                    'transformers': 'Use sklearn or statsmodels instead of HuggingFace Transformers',
+                    'catboost': 'Use xgboost (xgb) or lightgbm (lgb) instead — both are available',
+                    'prophet': 'Use statsmodels ARIMA or arch GARCH for time series forecasting',
+                    'pmdarima': 'Use statsmodels ARIMA with manual order selection',
+                    'darts': 'Use statsmodels or sklearn with rolling window features',
+                    'sktime': 'Use sklearn with manual feature engineering for time series',
+                    'optuna': 'Use sklearn.model_selection.GridSearchCV or RandomizedSearchCV',
+                    'polars': 'Use pandas (pd) instead — same functionality',
+                    'pyspark': 'Use pandas (pd) instead for single-machine data',
+                }
+                alt = MODULE_ALTERNATIVES.get(missing_module)
+                if alt:
+                    suggestions.append(f"💡 SUGGESTION: {alt}")
+                else:
+                    suggestions.append(f"💡 Module '{missing_module}' is not installed. Available packages: sklearn, xgboost, lightgbm, statsmodels, arch, scipy, linearmodels, pyfixest, pingouin, shap, pymc, dowhy")
+                suggestions.append(f"📦 Available packages: numpy, pandas, matplotlib, scipy, sklearn, statsmodels, arch, xgboost, lightgbm, seaborn, plotly, cvxpy, pypfopt, yfinance, ta, numba, networkx, sympy, linearmodels (PanelOLS/RandomEffects/IV2SLS/IVGMM), pyfixest (feols/fepois TWFE/DiD), VECM, QuantReg, coint, EGARCH, StudentsT, pingouin, shap, dowhy/CausalModel")
+
+            elif isinstance(e, TypeError) and 'fillna' in str(e) and 'method' in str(e):
+                suggestions.append("💡 FIX: fillna(method='ffill') is deprecated in Pandas 2.2+. Use df.ffill() or df.bfill() instead")
+
+            elif isinstance(e, TypeError) and 'append' in str(e):
+                suggestions.append("💡 FIX: DataFrame.append() is removed in Pandas 2.0+. Use pd.concat([df, new_row]) instead")
+
+            if suggestions:
+                error_msg += "\n\n" + "\n".join(suggestions)
+
             return {
                 'success': False,
                 'output': '\n'.join(self.output_text),
                 'result': None,
                 'figures': self.figures,
                 'files': self.files,
+                'metadata': self.metadata_entries,
                 'error': error_msg
             }
 
@@ -1884,33 +1721,13 @@ class CustomPythonExecutor:
         output = ' '.join(str(arg) for arg in args)
         self.output_text.append(output)
 
+    def _is_figure_empty(self, fig):
+        """Check if a matplotlib figure is empty (no meaningful content drawn)."""
+        return is_figure_empty(fig)
+
     def _capture_figures(self):
-        """Capture all matplotlib figures as base64 images"""
-        figs = [plt.figure(i) for i in plt.get_fignums()]
-
-        for fig in figs:
-            # Add VibeQuant watermark — bottom-right, teal, subtle
-            fig.text(
-                0.99, 0.01, 'VibeQuant',
-                fontsize=9, color='#119993', alpha=0.6,
-                ha='right', va='bottom',
-                transform=fig.transFigure,
-                fontweight='bold', style='italic'
-            )
-
-            # Save figure to bytes buffer
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-            buf.seek(0)
-
-            # Encode to base64
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-            self.figures.append(img_base64)
-
-            buf.close()
-
-        # Close all figures to free memory
-        plt.close('all')
+        """Capture all matplotlib figures as base64 images, skipping empty ones"""
+        capture_figures(self.figures, self.output_text, self._custom_print)
 
 
 def main():
@@ -1924,6 +1741,8 @@ def main():
         fmp_api_key = input_data.get('fmp_api_key') or os.getenv('FMP_API_KEY')
         fred_api_key = input_data.get('fred_api_key') or os.getenv('FRED_API_KEY')
         eodhd_api_key = input_data.get('eodhd_api_key') or os.getenv('EODHD_API_KEY')
+        anthropic_api_key = input_data.get('anthropic_api_key') or os.getenv('ANTHROPIC_API_KEY')
+        openrouter_api_key = input_data.get('openrouter_api_key') or os.getenv('OPENROUTER_API_KEY')
 
         if not code:
             print(json.dumps({
@@ -1933,7 +1752,7 @@ def main():
             return
 
         # Execute the code
-        executor = CustomPythonExecutor(fmp_api_key=fmp_api_key, fred_api_key=fred_api_key, eodhd_api_key=eodhd_api_key)
+        executor = CustomPythonExecutor(fmp_api_key=fmp_api_key, fred_api_key=fred_api_key, eodhd_api_key=eodhd_api_key, anthropic_api_key=anthropic_api_key, openrouter_api_key=openrouter_api_key)
         result = executor.execute(code, context)
 
         # Return result as JSON

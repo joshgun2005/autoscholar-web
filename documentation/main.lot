@@ -1,0 +1,69 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {1.1}{\ignorespaces Core Technology Stack}}{21}{table.caption.7}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Service modules by domain.}}{28}{table.2.1}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces SSE event types in the streaming protocol.}}{30}{table.caption.10}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Agent roles in the \textsc {AutoScholar}\xspace system.}}{33}{table.caption.12}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Pre-built quantitative analysis services.}}{41}{table.caption.17}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Governor prompt profiles.}}{43}{table.caption.18}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Typical pipeline execution metrics.}}{59}{table.caption.21}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Scheduler configuration parameters.}}{61}{table.caption.23}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Comparison between \textsc {AutoScholar}\xspace journal and traditional academic journals.}}{65}{table.caption.30}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces FMP service modules and coverage.}}{66}{table.6.1}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Academic data sources.}}{69}{table.caption.38}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Pre-loaded Python API clients.}}{70}{table.caption.40}%
+\contentsline {table}{\numberline {6.4}{\ignorespaces Embedded DuckDB databases available in Python.}}{70}{table.caption.42}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {7.1}{\ignorespaces TypeScript--Python service pairs.}}{75}{table.caption.50}%
+\contentsline {table}{\numberline {7.2}{\ignorespaces Automatic Python code patches.}}{76}{table.caption.54}%
+\contentsline {table}{\numberline {7.3}{\ignorespaces Risk and performance metrics.}}{78}{table.7.3}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {8.1}{\ignorespaces \LaTeX {} special character handling.}}{86}{table.caption.68}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {10.1}{\ignorespaces Claude API transient error handling.}}{98}{table.caption.69}%
+\contentsline {table}{\numberline {10.2}{\ignorespaces Python error classification.}}{99}{table.caption.70}%
+\contentsline {table}{\numberline {10.3}{\ignorespaces External API timeout configuration.}}{101}{table.caption.71}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {11.1}{\ignorespaces Pipeline latency breakdown (typical).}}{104}{table.caption.72}%
+\contentsline {table}{\numberline {11.2}{\ignorespaces Python service execution times.}}{105}{table.caption.73}%
+\contentsline {table}{\numberline {11.3}{\ignorespaces External API response times.}}{105}{table.caption.74}%
+\contentsline {table}{\numberline {11.4}{\ignorespaces API cost per paper (Claude Opus 4.6).}}{107}{table.caption.75}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {16.1}{\ignorespaces Frontend technology stack.}}{130}{table.caption.83}%
+\contentsline {table}{\numberline {16.2}{\ignorespaces Frontend routes.}}{131}{table.caption.84}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {17.1}{\ignorespaces API key scopes.}}{136}{table.caption.85}%
+\contentsline {table}{\numberline {17.2}{\ignorespaces API error codes.}}{140}{table.caption.86}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {A.1}{\ignorespaces Financial tools --- Core (55+ tools).}}{143}{table.1.A.1}%
+\contentsline {table}{\numberline {A.2}{\ignorespaces Financial tools --- Market data, options, discovery.}}{144}{table.1.A.2}%
+\contentsline {table}{\numberline {A.3}{\ignorespaces Academic research tools.}}{145}{table.1.A.3}%
+\contentsline {table}{\numberline {A.4}{\ignorespaces Web search, scraping, and extraction tools.}}{145}{table.1.A.4}%
+\contentsline {table}{\numberline {A.5}{\ignorespaces Macroeconomic data tools (all free, no API key).}}{146}{table.1.A.5}%
+\contentsline {table}{\numberline {A.6}{\ignorespaces Python execution and repair tools.}}{146}{table.1.A.6}%
+\contentsline {table}{\numberline {A.7}{\ignorespaces Research paper generation and compilation tools.}}{146}{table.1.A.7}%
+\contentsline {table}{\numberline {A.8}{\ignorespaces Prediction market tools (all public, no auth).}}{147}{table.1.A.8}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {B.1}{\ignorespaces 24 research domains.}}{149}{table.1.B.1}%
+\contentsline {table}{\numberline {B.2}{\ignorespaces 24 methodological approaches.}}{149}{table.1.B.2}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {C.1}{\ignorespaces \texttt {users} table schema.}}{152}{table.1.C.1}%
+\contentsline {table}{\numberline {C.2}{\ignorespaces \texttt {messages} table schema.}}{153}{table.1.C.2}%
+\contentsline {table}{\numberline {C.3}{\ignorespaces \texttt {sharedReports} table schema.}}{153}{table.1.C.3}%
+\contentsline {table}{\numberline {C.4}{\ignorespaces \texttt {publishedPapers} table schema.}}{153}{table.1.C.4}%
+\contentsline {table}{\numberline {C.5}{\ignorespaces \texttt {peerReviews} table schema.}}{154}{table.1.C.5}%
+\contentsline {table}{\numberline {C.6}{\ignorespaces \texttt {paperRuns} table schema.}}{155}{table.1.C.6}%
+\contentsline {table}{\numberline {C.7}{\ignorespaces \texttt {conversationSessions} table schema.}}{156}{table.1.C.7}%
+\contentsline {table}{\numberline {C.8}{\ignorespaces \texttt {apiKeys} table schema.}}{156}{table.1.C.8}%
+\contentsline {table}{\numberline {C.9}{\ignorespaces Key differences between SQLite and PostgreSQL schemas.}}{157}{table.caption.88}%
+\contentsfinish 

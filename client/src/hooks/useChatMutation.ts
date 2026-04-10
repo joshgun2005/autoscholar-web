@@ -1,9 +1,25 @@
 import { useMutation } from '@tanstack/react-query';
+import { useRef, useCallback } from 'react';
 import type { SearchResult } from '@shared/types';
 
 interface ConversationMessage {
   question: string;
   answer: string;
+}
+
+interface AuthorProfile {
+  name: string;
+  university: string;
+  department: string;
+  email: string;
+}
+
+export interface UploadedFile {
+  originalName: string;
+  storedName: string;
+  filepath: string;
+  size: number;
+  ext: string;
 }
 
 interface ChatRequest {
@@ -12,6 +28,8 @@ interface ChatRequest {
   sessionId?: string;
   imageData?: string;
   imageMimeType?: string;
+  authorProfile?: AuthorProfile;
+  uploadedFiles?: UploadedFile[];
 }
 
 interface ChatResponse {
@@ -21,17 +39,27 @@ interface ChatResponse {
   error?: string;
 }
 
-async function streamChat(request: ChatRequest, onChunk: (data: any) => void): Promise<ChatResponse> {
+async function streamChat(
+  request: ChatRequest,
+  onChunk: (data: any) => void,
+  signal?: AbortSignal,
+): Promise<ChatResponse> {
   const response = await fetch('/api/chat', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(request),
+    signal,
   });
 
   if (!response.ok) {
-    throw new Error('Failed to connect to chat API');
+    if (response.status === 401) {
+      // Session expired — reload to show the gate login
+      window.location.reload();
+      throw new Error('Session expirée. Reconnexion...');
+    }
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Chat API error (${response.status})`);
   }
 
   const reader = response.body?.getReader();
@@ -39,6 +67,13 @@ async function streamChat(request: ChatRequest, onChunk: (data: any) => void): P
 
   if (!reader) {
     throw new Error('No response body');
+  }
+
+  // Cancel the reader when the signal fires
+  if (signal) {
+    signal.addEventListener('abort', () => {
+      reader.cancel().catch(() => {});
+    }, { once: true });
   }
 
   let answer = '';
@@ -51,8 +86,11 @@ async function streamChat(request: ChatRequest, onChunk: (data: any) => void): P
     try {
       readResult = await reader.read();
     } catch (e: any) {
-      // reader.read() fails when connection drops (navigation, network loss)
-      // Return what we have instead of showing "Something went wrong"
+      // reader.read() fails when connection drops, navigation, or abort
+      if (signal?.aborted) {
+        // Intentional abort — return partial results silently
+        break;
+      }
       console.warn('Stream read interrupted:', e?.message);
       break;
     }
@@ -100,8 +138,27 @@ async function streamChat(request: ChatRequest, onChunk: (data: any) => void): P
 }
 
 export function useChatMutation(onChunk?: (data: any) => void) {
-  return useMutation({
-    mutationFn: (request: ChatRequest) => streamChat(request, onChunk || (() => {})),
+  const abortRef = useRef<AbortController | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (request: ChatRequest) => {
+      // Abort any previous in-flight stream
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortRef.current = controller;
+      return streamChat(request, onChunk || (() => {}), controller.signal);
+    },
     retry: false,
   });
+
+  const abort = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+  }, []);
+
+  return { ...mutation, abort };
 }

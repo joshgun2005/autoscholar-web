@@ -1,0 +1,559 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 4 — FULL PIPELINE RECONSTRUCTION
+%% ══════════════════════════════════════════════════════════════
+\chapter{Paper Generation Pipeline}
+\label{ch:pipeline}
+
+\section{Pipeline Overview}
+\label{sec:pipeline:overview}
+
+The paper generation pipeline is the central execution path of \autoscholar, transforming a research prompt into a published, peer-reviewed academic paper.
+The entire process executes within a single streaming HTTP connection lasting 45--90 minutes, involving up to 180 recursive tool calls, and consuming 500K--1M tokens of Claude context.
+
+This chapter reconstructs the pipeline phase by phase, documenting the code involved, data flows, decision points, and failure modes at each stage.
+
+\section{Phase 1: Trigger and Initialization}
+\label{sec:pipeline:trigger}
+
+\subsection{Trigger Mechanisms}
+
+The pipeline can be triggered through three mechanisms:
+
+\begin{description}
+  \item[Scheduled generation.] The \file{autoPaperScheduler.ts} (1,285 lines) runs on a configurable cadence (default: 1 hour). The scheduler maintains a cursor into the 1,000+ entry prompt bank and selects the next prompt.
+
+  \item[Admin-triggered generation.] Administrators can trigger generation via \texttt{POST /api/admin/trigger-paper} (random prompt) or \texttt{POST /api/admin/trigger-paper-custom} (specified prompt).
+
+  \item[Interactive generation.] Users submit research prompts through the web interface, which may be detected as paper-generation requests and upgraded.
+\end{description}
+
+\subsection{Prompt Selection}
+
+For scheduled generation, the prompt selection algorithm works as follows:
+
+\begin{algorithm}[H]
+\caption{Prompt Selection in the Auto-Paper Scheduler}
+\label{alg:prompt-selection}
+\SetAlgoLined
+\KwIn{Prompt bank $\mathcal{P}$ with 1,000+ entries, cursor position $c$, selection mode $m$}
+\KwOut{Selected prompt entry $p$}
+
+\uIf{$m = \text{sequential}$}{
+  $p \gets \mathcal{P}[c \bmod |\mathcal{P}|]$\;
+  $c \gets c + 1$\;
+}
+\uElseIf{$m = \text{weighted\_random}$}{
+  $w_i \gets 1.0$ for all $i$\;
+  \ForEach{recently used domain $d$}{
+    $w_i \gets w_i \times 0.5$ for all $p_i$ with domain $d$\;
+  }
+  $p \gets \text{WeightedSample}(\mathcal{P}, w)$\;
+}
+\Else{
+  $p \gets \text{UniformRandom}(\mathcal{P})$\;
+}
+
+\Return{$p$ with fields: domain, method, topic, full prompt text}\;
+\end{algorithm}
+
+The prompt bank is constructed deterministically at import time from three sources:
+\begin{itemize}
+  \item \textbf{24 domains} --- 18 finance (market microstructure, volatility modeling, asset allocation, ...) + 6 stats/ML/AI domains.
+  \item \textbf{24 methods} --- 18 econometric (panel GMM, event studies, DCC-GARCH, ...) + 6 stats/ML/AI methods.
+  \item \textbf{14 topics per domain} --- Specific, publishable research questions.
+  \item \textbf{Compatibility matrix} --- Maps each domain to its compatible methods, preventing nonsensical pairings.
+\end{itemize}
+
+The iteration order (variation, topic, domain) ensures consecutive prompts always switch domains, providing topic diversity.
+
+\subsection{Surprise Prompt Generation}
+
+For interactive sessions, the ``surprise paper'' feature (\func{generateSurprisePrompt}) picks a random prompt from the full pool, weighted to avoid recently selected ones (tracked in localStorage with a 30-entry cap).
+
+\subsection{Pipeline Run Initialization}
+
+When a scheduled run begins:
+
+\begin{enumerate}
+  \item A \texttt{PaperRun} record is created in the database with status \texttt{queued}.
+  \item A session ID is generated for the conversation.
+  \item The \governor is initialized with default state (confidence 1.0, all retry budgets full).
+  \item A heartbeat timer starts (10-second interval) to detect stalled runs.
+  \item The run status transitions to \texttt{researching}.
+\end{enumerate}
+
+\section{Phase 2: Research Prompt Enhancement}
+\label{sec:pipeline:enhancement}
+
+\subsection{Research Detection}
+
+Before reaching Claude, the prompt passes through \func{isResearchPaperRequest} (\file{researchPromptEnhancer.ts}), which uses two-part regex matching:
+
+\begin{itemize}
+  \item \textbf{Verb patterns:} ``write'', ``generate'', ``create'', ``produce'', ``draft'', ``compose''
+  \item \textbf{Noun patterns:} ``paper'', ``article'', ``study'', ``thesis'', ``report'', ``analysis''
+\end{itemize}
+
+\subsection{Methodology Detection}
+
+\func{detectResearchMethodology} classifies the prompt into one of four tracks:
+
+\begin{itemize}
+  \item \textbf{Econometrics:} Keywords include ``regression'', ``panel'', ``GMM'', ``GARCH'', ``causal'', ``instrumental''.
+  \item \textbf{Statistics:} Keywords include ``hypothesis'', ``bootstrap'', ``Bayesian'', ``distribution'', ``non-parametric''.
+  \item \textbf{Machine Learning:} Keywords include ``random forest'', ``XGBoost'', ``neural'', ``classification'', ``prediction''.
+  \item \textbf{AI:} Keywords include ``deep learning'', ``transformer'', ``NLP'', ``attention'', ``fine-tuning''.
+\end{itemize}
+
+\subsection{Prompt Upgrading}
+
+\func{upgradeResearchPrompt} calls Claude Opus non-streaming (temperature 1.0 for creative variety) to transform vague prompts into detailed 400--700 word research specifications.
+Each methodology type receives tailored guidance:
+
+\begin{description}
+  \item[Econometrics:] Must include identification strategies, 6--10 specific variable definitions, and endogeneity considerations.
+  \item[Statistics:] Must specify distributional assumptions, test statistics, and power analysis considerations.
+  \item[Machine Learning:] Must name a baseline + 4 models with cross-validation strategy and hyperparameter search space.
+  \item[AI:] Must specify architecture details, training regime, and ablation study design.
+\end{description}
+
+The upgrader preserves the language of the original prompt (supports French and English).
+
+\section{Phase 3: Literature Review (Gauss Phase)}
+\label{sec:pipeline:literature}
+
+\subsection{System Prompt Activation}
+
+When the upgraded prompt reaches Claude, the 1,798-line system prompt activates the \gauss role for the first phase.
+The system prompt instructs:
+
+\begin{quote}
+\itshape
+``Begin with Agent Gauss. Search at least 3 academic databases. Identify 15--30 relevant papers. Extract methods, datasets, and limitations. Identify 3--5 research gaps.''
+\end{quote}
+
+\subsection{Execution Sequence}
+
+\gauss typically executes the following tool sequence:
+
+\begin{enumerate}
+  \item \texttt{academic\_search\_multi} --- Parallel search across Semantic Scholar, OpenAlex, arXiv, CrossRef, and Google Scholar.
+  \item \texttt{literature\_gap\_finder} --- If the initial search returns sufficient results, run the full 7-step gap analysis pipeline.
+  \item Individual database queries for targeted follow-up.
+  \item \texttt{web\_search\_exa} or \texttt{tavily\_search} --- For recent working papers not yet indexed in academic databases.
+\end{enumerate}
+
+\subsection{Outputs}
+
+The \gauss phase produces:
+\begin{itemize}
+  \item A list of 15--30 relevant papers with BibTeX entries.
+  \item Identified research gaps ranked by novelty, feasibility, and impact.
+  \item A refined research question based on gap analysis.
+  \item Suggested methodology and data requirements.
+\end{itemize}
+
+\section{Phase 4: Data Acquisition (Turing Phase)}
+\label{sec:pipeline:data}
+
+\subsection{Data Strategy}
+
+Based on \gauss's findings, \euler transitions to the \turing role and plans a data acquisition strategy.
+The system prompt defines strict data source hierarchies with fallback chains:
+
+\begin{enumerate}
+  \item For stock/company data: FMP $\to$ EODHD $\to$ web scraping.
+  \item For macro data: FRED $\to$ World Bank $\to$ IMF $\to$ OECD.
+  \item For academic datasets: structured APIs $\to$ \gls{swdes} web extraction.
+  \item For alternative data: Polymarket $\to$ Google Trends $\to$ news sentiment.
+\end{enumerate}
+
+\subsection{Typical Tool Sequences}
+
+A typical \turing phase for a cross-sectional asset pricing study might involve:
+
+\begin{enumerate}
+  \item \texttt{get\_historical\_price} for multiple assets (portfolio returns).
+  \item \texttt{get\_income\_statement} / \texttt{get\_balance\_sheet} for fundamental factors.
+  \item \texttt{get\_treasury\_rates} for the risk-free rate.
+  \item \texttt{download\_fmp\_data} to export bulk data to CSV.
+  \item \texttt{get\_wb\_indicator\_data} for country-level controls.
+  \item \texttt{execute\_custom\_python\_analysis} to merge and validate datasets.
+\end{enumerate}
+
+\subsection{Data Provenance}
+
+The system prompt mandates data provenance documentation:
+\begin{quote}
+\itshape
+``For every dataset used, record: source API, endpoint, parameters, date range, number of observations, and any transformations applied.''
+\end{quote}
+
+This information is later embedded in the paper's data section and the project ZIP's metadata files.
+
+\section{Phase 5: Data Engineering (Newton Phase)}
+\label{sec:pipeline:engineering}
+
+\subsection{Execution}
+
+\newton primarily operates through \texttt{execute\_custom\_python\_analysis}, running code that:
+
+\begin{enumerate}
+  \item Loads downloaded CSV/JSON files into pandas DataFrames.
+  \item Cleans and standardizes column names, date formats, and numeric types.
+  \item Merges datasets by date or entity identifiers.
+  \item Constructs derived variables (returns, ratios, dummies, interactions).
+  \item Runs preliminary diagnostics (summary statistics, correlation matrices, stationarity tests).
+  \item Saves the prepared dataset for the analysis phase.
+\end{enumerate}
+
+\subsection{Script Management}
+
+Each Python execution is tracked by the ScriptManager (\file{scriptManager.ts}, 276 lines):
+
+\begin{itemize}
+  \item Scripts are saved to session-scoped temp directories with unique IDs.
+  \item Up to 8 repair attempts are allowed per script.
+  \item The diffEngine supports unified diffs, search-replace blocks, and fuzzy matching.
+  \item Structured errors are parsed and formatted for Claude's next turn.
+\end{itemize}
+
+\section{Phase 6: Empirical Analysis (Fisher Phase)}
+\label{sec:pipeline:analysis}
+
+\subsection{Model Selection Logic}
+
+\fisher's model selection follows the methodology track detected during prompt enhancement:
+
+\begin{description}
+  \item[Econometrics track:] Start with OLS baseline, add fixed effects, instrument with 2SLS if endogeneity is suspected, robustness checks with alternative specifications, clustering of standard errors.
+  \item[Statistics track:] Formulate null/alternative hypotheses, select appropriate test statistics, compute p-values and confidence intervals, assess power.
+  \item[ML track:] Train baseline (logistic regression or OLS), train 4 advanced models, cross-validate, compare via appropriate metrics (RMSE, AUC, F1), compute SHAP values for interpretation.
+  \item[AI track:] Implement architecture, train with early stopping, run ablation studies, visualize attention patterns.
+\end{description}
+
+\subsection{Robustness Checks}
+
+The system prompt mandates robustness checks:
+
+\begin{enumerate}
+  \item Alternative variable definitions (e.g., different return windows).
+  \item Subsample analysis (pre/post crisis, by sector, by size).
+  \item Alternative model specifications (e.g., Newey-West vs. clustered SE).
+  \item Placebo tests where applicable.
+  \item Sensitivity to outlier removal.
+\end{enumerate}
+
+\subsection{Figure Generation}
+
+Each analysis produces figures following the academic figure style directive.
+The \governor tracks figure count and enforces limits based on the active profile (8--15 figures depending on error state).
+Generated figures pass through:
+
+\begin{enumerate}
+  \item Matplotlib rendering with JF-style configuration.
+  \item Blank figure detection (axes artist inspection + pixel variance analysis).
+  \item AutoScholar watermark addition.
+  \item Base64 encoding and SSE transmission to the client.
+  \item Optional vision analysis via Claude Opus for figure description.
+\end{enumerate}
+
+\section{Phase 7: Paper Writing (Euler Write Phase)}
+\label{sec:pipeline:writing}
+
+\subsection{Section-by-Section Generation}
+
+\euler writes the paper one section at a time using the \texttt{write\_paper\_section} tool.
+The tool definition specifies extremely detailed length and quality requirements, targeting 60--90 page papers.
+
+\subsubsection{Empirical Paper Sections}
+
+\begin{enumerate}
+  \item \textbf{Introduction} (untitled, following JF convention) --- Motivation, contribution, preview of results.
+  \item \textbf{Literature Review} --- Organized by theme, positions the paper relative to existing work.
+  \item \textbf{Methodology} --- Formal model specification, estimation strategy, identification.
+  \item \textbf{Data} --- Sources, construction, summary statistics, preliminary analysis.
+  \item \textbf{Results} --- Main findings, robustness checks, subsample analysis.
+  \item \textbf{Discussion} --- Economic interpretation, implications, comparison with existing literature.
+  \item \textbf{Conclusion} --- Summary, contributions, limitations, future research.
+\end{enumerate}
+
+\subsubsection{Theoretical Paper Sections}
+
+\begin{enumerate}
+  \item \textbf{Economic Environment} --- Model setup, agents, preferences, technology.
+  \item \textbf{Equilibrium} --- Equilibrium concept, characterization, existence/uniqueness.
+  \item \textbf{Computational Method} --- Numerical solution, calibration, simulation.
+  \item \textbf{Quantitative Results} --- Model implications, moment matching, counterfactuals.
+  \item \textbf{Extensions} --- Model variants, sensitivity analysis.
+\end{enumerate}
+
+\subsection{Writing Style Enforcement}
+
+During the writing phase, the \governor injects the JF Writing Style Directive (282 lines), which includes:
+
+\begin{itemize}
+  \item 100+ banned words/phrases organized by severity tier.
+  \item Section-specific conventions (e.g., Introduction is unnumbered, abstract $\leq$ 100 words).
+  \item Citation formatting rules (``Author (year)'' for narrative, ``(Author, year)'' for parenthetical).
+  \item Advanced prose techniques: emphatic stress positioning, topic-comment sentence structure.
+  \item AI detection countermeasures: lexical diversity targets, syntactic variation requirements.
+  \item An 8-pass verification checklist for self-review.
+\end{itemize}
+
+\subsection{Section Rejection Tracking}
+
+The tool executor (\file{toolExecutor.ts}) tracks section rejection to prevent infinite loops.
+If a section is rejected more than 3 times (due to insufficient length or quality), the system accepts the best available version and moves on.
+
+\section{Phase 8: LaTeX Compilation}
+\label{sec:pipeline:compilation}
+
+\subsection{Section Assembly}
+
+The \texttt{compile\_research\_paper} tool (\file{latex/compiler.ts}, 91 lines) sorts sections into canonical academic order using a predefined ordering map:
+
+\begin{lstlisting}[style=typescript, caption=Section ordering map.]
+const SECTION_ORDER = {
+  'introduction': 1,
+  'literature_review': 2,
+  'methodology': 3,
+  'data': 4,
+  'results': 5,
+  'discussion': 6,
+  'conclusion': 7,
+  'appendix': 100,
+};
+\end{lstlisting}
+
+Appendix sections automatically receive a \texttt{\textbackslash appendix} command.
+
+\subsection{Template Selection}
+
+Three document templates are available (\file{latex/paperGenerator.ts}, 1,235 lines):
+
+\begin{description}
+  \item[\texttt{article}] --- Standard two-column academic article with \texttt{natbib} bibliographic style.
+  \item[\texttt{working\_paper}] --- Single-column working paper format with wider margins.
+  \item[\texttt{econometrica}] --- Mimics the \emph{Econometrica} journal style.
+\end{description}
+
+All templates share a common preamble with 50+ \LaTeX{} packages and custom macros.
+
+\subsection{Compilation Pipeline}
+
+\begin{algorithm}[H]
+\caption{\LaTeX{} Compilation Pipeline}
+\label{alg:latex-compilation}
+\SetAlgoLined
+\KwIn{Sections, BibTeX, figures, template}
+\KwOut{Compiled PDF path}
+
+Write \texttt{paper.tex}, \texttt{references.bib}, and figure files to temp directory\;
+Sanitize \LaTeX{} content (escape special chars, fix Greek letters, handle math mode)\;
+Auto-fit wide tables (wrap in \texttt{adjustbox} or \texttt{resizebox})\;
+
+\textbf{Pass 1:} Run \texttt{pdflatex -interaction=nonstopmode paper.tex}\;
+\If{BibTeX present}{
+  \textbf{Pass 2:} Run \texttt{bibtex paper}\;
+  \textbf{Pass 3:} Run \texttt{pdflatex} (resolve references)\;
+  \textbf{Pass 4:} Run \texttt{pdflatex} (finalize)\;
+}
+
+\If{compilation failed}{
+  Register compilation with \texttt{latexPatchManager}\;
+  \For{attempt $\gets 1$ \KwTo $8$}{
+    Parse errors via \texttt{latexLogParser}\;
+    Apply diff patch via \texttt{diffEngine}\;
+    Recompile\;
+    \If{success}{\textbf{break}\;}
+  }
+}
+
+\Return{PDF path or error}\;
+\end{algorithm}
+
+\subsection{LaTeX Sanitization}
+
+The sanitizer (\file{latex/sanitizer.ts}, 670 lines) fixes common Claude-generated \LaTeX{} issues:
+
+\begin{itemize}
+  \item Unescaped special characters (\%, \&, \$, \#, \_).
+  \item Greek letter handling outside math mode.
+  \item Mismatched math delimiters.
+  \item Em-dash and en-dash normalization.
+  \item Wide table detection and automatic wrapping.
+  \item Landscape environment stripping (known to cause compilation issues).
+  \item Blank PNG figure detection (decompresses IDAT chunks and measures pixel variance).
+\end{itemize}
+
+\subsection{Iterative Repair}
+
+The \LaTeX{} patch manager (\file{latex/latexPatchManager.ts}, 369 lines) provides a read-patch-recompile cycle:
+
+\begin{enumerate}
+  \item \texttt{inspectLatexErrors} parses the log file, classifying errors into 8 types (undefined control sequence, math, unicode, environment, package, fatal, missing character, other).
+  \item \texttt{patchLatex} applies diffs using the shared diffEngine with fuzzy matching.
+  \item \texttt{recompileLatex} runs the full pdflatex+bibtex pipeline.
+  \item Up to 8 repair attempts are allowed before giving up.
+\end{enumerate}
+
+\section{Phase 9: Packaging}
+\label{sec:pipeline:packaging}
+
+The \file{latex/packaging.ts} (358 lines) creates a ZIP archive following the \gls{rre} directory structure:
+
+\begin{verbatim}
+project/
+  paper.tex              % Main LaTeX source
+  references.bib         % BibTeX references
+  outputs/
+    paper.pdf            % Compiled PDF
+    figures/             % All generated figures
+  code/
+    01_data_download.py  % Pipeline-ordered scripts
+    02_data_prep.py
+    03_analysis.py
+    ...
+  data/
+    raw/api/             % API-sourced data
+    raw/web/             % Web-extracted data
+    processed/           % Cleaned datasets
+    metadata/            % Data provenance files
+  run_pipeline.py        % Auto-generated master script
+  requirements.txt       % Auto-detected dependencies
+  README.md              % Build instructions and documentation
+\end{verbatim}
+
+Key features:
+\begin{itemize}
+  \item Scripts are ordered by pipeline stage using numeric prefixes.
+  \item Data files are routed to structured subdirectories based on source type.
+  \item \texttt{requirements.txt} is auto-generated by parsing imports from all scripts and mapping to pip package names.
+  \item \texttt{run\_pipeline.py} is auto-generated with sequential script execution.
+  \item \texttt{README.md} includes abstract, build instructions, project structure, and data provenance.
+\end{itemize}
+
+\section{Phase 10: Validation (Popper Phase)}
+\label{sec:pipeline:validation}
+
+\subsection{Review Trigger}
+
+After successful compilation, the scheduler invokes \popper:
+
+\begin{enumerate}
+  \item The run status transitions to \texttt{validating}.
+  \item The full paper content (title, abstract, sections, BibTeX) is submitted to \func{generatePeerReview}.
+  \item Claude reviews the paper at temperature 0.3 for consistency.
+  \item The review result includes:
+  \begin{itemize}
+    \item Overall score (0--100).
+    \item Recommendation (accept/minor\_revision/major\_revision/reject).
+    \item 6-dimension detailed scores.
+    \item Section-by-section feedback.
+    \item Strengths and weaknesses lists.
+  \end{itemize}
+\end{enumerate}
+
+\subsection{Publication Decision}
+
+The \governor evaluates the Popper review via \func{evaluatePopper}:
+
+\begin{itemize}
+  \item Score $\geq 45$: Paper is published (run status $\to$ \texttt{published}).
+  \item Score $< 45$: Paper is rejected (run status $\to$ \texttt{rejected}).
+  \item The review is stored in the \texttt{peer\_reviews} table.
+\end{itemize}
+
+\section{Phase 11: Publication}
+\label{sec:pipeline:publication}
+
+\subsection{ASID Assignment}
+
+Published papers receive an \gls{asid} via \file{doiService.ts} (195 lines):
+
+\begin{equation}
+\text{ASID} = \texttt{ASID-}\langle\text{year}\rangle\texttt{-}\langle\text{sequence}\rangle
+\end{equation}
+
+where sequence is a zero-padded 4-digit number generated by atomic database counter increments (thread-safe for concurrent generation).
+
+\subsection{Storage}
+
+The published paper record includes:
+\begin{itemize}
+  \item Title, abstract, domain classification, template.
+  \item Full \LaTeX{} sections (stored as JSON).
+  \item BibTeX references.
+  \item Figure count, word count, section count, \LaTeX{} line count.
+  \item Peer review score and recommendation.
+  \item Project ZIP file path.
+  \item ASID.
+  \item Associated session ID for cost tracking.
+\end{itemize}
+
+\subsection{Domain Classification}
+
+The domain detector (\file{utils/domainDetector.ts}) classifies papers into domains based on keyword analysis of the title and abstract, using a weighted scoring system across 24 domain categories.
+
+\section{Checkpoint and Resume System}
+\label{sec:pipeline:checkpoint}
+
+\subsection{Motivation}
+
+Given that pipeline runs last 45--90 minutes, crash recovery is essential.
+The checkpoint system allows runs to resume from the last saved state after server restarts.
+
+\subsection{Checkpoint Structure}
+
+\begin{lstlisting}[style=typescript, caption=Pipeline checkpoint structure.]
+interface PipelineCheckpoint {
+  runId: string;
+  sessionId: string;
+  prompt: string;
+  messages: ClaudeMessage[];
+  governorState: AppState;
+  decisionLog: DecisionLogEntry[];
+  toolResults: ToolResult[];
+  writtenSections: { name: string; content: string }[];
+  figureCount: number;
+  stage: PipelineStage;
+}
+\end{lstlisting}
+
+\subsection{Checkpoint Lifecycle}
+
+\begin{enumerate}
+  \item Checkpoints are saved every 8 seconds during active generation.
+  \item On server restart, the scheduler queries for runs with status \texttt{researching}, \texttt{analyzing}, \texttt{drafting}, or \texttt{validating}.
+  \item Active runs are marked as \texttt{failed} (to prevent zombie runs).
+  \item Administrators can manually resume from a checkpoint via the admin API.
+  \item Resumed runs restore the full conversation history, governor state, and continue from the last tool call.
+\end{enumerate}
+
+\section{Pipeline Metrics}
+\label{sec:pipeline:metrics}
+
+Typical pipeline execution metrics:
+
+\begin{table}[H]
+\centering
+\caption{Typical pipeline execution metrics.}
+\label{tab:pipeline-metrics}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Typical Value} \\
+\midrule
+Total duration & 45--90 minutes \\
+Tool calls & 80--180 \\
+Python executions & 15--40 \\
+Figures generated & 8--15 \\
+Context tokens consumed & 500K--1M \\
+API cost per paper & \$15--\$40 (Opus 4.6 pricing) \\
+Paper length & 60--90 pages \\
+BibTeX references & 30--80 \\
+\LaTeX{} compilation attempts & 1--4 \\
+Popper review score & 50--85 (mean $\approx$ 65) \\
+\bottomrule
+\end{tabular}
+\end{table}

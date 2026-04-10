@@ -1,0 +1,245 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 11 — PERFORMANCE & SCALABILITY
+%% ══════════════════════════════════════════════════════════════
+\chapter{Performance and Scalability}
+\label{ch:performance}
+
+\section{Overview}
+\label{sec:perf:overview}
+
+\autoscholar's performance characteristics are dominated by two factors: (1) the latency and throughput of the Claude API, and (2) the execution time of Python computational services.
+Network I/O to external data APIs and \LaTeX{} compilation contribute smaller but non-negligible overhead.
+
+\section{Latency Analysis}
+\label{sec:perf:latency}
+
+\subsection{End-to-End Pipeline Latency}
+
+A typical auto-paper pipeline run takes 45--90 minutes, broken down approximately as:
+
+\begin{table}[H]
+\centering
+\caption{Pipeline latency breakdown (typical).}
+\label{tab:latency-breakdown}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Phase} & \textbf{Duration} & \textbf{Percentage} \\
+\midrule
+Literature review (Gauss) & 5--10 min & 10\% \\
+Data collection (Turing) & 8--15 min & 15\% \\
+Data preparation (Newton) & 5--10 min & 10\% \\
+Empirical analysis (Fisher) & 15--30 min & 30\% \\
+Paper writing (Euler write) & 10--20 min & 25\% \\
+Compilation (Euler compile) & 2--5 min & 5\% \\
+Peer review (Popper) & 2--3 min & 5\% \\
+\midrule
+\textbf{Total} & \textbf{45--90 min} & \textbf{100\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Claude API Latency}
+
+Each Claude API call involves:
+\begin{itemize}
+  \item \textbf{Time to first token:} 1--5 seconds (depends on input size).
+  \item \textbf{Token generation rate:} 50--100 tokens/second for output.
+  \item \textbf{Tool call overhead:} 0.5--2 seconds per tool call for parsing and dispatch.
+\end{itemize}
+
+With 80--180 tool calls per run and substantial input context (approaching 1M tokens by end), Claude API latency dominates total runtime.
+
+\subsection{Python Execution Latency}
+
+Individual Python executions vary significantly:
+
+\begin{table}[H]
+\centering
+\caption{Python service execution times.}
+\label{tab:python-latency}
+\begin{tabular}{lr}
+\toprule
+\textbf{Service} & \textbf{Typical Duration} \\
+\midrule
+Custom Python (simple) & 5--15 seconds \\
+Custom Python (complex) & 30--90 seconds \\
+GARCH estimation & 10--30 seconds \\
+Monte Carlo (10K sims) & 5--15 seconds \\
+Portfolio optimization & 10--20 seconds \\
+Risk metrics & 5--15 seconds \\
+Options pricing & 3--10 seconds \\
+Volatility surface & 30--60 seconds \\
+Data download & 5--30 seconds \\
+Plot generation & 3--10 seconds \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Python subprocess startup adds 1--3 seconds of overhead per invocation (interpreter initialization, library imports).
+
+\subsection{External API Latency}
+
+\begin{table}[H]
+\centering
+\caption{External API response times.}
+\label{tab:api-latency}
+\begin{tabular}{lr}
+\toprule
+\textbf{Service} & \textbf{Typical Response Time} \\
+\midrule
+FMP (simple query) & 200--500ms \\
+FMP (historical data) & 500ms--2s \\
+EODHD (EOD data) & 300ms--1s \\
+Semantic Scholar & 500ms--3s \\
+OpenAlex & 300ms--1s \\
+arXiv & 1--5s (XML parsing) \\
+Tavily (search) & 1--3s \\
+Firecrawl (scrape) & 2--10s \\
+World Bank & 500ms--2s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Throughput}
+\label{sec:perf:throughput}
+
+\subsection{Paper Generation Rate}
+
+\begin{description}
+  \item[Single pipeline:] 1 paper every 45--90 minutes, or $\sim$16--32 papers/day.
+  \item[Maximum parallel (3):] 3 concurrent pipelines, yielding $\sim$48--96 papers/day theoretically. In practice, 24--48 papers/day due to API rate limits and shared compute.
+\end{description}
+
+\subsection{Bottlenecks}
+
+\begin{enumerate}
+  \item \textbf{Claude API:} The single largest bottleneck. Each pipeline run maintains a long-running streaming connection, and concurrent runs multiply API cost linearly.
+  \item \textbf{Python subprocesses:} Each execution spawns a new Python interpreter. No process pooling or caching is implemented.
+  \item \textbf{FMP API quotas:} Daily request limits can throttle data collection in high-throughput scenarios.
+  \item \textbf{Single-threaded Node.js:} The Express server runs on a single event loop. CPU-intensive operations (JSON parsing, \LaTeX{} sanitization) block the event loop briefly.
+\end{enumerate}
+
+\section{Memory Usage}
+\label{sec:perf:memory}
+
+\subsection{Node.js Process}
+
+\begin{itemize}
+  \item Baseline memory: $\sim$150--250 MB.
+  \item Per active session: $\sim$10--50 MB (SSE buffers, tool results, governor state).
+  \item Peak during compilation: $\sim$300--500 MB (large tool result arrays, LaTeX content).
+  \item Session broadcaster event buffers: 200 events $\times$ average 5KB = $\sim$1 MB per session.
+\end{itemize}
+
+\subsection{Python Subprocesses}
+
+\begin{itemize}
+  \item Baseline: $\sim$100--200 MB per process (NumPy, Pandas, Matplotlib imports).
+  \item Peak during analysis: $\sim$500 MB--2 GB depending on dataset size and model complexity.
+  \item DuckDB databases: loaded on-demand, can consume significant memory for large queries.
+\end{itemize}
+
+\subsection{Database}
+
+\begin{itemize}
+  \item SQLite file: grows with published papers and sessions. Current size: $\sim$458 MB.
+  \item WAL journal: up to $\sim$12 MB during active writes.
+  \item In-memory structures: Drizzle ORM caches schema metadata.
+\end{itemize}
+
+\section{Compute Constraints}
+\label{sec:perf:compute}
+
+\subsection{API Cost Model}
+
+The dominant cost is Claude API usage:
+
+\begin{table}[H]
+\centering
+\caption{API cost per paper (Claude Opus 4.6).}
+\label{tab:cost-model}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Component} & \textbf{Tokens} & \textbf{Cost} \\
+\midrule
+Input tokens (context) & 500K--1M & \$2.50--\$5.00 \\
+Output tokens (responses) & 100K--300K & \$2.50--\$7.50 \\
+Prompt enhancement & 5K--10K & \$0.05--\$0.10 \\
+Peer review (Popper) & 20K--50K & \$0.25--\$0.50 \\
+History summarization & 50K--100K & \$0.50--\$1.00 \\
+\midrule
+\textbf{Total per paper} & & \textbf{\$5--\$15} \\
+\textbf{Daily (24 papers)} & & \textbf{\$120--\$360} \\
+\textbf{Monthly (720 papers)} & & \textbf{\$3,600--\$10,800} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{External API Costs}
+
+\begin{itemize}
+  \item \textbf{FMP:} Subscription-based with daily request limits. Enterprise plan recommended for high throughput.
+  \item \textbf{EODHD:} Pay-per-request model.
+  \item \textbf{Tavily / Firecrawl / Exa:} Usage-based pricing.
+  \item \textbf{SerpAPI:} Per-search pricing.
+  \item \textbf{Free APIs:} World Bank, IMF, OECD, OpenAlex, arXiv, CrossRef, Polymarket --- no cost.
+\end{itemize}
+
+\section{Scalability Assessment}
+\label{sec:perf:scalability}
+
+\subsection{Horizontal Scaling Limitations}
+
+The current architecture has limited horizontal scalability:
+
+\begin{itemize}
+  \item \textbf{Single-process Node.js:} Cannot leverage multiple CPU cores natively.
+  \item \textbf{SQLite:} Single-writer constraint limits write concurrency. (PostgreSQL removes this limitation.)
+  \item \textbf{File-based state:} Script management, \LaTeX{} compilation, and figure storage use the local filesystem.
+  \item \textbf{In-memory state:} Session broadcaster, rate limiter, and governor state are in-process.
+\end{itemize}
+
+\subsection{Vertical Scaling Opportunities}
+
+\begin{itemize}
+  \item \textbf{More memory:} Allows larger Python datasets and more concurrent sessions.
+  \item \textbf{Faster CPU:} Reduces Python startup time and JSON processing overhead.
+  \item \textbf{SSD storage:} Improves SQLite and file I/O performance.
+  \item \textbf{PostgreSQL migration:} Removes write concurrency limits.
+\end{itemize}
+
+\subsection{Scaling Recommendations}
+
+For higher throughput:
+\begin{enumerate}
+  \item Migrate to PostgreSQL for multi-writer support.
+  \item Implement Python process pooling to amortize startup costs.
+  \item Move file storage to object storage (S3-compatible) for horizontal scaling.
+  \item Deploy multiple server instances behind a load balancer with shared database.
+  \item Implement a message queue (Redis/RabbitMQ) for pipeline orchestration.
+\end{enumerate}
+
+\section{Monitoring and Observability}
+\label{sec:perf:monitoring}
+
+\subsection{Built-in Metrics}
+
+The platform tracks:
+\begin{itemize}
+  \item Request count and latency per endpoint.
+  \item Active user count (heartbeat-based, 2-minute window).
+  \item Token consumption per session and per paper.
+  \item API cost accumulation.
+  \item Pipeline run duration and status distribution.
+  \item Governor intervention frequency.
+\end{itemize}
+
+\subsection{Metrics Access}
+
+Metrics are accessible via:
+\begin{itemize}
+  \item Admin dashboard (web UI).
+  \item \texttt{GET /api/platform/stats} (internal endpoint).
+  \item \texttt{GET /api/v1/stats/*} (public API with authentication).
+  \item \texttt{GET /api/v1/pipeline/stats} (pipeline-specific metrics).
+\end{itemize}

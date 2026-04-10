@@ -1,0 +1,264 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 16 — FRONTEND ARCHITECTURE
+%% ══════════════════════════════════════════════════════════════
+\chapter{Frontend Architecture}
+\label{ch:frontend}
+
+\section{Overview}
+\label{sec:frontend:overview}
+
+The \autoscholar frontend is a React 18.3 single-page application built with Vite 5, TailwindCSS 3, and TanStack React Query.
+It provides three primary interfaces: (1) a conversational research interface for interactive analysis, (2) a public showcase of shared research reports, and (3) an administrative dashboard for pipeline management.
+
+\section{Technology Stack}
+\label{sec:frontend:stack}
+
+\begin{table}[H]
+\centering
+\caption{Frontend technology stack.}
+\label{tab:frontend-stack}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Technology} & \textbf{Purpose} \\
+\midrule
+React 18.3 & UI framework with hooks and context API \\
+Vite 5 & Build tool with HMR for development \\
+TailwindCSS 3 & Utility-first CSS framework \\
+TanStack React Query & Server state management, caching, and mutations \\
+Framer Motion & Animation library for UI transitions \\
+wouter & Lightweight client-side routing (20+ routes) \\
+react-markdown + remark-gfm & Markdown rendering with GitHub-flavored extensions \\
+jsPDF + html2canvas & Client-side PDF generation \\
+Recharts & Data visualization for admin dashboard \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Application Structure}
+\label{sec:frontend:structure}
+
+\subsection{Routing}
+
+The application defines 20+ routes via \pkg{wouter} in \file{App.tsx} (77 lines):
+
+\begin{table}[H]
+\centering
+\caption{Frontend routes.}
+\label{tab:frontend-routes}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Path} & \textbf{Page} \\
+\midrule
+\texttt{/app} & Home --- Main research interface \\
+\texttt{/showcase} & Showcase --- Public shared reports gallery \\
+\texttt{/admin} & Admin --- Pipeline management dashboard \\
+\texttt{/share/:shareId} & SharedReport --- Individual report viewer \\
+\texttt{/journal} & Journal --- Published papers listing \\
+\texttt{/journal/:paperId} & Paper detail page \\
+\texttt{/paper/:asid} & Paper by ASID \\
+\texttt{/repository} & Repository browser \\
+\texttt{/live-paper} & Live paper generation viewer \\
+\texttt{/docs} & API documentation \\
+\texttt{/privacy} & Privacy policy \\
+\texttt{/terms} & Terms of service \\
+\texttt{/donate} & Donation page \\
+\texttt{/agents} & Agent documentation \\
+\texttt{/api} & API explorer \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Context Providers}
+
+The app wraps all routes in a provider chain:
+
+\begin{enumerate}
+  \item \texttt{ErrorBoundary} --- Catches React rendering errors.
+  \item \texttt{QueryClientProvider} --- TanStack React Query with 5-minute stale time, 30-minute GC.
+  \item \texttt{ThemeProvider} --- Dark/light theme management.
+  \item \texttt{TooltipProvider} --- Shared tooltip configuration.
+  \item \texttt{ActiveSessionProvider} --- Global chat state management.
+\end{enumerate}
+
+\section{Core Components}
+\label{sec:frontend:components}
+
+\subsection{Research Interface (\file{pages/home.tsx})}
+
+The main page (338 lines) provides:
+
+\begin{itemize}
+  \item Header with logo, navigation buttons (Repository, Journal, Live Paper, Docs), and session history drawer.
+  \item Empty state with \texttt{ResearchForm} showing categorized research prompts and ``surprise paper'' button.
+  \item Streaming result display with:
+  \begin{itemize}
+    \item \texttt{StreamingAnswer} for markdown rendering.
+    \item \texttt{AgentSteps} for pipeline progress timeline.
+    \item \texttt{CustomPythonFigure} for matplotlib figure galleries.
+    \item \texttt{ResultCard} for source citation cards.
+    \item \texttt{DownloadButtons} for PDF/DOCX/HTML/Markdown export.
+  \end{itemize}
+  \item Fixed bottom \texttt{SearchBar} for follow-up queries.
+  \item ``Watch Live'' floating button during active generation.
+\end{itemize}
+
+\subsection{Streaming Answer (\file{components/streaming-answer.tsx})}
+
+The core rendering component (446 lines) for AI-generated content:
+
+\begin{itemize}
+  \item Uses \pkg{react-markdown} with \pkg{remark-gfm} and extensive custom component overrides.
+  \item Content sanitization: strips leaked XML function call blocks, raw HTML tags, normalizes whitespace.
+  \item Figure resolution: supports \texttt{fig://} protocol, markdown images, and figure registry lookups.
+  \item Auto-scrolls during streaming with a blinking cursor indicator.
+  \item Download link handling via blob URLs.
+  \item Source display in a verified-badge grid.
+  \item Code block syntax highlighting.
+\end{itemize}
+
+\subsection{Agent Steps (\file{components/chat/agent-steps.tsx})}
+
+Pipeline progress visualization (389 lines):
+
+\begin{itemize}
+  \item Defines 5 named agents with distinct colors and icons:
+  \begin{itemize}
+    \item Euler (orange) --- Orchestrator
+    \item Gauss (blue) --- Gap Analysis
+    \item Turing (teal) --- Data Collection
+    \item Newton (green) --- Dataset Preparation
+    \item Fisher (purple) --- Empirical Analysis
+  \end{itemize}
+  \item Steps displayed as a collapsible timeline with status indicators (pending/running/completed/error).
+  \item Animated transitions via Framer Motion.
+  \item Progress bar and parallel execution indicators.
+  \item Maps 30+ internal tool names to human-readable labels.
+\end{itemize}
+
+\subsection{Search Bar (\file{components/chat/search-bar.tsx})}
+
+Feature-rich input component (422 lines):
+
+\begin{itemize}
+  \item Text input with multi-line support.
+  \item Image attachment with preview.
+  \item Data file upload (CSV, Excel, Parquet, JSON) via \texttt{/api/upload-data}.
+  \item Voice dictation via MediaRecorder API and \texttt{/api/speech-to-text} (ElevenLabs Scribe v2).
+  \item Submit handler passing query, image data, and uploaded file metadata.
+\end{itemize}
+
+\subsection{Python Figure Gallery (\file{components/chat/custom-python-figure.tsx})}
+
+Figure display component (205 lines):
+
+\begin{itemize}
+  \item Organized in collapsible batches with description headers.
+  \item Auto-detects URL vs base64-encoded images.
+  \item Individual figure download.
+  \item Click-to-open fullscreen viewer.
+  \item Retry on image load failure with cache-busting.
+  \item Auto-expands new batches as they arrive during streaming.
+\end{itemize}
+
+\section{State Management}
+\label{sec:frontend:state}
+
+\subsection{Chat Session Hook (\file{hooks/useChatSession.ts})}
+
+The central state management hook (344 lines) manages $\sim$20 pieces of state:
+
+\begin{itemize}
+  \item Session ID (persisted to \texttt{sessionStorage}).
+  \item Conversation history (array of Q\&A pairs).
+  \item Streaming answer and loading state.
+  \item Sources, search queries, and tool results.
+  \item Agent steps with status tracking.
+  \item Python code entries and figure batches.
+  \item Monte Carlo and options pricing results.
+  \item Figure registries (URL and base64 maps).
+  \item Author profile (from \texttt{localStorage}).
+\end{itemize}
+
+Key operations:
+\begin{description}
+  \item[\func{handleSearch}] Initiates a new query, manages streaming state, and accumulates results.
+  \item[\func{handleRetry}] Re-submits the last query.
+  \item[\func{handleNewConversation}] Resets all state for a fresh session.
+  \item[\func{handleLoadSession}] Loads a previous session from the API.
+\end{description}
+
+\subsection{Chat Mutation Hook (\file{hooks/useChatMutation.ts})}
+
+SSE streaming implementation (165 lines):
+
+\begin{enumerate}
+  \item Sends POST to \texttt{/api/chat} with query and conversation history.
+  \item Reads response body as a stream.
+  \item Parses SSE \texttt{data:} lines into typed events.
+  \item Forwards each chunk to the \texttt{onChunk} callback.
+  \item Supports \texttt{AbortController}-based cancellation.
+  \item Handles 401 by reloading the page.
+\end{enumerate}
+
+\subsection{Analytics Hook (\file{hooks/useAnalytics.ts})}
+
+Platform telemetry (94 lines):
+
+\begin{itemize}
+  \item Heartbeat POST every 30 seconds during active generation.
+  \item Real-time stats polling at configurable intervals (default 10s).
+  \item Auto-generated session IDs persisted in \texttt{sessionStorage}.
+\end{itemize}
+
+\section{Document Export}
+\label{sec:frontend:export}
+
+\subsection{Server-Side Export}
+
+Three export buttons trigger server-side generation:
+
+\begin{itemize}
+  \item \textbf{PDF:} POST to \texttt{/api/generate-pdf} --- Puppeteer renders HTML to PDF.
+  \item \textbf{DOCX:} POST to \texttt{/api/generate-docx} --- Pandoc converts markdown.
+  \item \textbf{HTML:} POST to \texttt{/api/generate-html} --- Self-contained HTML with KaTeX.
+\end{itemize}
+
+\subsection{Client-Side Export}
+
+\begin{itemize}
+  \item \textbf{Markdown:} Client-side blob download (no server call).
+  \item \textbf{Advanced PDF:} \file{pdfGenerator.ts} (539 lines) uses jsPDF + html2canvas for element capture with AutoScholar-branded headers, pagination, and table formatting.
+\end{itemize}
+
+\section{Configuration}
+\label{sec:frontend:config}
+
+\file{config.ts} (58 lines) defines:
+
+\begin{itemize}
+  \item \textbf{Base URL:} Production (\texttt{https://autoscholar.ai}) vs development (\texttt{localhost:3001}).
+  \item \textbf{App metadata:} Name ``AutoScholar'', version ``3.0.0''.
+  \item \textbf{Feature flags:} \texttt{pythonCustomCode}, \texttt{pdfDownload}, \texttt{sharing}, \texttt{exportData}, \texttt{multiSource}.
+  \item \textbf{Limits:} \texttt{maxToolsPerBatch}: 5, \texttt{maxPdfChars}: 3M, \texttt{maxQueryLength}: 10K.
+\end{itemize}
+
+\section{Build and Development}
+\label{sec:frontend:build}
+
+\subsection{Development}
+
+\begin{itemize}
+  \item Vite dev server with React HMR plugin.
+  \item PostCSS with TailwindCSS and Autoprefixer.
+  \item Path aliases: \texttt{@} $\to$ \texttt{client/src}, \texttt{@shared} $\to$ \texttt{shared}.
+  \item Relaxed filesystem access for monorepo structure.
+\end{itemize}
+
+\subsection{Production Build}
+
+\begin{itemize}
+  \item \texttt{vite build} outputs to \texttt{dist/public/}.
+  \item Static files served by Express in production mode.
+  \item SEO meta tags in \file{index.html} (Open Graph, Twitter Cards).
+  \item Google Fonts preconnect for Inter, Space Grotesk, Playfair Display, Libre Baskerville, EB Garamond, JetBrains Mono.
+\end{itemize}

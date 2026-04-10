@@ -3,31 +3,11 @@
 
 export * from './python/index';
 
+// Incremental repair subsystem
 export {
-  executePortfolioOptimization,
-  executeRiskMetricsAnalysis,
-  executePlot,
-  executeVolatilitySurface,
-  executeDataDownload,
-  executeCustomPython,
-} from './python/var';
-
-export type {
-  PortfolioOptimizerInput,
-  PortfolioOptimizerResult,
-  PortfolioOptimizerExecutionResult,
-  RiskMetricsInput,
-  RiskMetricsResult,
-  RiskMetricsExecutionResult,
-  PlotInput,
-  PlotResult,
-  PlotExecutionResult,
-  VolatilitySurfaceInput,
-  VolatilitySurfaceResult,
-  VolatilitySurfaceExecutionResult,
-  DataDownloadInput,
-  DataDownloadResult,
-  DataDownloadExecutionResult,
-  CustomPythonInput,
-  CustomPythonResult,
-} from './python/var';
+  readScript,
+  patchScript,
+  getLastError,
+  getRepairInfo,
+  cleanupSession,
+} from './python/scriptManager';

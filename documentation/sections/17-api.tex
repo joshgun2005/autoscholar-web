@@ -1,0 +1,306 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 17 — PUBLIC REST API
+%% ══════════════════════════════════════════════════════════════
+\chapter{Public REST API}
+\label{ch:api}
+
+\section{Overview}
+\label{sec:api:overview}
+
+\autoscholar exposes a public REST API at \texttt{/api/v1/} providing authenticated access to the platform's paper corpus, peer reviews, reports, pipeline monitoring, search, prompts, session metadata, and platform statistics.
+The API is designed for programmatic access by researchers, data scientists, and third-party applications.
+
+\section{Authentication}
+\label{sec:api:auth}
+
+\subsection{API Key Management}
+
+\begin{description}
+  \item[Key creation:] \texttt{POST /api/v1/keys} --- Open registration (no auth required). Returns the raw key exactly once.
+  \item[Key listing:] \texttt{GET /api/v1/keys} --- Authenticated users can list their masked keys.
+  \item[Key revocation:] \texttt{DELETE /api/v1/keys/:id} --- Revoke a specific key.
+\end{description}
+
+\subsection{Authentication Methods}
+
+\begin{enumerate}
+  \item \textbf{Bearer token:} \texttt{Authorization: Bearer sk\_as\_...}
+  \item \textbf{Query parameter:} \texttt{?api\_key=sk\_as\_...}
+\end{enumerate}
+
+Keys are stored as SHA-256 hashes in the database.
+The raw key is never stored.
+
+\subsection{Scopes}
+
+API keys support four scopes:
+
+\begin{table}[H]
+\centering
+\caption{API key scopes.}
+\label{tab:api-scopes}
+\begin{tabular}{ll}
+\toprule
+\textbf{Scope} & \textbf{Permissions} \\
+\midrule
+\texttt{read} & Read papers, reviews, reports, stats \\
+\texttt{search} & Full-text search across resources \\
+\texttt{download} & Download project ZIPs and data files \\
+\texttt{write} & Create prompts and reports \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Rate Limiting}
+
+In-memory per-key rate limiting:
+\begin{itemize}
+  \item Default: 100 requests per hour.
+  \item Configurable per key at creation time.
+  \item Auto-cleanup of expired rate limit windows every 10 minutes.
+  \item 429 response with \texttt{Retry-After} header when exceeded.
+\end{itemize}
+
+\section{Response Format}
+\label{sec:api:format}
+
+All responses use a standardized JSON envelope:
+
+\begin{lstlisting}[style=typescript, caption=API response envelope.]
+// Success
+{
+  "ok": true,
+  "data": { ... },
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "totalPages": 8
+  }
+}
+
+// Error
+{
+  "ok": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Paper not found"
+  }
+}
+\end{lstlisting}
+
+\section{Endpoints}
+\label{sec:api:endpoints}
+
+\subsection{Papers}
+
+\begin{description}
+  \item[\texttt{GET /api/v1/papers}] List published papers.
+  \begin{itemize}
+    \item Filters: \texttt{domain}, \texttt{template}, \texttt{author}, \texttt{keyword}, \texttt{q} (text search).
+    \item Sorting: \texttt{newest}, \texttt{oldest}, \texttt{words}, \texttt{figures}.
+    \item Pagination: \texttt{page}, \texttt{limit} (max 100).
+    \item Includes generation cost data (Opus 4.6 pricing).
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/papers/:id}] Get paper details.
+  \begin{itemize}
+    \item Full \LaTeX{} sections, BibTeX, figure count, word count.
+    \item ASID, peer review score, domain classification.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/papers/:id/latex}] Get raw \LaTeX{} source.
+
+  \item[\texttt{GET /api/v1/papers/:id/bibtex}] Get auto-generated BibTeX citation.
+
+  \item[\texttt{GET /api/v1/papers/domains}] List unique domains with paper counts.
+
+  \item[\texttt{GET /api/v1/papers/templates}] List templates with paper counts.
+\end{description}
+
+\subsection{Reviews}
+
+\begin{description}
+  \item[\texttt{GET /api/v1/reviews}] List all peer reviews.
+  \begin{itemize}
+    \item Filters: \texttt{recommendation}, \texttt{minScore}, \texttt{maxScore}.
+    \item Sorting and pagination.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/reviews/:paperId}] Get review for a specific paper.
+  \begin{itemize}
+    \item Full breakdown: overall score, 6 dimension scores, section reviews, strengths, weaknesses.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/reviews/stats/summary}] Aggregate review statistics.
+  \begin{itemize}
+    \item Average scores across all dimensions.
+    \item Recommendation distribution.
+  \end{itemize}
+\end{description}
+
+\subsection{Reports}
+
+\begin{description}
+  \item[\texttt{GET /api/v1/reports}] List shared research reports.
+  \begin{itemize}
+    \item Text search and pagination.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/reports/:shareId}] Get full report.
+  \begin{itemize}
+    \item Answer, sources, tool results, figures.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/reports/:shareId/sources}] Get sources only.
+\end{description}
+
+\subsection{Search}
+
+\begin{description}
+  \item[\texttt{GET /api/v1/search}] Cross-resource full-text search.
+  \begin{itemize}
+    \item Searches papers, reports, and prompts.
+    \item Relevance scoring (title matches weighted highest).
+    \item Type filtering and pagination.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/search/papers}] Advanced paper search.
+  \begin{itemize}
+    \item Additional filters: domain, author, year, word count range.
+  \end{itemize}
+\end{description}
+
+\subsection{Pipeline}
+
+\begin{description}
+  \item[\texttt{GET /api/v1/pipeline/runs}] List pipeline runs.
+  \begin{itemize}
+    \item Status filtering: queued, researching, analyzing, drafting, validating, published, rejected, failed.
+    \item Pagination.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/pipeline/runs/:id}] Get run details.
+  \begin{itemize}
+    \item Governor state, Popper score, prompt, session ID.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/pipeline/stats}] Aggregate pipeline statistics.
+  \begin{itemize}
+    \item Average duration, score distribution, status breakdown.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/pipeline/active}] Currently active runs.
+\end{description}
+
+\subsection{Statistics}
+
+\begin{description}
+  \item[\texttt{GET /api/v1/stats/platform}] Platform-wide metrics.
+  \begin{itemize}
+    \item Papers, words, figures, \LaTeX{} lines, Python executions, tokens, cost.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/stats/domains}] Per-domain paper counts, words, figures.
+
+  \item[\texttt{GET /api/v1/stats/timeline}] Monthly publication trends.
+
+  \item[\texttt{GET /api/v1/stats/analytics}] Time-series metrics.
+  \begin{itemize}
+    \item Configurable period and limit.
+    \item Metrics: requests, users, performance, tokens, tools, errors.
+  \end{itemize}
+\end{description}
+
+\subsection{Sessions}
+
+\begin{description}
+  \item[\texttt{GET /api/v1/sessions}] List anonymized research sessions.
+  \begin{itemize}
+    \item Sorting: newest, oldest, cost, tokens.
+    \item Metadata: message count, Python executions, tools used.
+    \item Content is not exposed.
+  \end{itemize}
+
+  \item[\texttt{GET /api/v1/sessions/stats}] Session aggregate statistics.
+  \begin{itemize}
+    \item Total tokens, cost, averages, daily activity (30 days).
+  \end{itemize}
+\end{description}
+
+\subsection{Prompts}
+
+\begin{description}
+  \item[\texttt{GET /api/v1/prompts}] List public prompts.
+  \begin{itemize}
+    \item Search and author filtering.
+  \end{itemize}
+
+  \item[\texttt{POST /api/v1/prompts}] Create a prompt (requires \texttt{write} scope).
+\end{description}
+
+\section{Pagination}
+\label{sec:api:pagination}
+
+All list endpoints support cursor-based pagination:
+
+\begin{itemize}
+  \item \texttt{page} (default: 1) --- Page number.
+  \item \texttt{limit} (default: 20, max: 100) --- Items per page.
+  \item Response includes \texttt{meta.total} and \texttt{meta.totalPages}.
+\end{itemize}
+
+\section{Error Codes}
+\label{sec:api:errors}
+
+\begin{table}[H]
+\centering
+\caption{API error codes.}
+\label{tab:api-errors}
+\begin{tabular}{lll}
+\toprule
+\textbf{HTTP} & \textbf{Code} & \textbf{Description} \\
+\midrule
+400 & \texttt{BAD\_REQUEST} & Invalid parameters \\
+401 & \texttt{UNAUTHORIZED} & Missing or invalid API key \\
+403 & \texttt{FORBIDDEN} & Insufficient scope \\
+404 & \texttt{NOT\_FOUND} & Resource not found \\
+429 & \texttt{RATE\_LIMITED} & Rate limit exceeded \\
+500 & \texttt{INTERNAL\_ERROR} & Server error \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Internal API Endpoints}
+\label{sec:api:internal}
+
+Beyond the public v1 API, the server exposes internal endpoints for the frontend:
+
+\begin{description}
+  \item[\texttt{POST /api/chat}] Core streaming chat endpoint (SSE).
+  \item[\texttt{POST /api/speech-to-text}] Voice transcription (ElevenLabs Scribe v2).
+  \item[\texttt{POST /api/upload-data}] Data file upload (CSV, Excel, Parquet, JSON, up to 100MB).
+  \item[\texttt{POST /api/share}] Create shared report.
+  \item[\texttt{GET /api/share/:shareId}] Retrieve shared report.
+  \item[\texttt{POST /api/generate-pdf}] Markdown to PDF (Puppeteer).
+  \item[\texttt{POST /api/generate-html}] Markdown to HTML.
+  \item[\texttt{POST /api/generate-docx}] Markdown to DOCX (Pandoc).
+  \item[\texttt{GET /api/download/:filename}] File download from downloads directory.
+  \item[\texttt{GET /api/platform/stats}] Platform statistics.
+  \item[\texttt{GET /api/journal/papers}] Journal paper listing.
+  \item[\texttt{GET /api/repository}] Project repository browser.
+  \item[\texttt{GET /api/live-sessions}] Active session listing.
+  \item[\texttt{GET /api/sessions/:sessionId/stream}] SSE reconnection for live monitoring.
+\end{description}
+
+\subsection{Admin Endpoints}
+
+Protected by admin session authentication:
+
+\begin{itemize}
+  \item Pipeline management: trigger, abort, resume, cleanup.
+  \item Scheduler configuration: enable/disable, update settings.
+  \item Paper management: visibility, domain reclassification, \LaTeX{} backfill.
+  \item Peer review: trigger review, view results.
+  \item System: cost tracking, donations, site config.
+\end{itemize}

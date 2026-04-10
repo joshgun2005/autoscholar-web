@@ -26,15 +26,17 @@ const initialState: ThemeProviderState = {
   setThemeColor: () => null,
 };
 
+// Default to "blue" theme color on first visit
+
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 const themeColorMap: Record<ThemeColor, { hue: number; sat: number }> = {
-  blue: { hue: 210, sat: 100 },
-  green: { hue: 142, sat: 76 },
-  purple: { hue: 270, sat: 90 },
-  red: { hue: 0, sat: 84 },
-  orange: { hue: 38, sat: 92 },
-  cyan: { hue: 199, sat: 89 },
+  blue: { hue: 224, sat: 50 },
+  green: { hue: 158, sat: 64 },
+  purple: { hue: 268, sat: 60 },
+  red: { hue: 0, sat: 65 },
+  orange: { hue: 25, sat: 80 },
+  cyan: { hue: 205, sat: 82 },
 };
 
 export function ThemeProvider({
@@ -71,15 +73,15 @@ export function ThemeProvider({
 
     // Update primary color variables
     if (theme === "light") {
-      root.style.setProperty("--primary", `${colorConfig.hue} ${colorConfig.sat}% 50%`);
-      root.style.setProperty("--ring", `${colorConfig.hue} ${colorConfig.sat}% 50%`);
-      root.style.setProperty("--sidebar-primary", `${colorConfig.hue} ${colorConfig.sat}% 50%`);
-      root.style.setProperty("--sidebar-ring", `${colorConfig.hue} ${colorConfig.sat}% 50%`);
+      root.style.setProperty("--primary", `${colorConfig.hue} ${colorConfig.sat}% 38%`);
+      root.style.setProperty("--ring", `${colorConfig.hue} ${colorConfig.sat}% 38%`);
+      root.style.setProperty("--sidebar-primary", `${colorConfig.hue} ${colorConfig.sat}% 38%`);
+      root.style.setProperty("--sidebar-ring", `${colorConfig.hue} ${colorConfig.sat}% 38%`);
     } else {
-      root.style.setProperty("--primary", `${colorConfig.hue} ${colorConfig.sat}% 50%`);
-      root.style.setProperty("--ring", `${colorConfig.hue} ${colorConfig.sat}% 60%`);
-      root.style.setProperty("--sidebar-primary", `${colorConfig.hue} ${colorConfig.sat}% 60%`);
-      root.style.setProperty("--sidebar-ring", `${colorConfig.hue} ${colorConfig.sat}% 60%`);
+      root.style.setProperty("--primary", `${colorConfig.hue} ${colorConfig.sat}% 58%`);
+      root.style.setProperty("--ring", `${colorConfig.hue} ${colorConfig.sat}% 58%`);
+      root.style.setProperty("--sidebar-primary", `${colorConfig.hue} ${colorConfig.sat}% 58%`);
+      root.style.setProperty("--sidebar-ring", `${colorConfig.hue} ${colorConfig.sat}% 58%`);
     }
   }, [themeColor, theme]);
 

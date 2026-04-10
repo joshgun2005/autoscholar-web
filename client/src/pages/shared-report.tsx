@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { Sparkles, Loader2, ArrowLeft, MessageSquarePlus } from "lucide-react";
+import { GraduationCap, Loader2, ArrowLeft, MessageSquarePlus } from "lucide-react";
 import { StreamingAnswer } from "@/components/streaming-answer";
 import { ToolResults } from "@/components/chat/tool-results";
 import { ResultCard } from "@/components/chat/result-card";
@@ -105,10 +105,10 @@ export default function SharedReport() {
             </Button>
             <div className="cursor-pointer" data-testid="logo-container" onClick={() => setLocation('/')}>
               <div className="flex items-center gap-2.5">
-                <Sparkles className="w-5 h-5 text-primary" data-testid="logo-icon" />
+                <GraduationCap className="w-5 h-5 text-primary" data-testid="logo-icon" />
                 <div className="hidden md:flex items-baseline gap-1.5">
                   <span className="text-base font-bold text-foreground leading-tight">
-                    VQuant
+                    AutoScholar
                   </span>
                 </div>
               </div>
@@ -129,12 +129,12 @@ export default function SharedReport() {
           <div className="mb-10 p-6 rounded-xl border border-border bg-card" data-testid="branding-section">
             <div className="flex items-center gap-4">
               <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20">
-                <Sparkles className="w-6 h-6 text-primary" />
+                <GraduationCap className="w-6 h-6 text-primary" />
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Rapport généré par</p>
                 <p className="text-xl font-bold text-foreground tracking-tight">
-                  VQuant AI
+                  AutoScholar AI
                 </p>
               </div>
             </div>
@@ -162,7 +162,6 @@ export default function SharedReport() {
                 question={data.question}
                 answer={data.answer}
                 contentRef={contentRef}
-                figureUrls={figureUrls}
               />
             </div>
             <div className="flex justify-center">
@@ -173,7 +172,7 @@ export default function SharedReport() {
                 onClick={() => {
                   try {
                     sessionStorage.setItem(
-                      'vquant_continue_from_share',
+                      'autoscholar_continue_from_share',
                       JSON.stringify({ question: data.question, answer: data.answer })
                     );
                   } catch { /* noop */ }

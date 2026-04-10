@@ -1,0 +1,250 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 9 — MEMORY & STATE SYSTEM
+%% ══════════════════════════════════════════════════════════════
+\chapter{Memory and State System}
+\label{ch:memory}
+
+\section{Overview}
+\label{sec:memory:overview}
+
+\autoscholar operates with a multi-layered state management system that spans the lifetime of individual sessions, pipeline runs, and the entire platform.
+Unlike traditional agent systems with explicit long-term memory stores, \autoscholar relies primarily on the LLM's context window as its ``working memory'' and the database as its persistent state.
+
+This chapter documents how state is managed, how previous work influences new papers, and what mechanisms exist for avoiding duplication.
+
+\section{Context Window as Working Memory}
+\label{sec:memory:context}
+
+\subsection{The 1M Token Context}
+
+Claude Opus 4.6's one-million-token context window serves as the primary working memory during paper generation.
+Within a single pipeline run, all of the following accumulate in the context:
+
+\begin{itemize}
+  \item The system prompt (1,798 lines, $\sim$30K tokens).
+  \item The research prompt (enhanced, 400--700 words).
+  \item Literature search results (15--30 papers with abstracts and BibTeX).
+  \item Data collection results (API responses, dataset summaries).
+  \item Python code and execution outputs (scripts, figures, errors).
+  \item Written paper sections (\LaTeX{} content).
+  \item Tool results and governor directives.
+  \item Conversation history (all previous turns).
+\end{itemize}
+
+\subsection{Token Budget Management}
+
+The system manages the context budget through two mechanisms:
+
+\begin{description}
+  \item[Tool result truncation.] Results exceeding 15,000 characters are truncated with a ``[truncated]'' marker. This is applied selectively---larger results (e.g., full API response dumps) are truncated while smaller results are preserved in full.
+
+  \item[History summarization.] When estimated message tokens exceed the 500K safety threshold (half the 1M window), the system calls Claude to compress older conversation history:
+  \begin{enumerate}
+    \item The first 50\% of messages are selected for summarization.
+    \item Claude generates a concise summary preserving key findings, data sources, and methodology decisions.
+    \item The original messages are replaced with a single summary message.
+    \item This frees context space for the remaining pipeline stages.
+  \end{enumerate}
+\end{description}
+
+\subsection{Implications}
+
+Within a single paper generation run, the system has excellent ``memory''---it can reference any earlier finding, dataset, or decision because all information remains in context.
+However, there is no memory \emph{across} runs: each paper starts with a fresh context, and the system cannot learn from previous papers' successes or failures.
+
+\section{Session State}
+\label{sec:memory:session}
+
+\subsection{Conversation Sessions}
+
+Each interactive chat or pipeline run is tracked as a conversation session:
+
+\begin{description}
+  \item[\texttt{conversationSessions} table:] Stores session metadata including user ID, session ID, title, message count, token usage, cost, and timestamps.
+  \item[\texttt{messages} table:] Stores individual messages with role (user/assistant), content, serialized sources, and timestamps.
+\end{description}
+
+\subsection{Real-Time State Broadcasting}
+
+The SessionBroadcaster (\file{sessionBroadcaster.ts}, 180 lines) manages real-time state for live monitoring:
+
+\begin{itemize}
+  \item Maintains per-session event buffers (last 200 events).
+  \item Manages subscriber sets for SSE streaming.
+  \item Tracks session activity with last-heartbeat timestamps.
+  \item Supports reconnection with buffered event replay (catch-up for disconnected clients).
+  \item Automatic cleanup of sessions idle for 30 minutes or older than 1 hour.
+\end{itemize}
+
+\subsection{Session Persistence}
+
+Session data is persisted every 8 seconds during active generation:
+\begin{itemize}
+  \item Messages (question-answer pairs).
+  \item Tool results (structured JSON).
+  \item Figures (base64-encoded or URL references).
+  \item Token counts and cost accumulation.
+  \item Agent step progress.
+\end{itemize}
+
+\section{Pipeline State}
+\label{sec:memory:pipeline}
+
+\subsection{Governor State}
+
+The \governor maintains typed state throughout a pipeline run (see \cref{sec:agents:governor}).
+This state includes:
+
+\begin{itemize}
+  \item Current pipeline stage.
+  \item Active prompt profile.
+  \item Error counts (Python, \LaTeX{}, data).
+  \item Retry budgets (3/3/2 for Python/\LaTeX{}/data).
+  \item Confidence score (0.0--1.0).
+  \item Figure and word counts.
+  \item Warning accumulator.
+  \item Publication verdict.
+\end{itemize}
+
+Governor state is serialized to JSON and stored in the \texttt{paper\_runs.governor\_state} column, enabling:
+\begin{itemize}
+  \item Post-mortem analysis of failed runs.
+  \item Checkpoint resume with full governor state recovery.
+  \item Historical analysis of governor intervention patterns.
+\end{itemize}
+
+\subsection{Decision Log}
+
+All governor decisions are recorded in the DecisionLog with:
+\begin{itemize}
+  \item UUID per decision.
+  \item Timestamp.
+  \item Pipeline stage.
+  \item Trigger description.
+  \item Action taken.
+  \item Reasoning.
+  \item Confidence delta.
+  \item Profile transition (if any).
+\end{itemize}
+
+The decision log persists in both the \texttt{paper\_runs} table (serialized JSON) and the \texttt{governor\_decisions} table (individual records).
+
+\subsection{Checkpoint State}
+
+The checkpoint system captures a snapshot of the entire pipeline state:
+
+\begin{itemize}
+  \item Full conversation history (all Claude messages).
+  \item Governor state and decision log.
+  \item Tool results accumulated so far.
+  \item Written paper sections.
+  \item Figure count and metadata.
+  \item Pipeline stage at checkpoint time.
+\end{itemize}
+
+Checkpoints enable crash recovery: after a server restart, an administrator can resume a run from its last checkpoint.
+
+\section{Cross-Paper Memory}
+\label{sec:memory:cross-paper}
+
+\subsection{Current State: No Cross-Paper Memory}
+
+\autoscholar currently has \textbf{no mechanism for cross-paper memory}.
+Each paper generation run starts with a fresh context window, and the system has no awareness of:
+
+\begin{itemize}
+  \item Topics previously covered.
+  \item Methods previously applied.
+  \item Data sources previously used.
+  \item Findings from previous papers.
+  \item Reviewer feedback from previous runs.
+\end{itemize}
+
+\subsection{Implications}
+
+This absence has several consequences:
+
+\begin{description}
+  \item[Topic duplication.] While the sequential prompt selection ensures topic diversity, there is no mechanism to prevent the system from revisiting a topic if the prompt bank contains similar entries or if prompts are selected non-sequentially.
+
+  \item[No learning from failures.] If a particular data source consistently fails or a method doesn't converge for certain data types, the system cannot learn to avoid these combinations.
+
+  \item[No citation of own work.] The system cannot cite its own previously published papers, even when they would be relevant.
+
+  \item[No methodological improvement.] The system cannot improve its analysis techniques based on reviewer feedback from previous runs.
+\end{description}
+
+\subsection{Implicit Memory via Prompt Bank}
+
+The prompt bank provides a form of implicit memory:
+\begin{itemize}
+  \item Sequential selection ensures each prompt is used exactly once before cycling.
+  \item The domain-method compatibility matrix prevents nonsensical combinations.
+  \item Topic diversity is built into the bank's construction (14 topics per domain, interleaved iteration order).
+\end{itemize}
+
+However, this is ``memory'' in the weakest sense---it is pre-programmed diversity, not learned adaptation.
+
+\section{Platform State}
+\label{sec:memory:platform}
+
+\subsection{Site Configuration}
+
+The \texttt{site\_config} table provides a key-value store for runtime configuration:
+
+\begin{itemize}
+  \item Scheduler settings (cadence, parallel limit, thresholds).
+  \item Custom system prompt overrides.
+  \item Feature flags.
+  \item Cost tracking baselines.
+\end{itemize}
+
+Values persist across server restarts and are modifiable via the admin API.
+
+\subsection{Analytics Accumulation}
+
+Platform-wide analytics accumulate over time:
+
+\begin{itemize}
+  \item Total papers generated (published + rejected).
+  \item Total tokens consumed and API cost.
+  \item Per-domain paper counts and quality scores.
+  \item Monthly publication timelines.
+  \item Python execution counts and code line totals.
+\end{itemize}
+
+\subsection{Published Paper Corpus}
+
+The published paper corpus serves as the platform's ``institutional memory'':
+
+\begin{itemize}
+  \item Full \LaTeX{} source and BibTeX for every published paper.
+  \item Peer review scores and feedback.
+  \item Domain classification and methodology tags.
+  \item Reproducible project archives.
+\end{itemize}
+
+While this corpus is not currently used to inform new paper generation, it represents a rich dataset that could power future cross-paper learning (see \cref{ch:improvements}).
+
+\section{State Consistency and Recovery}
+\label{sec:memory:consistency}
+
+\subsection{Crash Recovery}
+
+State consistency after crashes is maintained through:
+
+\begin{enumerate}
+  \item \textbf{8-second checkpoint saves:} Session state is persisted frequently enough to minimize data loss.
+  \item \textbf{Heartbeat monitoring:} Stalled runs are detected within 5 minutes and marked as failed.
+  \item \textbf{Force-fail on restart:} All active runs are force-failed on server restart to prevent zombie processes.
+  \item \textbf{Manual resume:} Administrators can resume runs from checkpoints via the admin API.
+\end{enumerate}
+
+\subsection{Data Integrity}
+
+\begin{itemize}
+  \item SQLite uses WAL (Write-Ahead Logging) mode for crash-safe writes.
+  \item PostgreSQL provides full ACID guarantees.
+  \item ASID generation uses atomic database operations to prevent collision under concurrent access.
+  \item File operations use temporary directories with rename-on-success to prevent partial writes.
+\end{itemize}

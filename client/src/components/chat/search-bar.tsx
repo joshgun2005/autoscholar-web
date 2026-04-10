@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback, FormEvent } from "react";
-import { Send, Loader2, Paperclip, Mic, MicOff, X } from "lucide-react";
+import { useState, useRef, useCallback, useEffect, FormEvent } from "react";
+import { Loader2, Paperclip, Mic, MicOff, X, ArrowUp, FileSpreadsheet } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import type { UploadedFile } from "@/hooks/useChatMutation";
 
 interface SearchBarProps {
-  onSearch: (query: string, imageData?: string, imageMimeType?: string) => void;
+  onSearch: (query: string, imageData?: string, imageMimeType?: string, uploadedFiles?: UploadedFile[]) => void;
   isLoading?: boolean;
   placeholder?: string;
 }
@@ -11,12 +12,18 @@ interface SearchBarProps {
 export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anything..." }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Image attachment state
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Data file upload state
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const dataFileInputRef = useRef<HTMLInputElement>(null);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -26,18 +33,60 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if ((query.trim() || attachedImage) && !isLoading) {
+    if ((query.trim() || attachedImage || uploadedFiles.length > 0)) {
       onSearch(
-        query.trim() || "Analyse cette image",
+        query.trim() || (uploadedFiles.length > 0 ? "Analyze the uploaded dataset(s)" : "Analyze this image"),
         attachedImage || undefined,
-        imageMimeType || undefined
+        imageMimeType || undefined,
+        uploadedFiles.length > 0 ? uploadedFiles : undefined
       );
       setQuery("");
       setAttachedImage(null);
       setImageMimeType(null);
       setImagePreviewUrl(null);
+      setUploadedFiles([]);
     }
   };
+
+  // --- Data file upload handlers ---
+  const handleDataFileSelect = useCallback(() => {
+    dataFileInputRef.current?.click();
+  }, []);
+
+  const handleDataFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+      }
+
+      const response = await fetch("/api/upload-data", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok && data.files) {
+        setUploadedFiles(prev => [...prev, ...data.files]);
+      } else {
+        console.error("[Upload] Error:", data.error);
+      }
+    } catch (err) {
+      console.error("[Upload] Failed:", err);
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  }, []);
+
+  const removeUploadedFile = useCallback((idx: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
+  }, []);
 
   // --- Image attachment handlers ---
   const handleFileSelect = useCallback(() => {
@@ -162,10 +211,61 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
     }
   }, [isRecording, startRecording, stopRecording]);
 
-  const canSubmit = (query.trim() || attachedImage) && !isLoading && !isTranscribing;
+  // Auto-resize textarea to fit content (max 5 lines)
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const maxHeight = 120; // ~5 lines
+    ta.style.height = `${Math.min(ta.scrollHeight, maxHeight)}px`;
+  }, [query]);
+
+  // Submit on Enter, new line on Shift+Enter
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if ((query.trim() || attachedImage || uploadedFiles.length > 0) && !isTranscribing && !isUploading) {
+        handleSubmit(e as any);
+      }
+    }
+  }, [query, attachedImage, uploadedFiles, isTranscribing, isUploading, handleSubmit]);
+
+  const canSubmit = (query.trim() || attachedImage || uploadedFiles.length > 0) && !isTranscribing && !isUploading;
 
   return (
     <div className="w-full" data-testid="search-bar-container">
+      {/* Uploaded data files preview */}
+      <AnimatePresence>
+        {uploadedFiles.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-3 px-4"
+          >
+            <div className="flex items-center gap-2 flex-wrap">
+              {uploadedFiles.map((f, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/8 border border-primary/20 text-xs group"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  <span className="font-medium text-foreground max-w-[140px] truncate">{f.originalName}</span>
+                  <span className="text-muted-foreground/60">{(f.size / 1024).toFixed(0)} KB</span>
+                  <button
+                    type="button"
+                    onClick={() => removeUploadedFile(idx)}
+                    className="p-0.5 rounded-full hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors ml-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Image preview */}
       <AnimatePresence>
         {imagePreviewUrl && (
@@ -173,23 +273,23 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mb-2 flex items-center gap-2 px-4"
+            className="mb-3 flex items-center gap-3 px-4"
           >
             <div className="relative group">
               <img
                 src={imagePreviewUrl}
                 alt="Attached"
-                className="h-16 w-16 rounded-lg object-cover border border-border"
+                className="h-16 w-16 rounded-xl object-cover border border-border shadow-sm"
               />
               <button
                 type="button"
                 onClick={removeImage}
-                className="absolute -top-2 -right-2 p-1 rounded-full bg-destructive text-destructive-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-2 -right-2 p-1 rounded-full bg-destructive text-destructive-foreground shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110"
               >
                 <X className="w-3 h-3" />
               </button>
             </div>
-            <span className="text-xs text-muted-foreground">Image attached</span>
+            <span className="text-xs font-medium text-muted-foreground">Image attached</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -197,18 +297,50 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
       <form onSubmit={handleSubmit} className="relative" data-testid="form-search">
         <div
           className={`
-            relative flex items-center gap-3 px-4 py-3
-            bg-card border rounded-xl transition-all duration-200
+            relative flex items-center gap-2.5 pl-4 pr-3 py-3
+            bg-card/92 backdrop-blur-sm rounded-2xl transition-all duration-300
             ${isLoading
-              ? "border-primary/40 ring-2 ring-primary/8"
+              ? "border border-primary/20 shadow-[0_0_24px_hsl(var(--primary)/0.08)]"
               : isFocused
-                ? "border-primary ring-2 ring-primary/10"
-                : "border-border hover:border-primary/40"
+                ? "border border-primary/25 shadow-[0_0_24px_hsl(var(--primary)/0.06)] ring-1 ring-primary/6"
+                : "border border-border/50 hover:border-border/80 shadow-sm hover:shadow"
             }
           `}
           data-testid="search-input-wrapper"
         >
-          {/* Attachment button */}
+          {/* Data file upload button */}
+          <input
+            ref={dataFileInputRef}
+            type="file"
+            accept=".csv,.tsv,.xlsx,.xls,.parquet,.json,.txt"
+            multiple
+            onChange={handleDataFileChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={handleDataFileSelect}
+            disabled={isLoading || isUploading}
+            className={`
+              flex-shrink-0 p-1.5 rounded-lg transition-all duration-200
+              ${uploadedFiles.length > 0
+                ? "bg-primary/8 text-primary/70"
+                : isUploading
+                  ? "bg-amber-500/8 text-amber-500"
+                  : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50"
+              }
+              disabled:opacity-50 disabled:cursor-not-allowed
+            `}
+            title={isUploading ? "Uploading..." : "Upload data files (CSV, Excel, Parquet)"}
+          >
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-4 h-4" />
+            )}
+          </button>
+
+          {/* Image attachment button */}
           <input
             ref={fileInputRef}
             type="file"
@@ -221,14 +353,14 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             onClick={handleFileSelect}
             disabled={isLoading}
             className={`
-              flex-shrink-0 p-2 rounded-lg transition-colors
+              flex-shrink-0 p-1.5 rounded-lg transition-all duration-200
               ${attachedImage
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "bg-primary/8 text-primary/70"
+                : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
-            title="Joindre une image"
+            title="Attach an image"
           >
             <Paperclip className="w-4 h-4" />
           </button>
@@ -239,16 +371,16 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             onClick={toggleRecording}
             disabled={isLoading || isTranscribing}
             className={`
-              flex-shrink-0 p-2 rounded-lg transition-colors
+              flex-shrink-0 p-1.5 rounded-lg transition-all duration-200
               ${isRecording
-                ? "bg-red-500/10 text-red-500 animate-pulse"
+                ? "bg-red-500/8 text-red-500 animate-pulse"
                 : isTranscribing
-                  ? "bg-amber-500/10 text-amber-500"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  ? "bg-amber-500/8 text-amber-500"
+                  : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
-            title={isRecording ? "Arrêter l'enregistrement" : isTranscribing ? "Transcription en cours..." : "Dicter votre message"}
+            title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : "Dictate your message"}
           >
             {isRecording ? (
               <MicOff className="w-4 h-4" />
@@ -259,22 +391,26 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             )}
           </button>
 
-          {/* Text input */}
-          <input
-            type="text"
+          {/* Text input — auto-resizing textarea */}
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={isLoading ? "VibeQuant analyse..." : isRecording ? "Parlez maintenant..." : isTranscribing ? "Transcription en cours..." : placeholder}
-            disabled={isLoading}
+            placeholder={isRecording ? "Speak now..." : isTranscribing ? "Transcribing..." : isLoading ? "Type to start a new generation..." : placeholder}
             data-testid="input-search-query"
             className="
-              flex-1 min-w-0 bg-transparent border-none outline-none
-              text-base font-normal
-              text-foreground placeholder:text-muted-foreground
+              flex-1 min-w-0 bg-transparent border-none outline-none resize-none
+              text-[14px] font-medium leading-[1.6]
+              text-foreground placeholder:text-muted-foreground/40
               disabled:opacity-50 disabled:cursor-not-allowed
+              px-2.5 py-0.5
+              scrollbar-none
             "
+            style={{ maxHeight: '120px' }}
           />
 
           {/* Submit button */}
@@ -282,25 +418,25 @@ export function SearchBar({ onSearch, isLoading = false, placeholder = "Ask anyt
             type="submit"
             disabled={!canSubmit}
             className={`
-              flex-shrink-0 p-2.5 rounded-lg transition-all duration-200
+              flex-shrink-0 p-2.5 rounded-xl transition-all duration-300
               ${isLoading
-                ? "bg-primary/80 text-primary-foreground cursor-wait"
+                ? "bg-primary/80 text-primary-foreground cursor-wait shadow-sm shadow-primary/10"
                 : canSubmit
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
+                  ? "bg-primary text-primary-foreground hover:brightness-105 active:scale-95 shadow-sm shadow-primary/10 hover:shadow-md hover:shadow-primary/15"
+                  : "bg-muted/40 text-muted-foreground/25 cursor-not-allowed"
               }
             `}
           >
             {isLoading ? (
               <motion.div
                 data-testid="icon-search-loading"
-                animate={{ scale: [1, 1.15, 1] }}
-                transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               >
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4" />
               </motion.div>
             ) : (
-              <Send className="w-4 h-4" />
+              <ArrowUp className="w-4 h-4" />
             )}
           </button>
         </div>

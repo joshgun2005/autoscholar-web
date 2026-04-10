@@ -12,6 +12,16 @@ import { logger } from "./utils/logger";
 
 const app = express();
 
+// ─── Global safety net: catch unhandled errors so the server stays up ──
+process.on('unhandledRejection', (reason) => {
+  logger.error(`Unhandled promise rejection: ${reason instanceof Error ? reason.stack || reason.message : String(reason)}`);
+});
+process.on('uncaughtException', (err) => {
+  logger.error(`Uncaught exception: ${err.stack || err.message}`);
+  // Let the process stay alive — Express error middleware will handle per-request errors.
+  // Only fatal OOM / internal V8 errors should kill the process, and those bypass this handler anyway.
+});
+
 // ─── CORS ─────────────────────────────────────────────────
 const port = parseInt(process.env.PORT || '5000', 10);
 const allowedOrigins = [
@@ -21,16 +31,31 @@ const allowedOrigins = [
   'http://localhost:5000',
   'http://127.0.0.1:3001',
   'http://127.0.0.1:5000',
-  'https://www.vquant.ai',
-  'https://vquant.ai',
+  'https://www.autoscholar.ai',
+  'https://autoscholar.ai',
 ];
 
+// Trust proxy (ngrok, Cloudflare, etc.) so secure cookies & req.ip work behind reverse proxies
+app.set('trust proxy', 1);
+
+// Rate-limit CORS warning logs to avoid spam from production clients hitting dev server
+const corsWarnedOrigins = new Map<string, number>();
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow same-origin, whitelisted origins, and ngrok tunnels in dev
+    const isAllowed = !origin
+      || allowedOrigins.includes(origin)
+      || (process.env.NODE_ENV !== 'production' && origin.endsWith('.ngrok-free.app'));
+    if (isAllowed) {
       callback(null, true);
     } else {
-      logger.warn(`CORS blocked origin: ${origin}`);
+      // Only log each blocked origin once every 60 seconds to reduce noise
+      const now = Date.now();
+      const lastWarned = corsWarnedOrigins.get(origin || '') || 0;
+      if (now - lastWarned > 60_000) {
+        corsWarnedOrigins.set(origin || '', now);
+        logger.warn(`CORS blocked origin: ${origin} (suppressing further warnings for 60s)`);
+      }
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -76,26 +101,16 @@ app.use(
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: "auto",   // auto-detect: secure over HTTPS (ngrok), plain over HTTP (localhost)
+      sameSite: "lax",   // required for cookies to work behind reverse proxies
     },
   }),
 );
 
-// ─── Gate authentication ─────────────────────────────────
-registerGateRoutes(app);
+// Auth is handled via express-session + SQLite (see server/routes/auth.ts)
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.path.startsWith("/api")) {
-    // Allow gate endpoints through without authentication
-    if (req.path === "/api/gate/login" || req.path === "/api/gate/status") {
-      return next();
-    }
-    if ((req.session as any).gateAuthenticated !== true) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-  }
-  next();
-});
+// ─── Gate authentication (kept for legacy /api/gate endpoints) ───
+registerGateRoutes(app);
 
 // ─── Static files for generated assets ────────────────────
 const rootDir = path.resolve(import.meta.dirname, '..');
@@ -125,7 +140,7 @@ app.use((req, res, next) => {
 
 // ─── Bootstrap ────────────────────────────────────────────
 (async () => {
-  logger.banner('SERVER STARTING', 'VQuant Financial Intelligence Platform');
+  logger.banner('SERVER STARTING', 'AutoScholar.ai Research Platform');
 
   logger.section('Configuration');
   logger.kv('Environment', process.env.NODE_ENV || 'development');
@@ -155,7 +170,25 @@ app.use((req, res, next) => {
     logger.success('Static file serving ready');
   }
 
-  server.listen(port, "0.0.0.0", () => {
-    logger.banner('SERVER READY', `Listening on http://0.0.0.0:${port}`);
+  server.listen(port, "::", () => {
+    const addr = server.address();
+    const actualPort = (typeof addr === 'object' && addr) ? addr.port : port;
+    logger.banner('SERVER READY', `Listening on http://0.0.0.0:${actualPort}`);
+
+    // Initialize ASID system (create tables + back-fill existing papers)
+    import('./services/doiService').then(async ({ ensureAsidTables, backfillAsids }) => {
+      await ensureAsidTables();
+      await backfillAsids();
+      logger.info('[ASID] System initialized');
+    }).catch(err => {
+      logger.error(`Failed to initialize ASID system: ${err.message}`);
+    });
+
+    // Auto-paper scheduler (starts disabled — admin enables via dashboard)
+    import('./services/autoPaperScheduler').then(({ startAutoPaperScheduler }) => {
+      startAutoPaperScheduler(actualPort);
+    }).catch(err => {
+      logger.error(`Failed to initialize AutoPaper scheduler: ${err.message}`);
+    });
   });
 })();

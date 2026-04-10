@@ -11,12 +11,12 @@ export function ThemeToggle() {
       size="icon"
       onClick={toggleTheme}
       data-testid="button-theme-toggle"
-      className="hover-elevate active-elevate-2"
+      className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl hover-elevate active-elevate-2"
     >
       {theme === "dark" ? (
-        <Sun className="h-5 w-5" data-testid="icon-sun" />
+        <Sun className="h-[18px] w-[18px]" data-testid="icon-sun" />
       ) : (
-        <Moon className="h-5 w-5" data-testid="icon-moon" />
+        <Moon className="h-[18px] w-[18px]" data-testid="icon-moon" />
       )}
       <span className="sr-only">Toggle theme</span>
     </Button>

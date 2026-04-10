@@ -5,9 +5,9 @@
 
 // Determine the base URL based on environment
 export const getBaseUrl = (): string => {
-  // In production, use the vquant.ai domain
+  // In production, use the autoscholar.ai domain
   if (import.meta.env.PROD) {
-    return 'https://www.vquant.ai';
+    return 'https://autoscholar.ai';
   }
 
   // In development, use localhost
@@ -23,11 +23,11 @@ export const API_BASE_URL = getBaseUrl();
 
 // Application metadata
 export const APP_CONFIG = {
-  name: 'VQuant',
-  fullName: 'VQuant Financial Intelligence Platform',
-  domain: 'www.vquant.ai',
-  description: 'Plateforme d\'analyse financière de niveau institutionnel propulsée par Claude AI',
-  version: '2.0.0',
+  name: 'AutoScholar',
+  fullName: 'AutoScholar.ai — Autonomous Academic Research Platform',
+  domain: 'autoscholar.ai',
+  description: 'Autonomous AI-powered academic research platform. Generate publication-grade papers, structured literature reviews, and rigorous analyses.',
+  version: '3.0.0',
 
   // Feature flags
   features: {
@@ -50,7 +50,7 @@ export const APP_CONFIG = {
   // Limits
   limits: {
     maxToolsPerBatch: 5,
-    maxPdfChars: 3000000, // 3M chars = ~750 pages
+    maxPdfChars: 3000000,
     maxQueryLength: 10000,
   },
 };

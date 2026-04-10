@@ -1,0 +1,450 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 7 — MODELING & SCIENTIFIC LAYER
+%% ══════════════════════════════════════════════════════════════
+\chapter{Modeling and Scientific Computation Layer}
+\label{ch:modeling}
+
+\section{Overview}
+\label{sec:modeling:overview}
+
+The scientific computation layer is the analytical engine of \autoscholar, responsible for all quantitative analysis, model estimation, and figure generation.
+It consists of a sandboxed Python execution environment with 17 pre-installed scientific libraries, 7 dedicated analysis services, and a custom figure generation pipeline.
+All computation runs in short-lived Python subprocesses spawned by TypeScript bridge modules.
+
+\section{Python Execution Architecture}
+\label{sec:modeling:python}
+
+\subsection{The TypeScript--Python Bridge Pattern}
+
+Every Python computation follows a consistent architectural pattern:
+
+\begin{enumerate}
+  \item A TypeScript module (\file{*.ts}) defines input/output types, validates parameters, and generates displayable code.
+  \item The bridge spawns a Python subprocess (\file{*.py}) via \texttt{child\_process.spawn}.
+  \item Input is passed as JSON via stdin.
+  \item Python executes the analysis and returns structured JSON via stdout.
+  \item The TypeScript module parses the output and returns typed results.
+\end{enumerate}
+
+This pattern is replicated across 10+ service pairs:
+
+\begin{table}[H]
+\centering
+\caption{TypeScript--Python service pairs.}
+\label{tab:ts-py-pairs}
+\begin{tabular}{lll}
+\toprule
+\textbf{TypeScript Bridge} & \textbf{Python Service} & \textbf{Function} \\
+\midrule
+\file{garch.ts} & \file{garchService.py} & GARCH volatility modeling \\
+\file{varCalculator.ts} & \file{varService.py} & Value at Risk \\
+\file{monteCarlo.ts} & \file{monteCarloService.py} & Monte Carlo simulation \\
+\file{portfolioOptimizer.ts} & \file{portfolioOptimizer.py} & Portfolio optimization \\
+\file{riskMetrics.ts} & \file{riskMetrics.py} & Risk/performance metrics \\
+\file{optionsPricing.ts} & \file{optionsPricingService.py} & Black-Scholes pricing \\
+\file{volatilitySurface.ts} & \file{volatilitySurfaceService.py} & IV surface construction \\
+\file{plotExecutor.ts} & \file{plotService.py} & Chart generation \\
+\file{dataDownload.ts} & \file{dataDownloadService.py} & Data export \\
+\file{customPython.ts} & \file{customPythonExecutor.py} & Arbitrary analysis \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Custom Python Executor}
+
+The custom executor (\file{customPythonExecutor.py}, 1,774 lines) is the most powerful and complex Python service.
+It provides an unrestricted execution environment for Claude-generated Python code with:
+
+\subsubsection{Pre-Installed Libraries}
+
+\begin{multicols}{3}
+\begin{itemize}
+  \item NumPy
+  \item Pandas
+  \item SciPy
+  \item Matplotlib
+  \item Scikit-learn
+  \item Statsmodels
+  \item XGBoost
+  \item LightGBM
+  \item ARCH (for GARCH)
+  \item CVXPY
+  \item Seaborn
+  \item Plotly
+  \item OpenPyXL
+  \item python-docx
+  \item DuckDB
+  \item Requests
+  \item BeautifulSoup
+\end{itemize}
+\end{multicols}
+
+\subsubsection{Utility Functions}
+
+\begin{description}
+  \item[\func{save\_excel}] Creates styled multi-sheet XLSX workbooks with title rows, auto-column widths, conditional formatting (color scales, data bars), summary statistics (sum, average, min, max, count), and formula support.
+  \item[\func{save\_word}] Generates formatted DOCX documents with styled headings, tables, and paragraphs.
+  \item[\func{df\_to\_latex}] Converts DataFrames to \LaTeX{} table markup with proper formatting.
+  \item[\func{save\_latex}] Compiles \LaTeX{} content into PDF with embedded figures.
+\end{description}
+
+\subsubsection{Automatic Error Patching}
+
+The TypeScript bridge (\file{customPython.ts}, 371 lines) applies automatic fixes before execution:
+
+\begin{table}[H]
+\centering
+\caption{Automatic Python code patches.}
+\label{tab:python-patches}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Pattern} & \textbf{Fix} \\
+\midrule
+Deprecated pandas frequencies & \texttt{'M'} $\to$ \texttt{'ME'}, \texttt{'Q'} $\to$ \texttt{'QE'}, \texttt{'Y'} $\to$ \texttt{'YE'} \\
+NumPy deprecations & \texttt{np.trapz} $\to$ \texttt{np.trapezoid}, remove \texttt{np.math} \\
+Scikit-learn changes & t-SNE \texttt{n\_iter} $\to$ \texttt{max\_iter} \\
+Matplotlib conflicts & Monkey-patch \texttt{tight\_layout} for colorbar compatibility \\
+fillna deprecation & \texttt{fillna(method='ffill')} $\to$ \texttt{ffill()} \\
+Data fabrication & Flag random data generation without API calls \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Dedicated Analysis Services}
+\label{sec:modeling:services}
+
+\subsection{GARCH Volatility Modeling}
+
+\file{garchService.py} (224 lines) implements GARCH($p$,$q$) volatility estimation:
+
+\begin{equation}
+\sigma_t^2 = \omega + \sum_{i=1}^{p} \alpha_i \varepsilon_{t-i}^2 + \sum_{j=1}^{q} \beta_j \sigma_{t-j}^2
+\label{eq:garch}
+\end{equation}
+
+\subsubsection{Implementation Details}
+
+\begin{enumerate}
+  \item Fetches historical prices from FMP API.
+  \item Calculates percentage returns: $r_t = 100 \times \frac{P_t - P_{t-1}}{P_{t-1}}$.
+  \item Fits a constant-mean GARCH model with normal distribution using the \pkg{arch} library.
+  \item Produces:
+  \begin{itemize}
+    \item Conditional volatility time series.
+    \item Volatility forecasts (1--252 days ahead).
+    \item Model parameters ($\omega$, $\alpha_i$, $\beta_j$).
+    \item Persistence: $\sum \alpha_i + \sum \beta_j$.
+    \item AIC/BIC for model comparison.
+    \item Interpretive labels (mean-reverting, shock impact, clustering strength).
+  \end{itemize}
+\end{enumerate}
+
+\subsubsection{Validation}
+
+Input validation (\file{garch.ts}, 282 lines):
+\begin{itemize}
+  \item $p, q \in [1, 5]$.
+  \item Forecast horizon $\in [1, 252]$ days.
+  \item Data period $\in [30, 2520]$ days ($\approx$ 10 years max).
+\end{itemize}
+
+\subsection{Value at Risk (VaR)}
+
+\file{varService.py} (307 lines) implements four VaR methodologies:
+
+\subsubsection{Historical VaR}
+
+\begin{equation}
+\text{VaR}_\alpha^{\text{hist}} = -\text{Quantile}(r_1, r_2, \ldots, r_T; \alpha)
+\end{equation}
+
+Uses the empirical return distribution directly.
+
+\subsubsection{Parametric VaR}
+
+\begin{equation}
+\text{VaR}_\alpha^{\text{param}} = -(\mu + z_\alpha \sigma)
+\end{equation}
+
+where $z_\alpha$ is the standard normal quantile.
+Assumes normally distributed returns.
+
+\subsubsection{Monte Carlo VaR}
+
+\begin{equation}
+\text{VaR}_\alpha^{\text{MC}} = -\text{Quantile}\left(\{r_i^{\text{sim}}\}_{i=1}^{N}; \alpha\right)
+\end{equation}
+
+where $r_i^{\text{sim}} \sim \mathcal{N}(\hat{\mu}, \hat{\sigma}^2)$ with $N$ simulations (default: 10,000).
+
+\subsubsection{Conditional VaR (Expected Shortfall)}
+
+\begin{equation}
+\text{CVaR}_\alpha = \mathbb{E}\left[r \mid r < -\text{VaR}_\alpha\right]
+\end{equation}
+
+The average loss beyond the VaR threshold.
+
+\subsubsection{Outputs}
+
+Results are computed at three confidence levels (90\%, 95\%, 99\%) with both percentage and dollar amounts.
+Distribution statistics include skewness, kurtosis, and Jarque-Bera normality test.
+The system recommends the appropriate VaR method based on distribution characteristics.
+
+\subsection{Monte Carlo Simulation}
+
+\file{monteCarloService.py} (152 lines) performs investment projections:
+
+\begin{equation}
+P_{t+1} = P_t \times (1 + r_t), \quad r_t \sim \mathcal{N}(\hat{\mu}_{\text{daily}}, \hat{\sigma}_{\text{daily}}^2)
+\end{equation}
+
+\subsubsection{Features}
+
+\begin{itemize}
+  \item Two modes: symbol-based (auto-fetches from FMP) and manual (user-provided prices).
+  \item Configurable simulations (1--100,000), time horizon, and initial investment.
+  \item Output: mean/median/percentile terminal values, probability of profit, sample paths, distribution data.
+\end{itemize}
+
+\subsection{Portfolio Optimization}
+
+\file{portfolioOptimizer.py} (434 lines) implements Markowitz Mean-Variance Optimization:
+
+\begin{equation}
+\max_{\mathbf{w}} \frac{\mathbf{w}^T \boldsymbol{\mu} - r_f}{\sqrt{\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}}}
+\quad \text{s.t.} \quad \sum_i w_i = 1, \quad w_i \in [l_i, u_i]
+\label{eq:mvo}
+\end{equation}
+
+\subsubsection{Outputs}
+
+\begin{itemize}
+  \item Maximum Sharpe ratio portfolio weights.
+  \item Minimum volatility portfolio weights.
+  \item 50-point efficient frontier.
+  \item Correlation matrix.
+  \item Comparison against equal-weight benchmark.
+\end{itemize}
+
+Uses SciPy's SLSQP optimizer for constrained optimization.
+
+\subsection{Risk Metrics}
+
+\file{riskMetrics.py} (543 lines) computes 20+ performance and risk metrics:
+
+\begin{longtable}{lp{8cm}}
+\caption{Risk and performance metrics.} \label{tab:risk-metrics} \\
+\toprule
+\textbf{Metric} & \textbf{Formula / Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Metric} & \textbf{Formula / Description} \\
+\midrule
+\endhead
+Annualized Return & $(1 + \bar{r}_{\text{daily}})^{252} - 1$ \\
+Annualized Volatility & $\sigma_{\text{daily}} \times \sqrt{252}$ \\
+Sharpe Ratio & $\frac{R_p - R_f}{\sigma_p}$ \\
+Sortino Ratio & $\frac{R_p - R_f}{\sigma_{\text{downside}}}$ \\
+Calmar Ratio & $\frac{R_p}{\text{MaxDrawdown}}$ \\
+Information Ratio & $\frac{R_p - R_b}{\sigma(R_p - R_b)}$ \\
+Treynor Ratio & $\frac{R_p - R_f}{\beta_p}$ \\
+Beta & $\frac{\text{Cov}(R_p, R_m)}{\text{Var}(R_m)}$ \\
+Alpha (Jensen's) & $R_p - [R_f + \beta(R_m - R_f)]$ \\
+$R^2$ & From OLS of $R_p$ on $R_m$ \\
+Max Drawdown & $\max_t \frac{\text{Peak}_t - \text{Value}_t}{\text{Peak}_t}$ \\
+Recovery Days & Days from max drawdown to recovery \\
+Tracking Error & $\sigma(R_p - R_b)$ \\
+Upside Capture & $\frac{\bar{R}_p | R_m > 0}{\bar{R}_m | R_m > 0}$ \\
+Downside Capture & $\frac{\bar{R}_p | R_m < 0}{\bar{R}_m | R_m < 0}$ \\
+Win Rate & Fraction of positive return days \\
+Profit Factor & $\frac{\sum \text{gains}}{\sum |\text{losses}|}$ \\
+\bottomrule
+\end{longtable}
+
+Uses SPY as the default benchmark with date-aligned return series.
+
+\subsection{Options Pricing}
+
+\file{optionsPricingService.py} (238 lines) implements Black-Scholes for European options:
+
+\begin{align}
+C &= S \Phi(d_1) - K e^{-rT} \Phi(d_2) \label{eq:bs-call} \\
+P &= K e^{-rT} \Phi(-d_2) - S \Phi(-d_1) \label{eq:bs-put} \\
+d_1 &= \frac{\ln(S/K) + (r + \sigma^2/2)T}{\sigma\sqrt{T}} \\
+d_2 &= d_1 - \sigma\sqrt{T}
+\end{align}
+
+\subsubsection{Greeks}
+
+\begin{align}
+\Delta_C &= \Phi(d_1), \quad \Delta_P = \Phi(d_1) - 1 \\
+\Gamma &= \frac{\phi(d_1)}{S\sigma\sqrt{T}} \\
+\Theta_C &= -\frac{S\phi(d_1)\sigma}{2\sqrt{T}} - rKe^{-rT}\Phi(d_2) \\
+\mathcal{V} &= S\sqrt{T}\phi(d_1) \\
+\rho_C &= KTe^{-rT}\Phi(d_2)
+\end{align}
+
+\subsubsection{Implied Volatility}
+
+Computed via Newton-Raphson iteration:
+
+\begin{equation}
+\sigma_{n+1} = \sigma_n - \frac{C(\sigma_n) - C_{\text{market}}}{\mathcal{V}(\sigma_n)}
+\end{equation}
+
+\subsection{Volatility Surface}
+
+\file{volatilitySurfaceService.py} (378 lines) constructs 3D implied volatility surfaces:
+
+\begin{enumerate}
+  \item Fetches option chain from Financial Data API.
+  \item Intelligently samples up to 60 contracts across strikes and expirations.
+  \item Retrieves implied volatility for each contract.
+  \item Interpolates a smooth surface using SciPy's cubic/linear \texttt{griddata}.
+  \item Renders a 3D matplotlib plot with scatter points for actual data.
+\end{enumerate}
+
+\section{Scientific Computing Libraries}
+\label{sec:modeling:libraries}
+
+\subsection{Econometric Modeling with Statsmodels}
+
+Used for:
+\begin{itemize}
+  \item OLS, WLS, GLS regression.
+  \item Panel data models (fixed effects, random effects).
+  \item Time series models (ARIMA, VAR, VECM).
+  \item Hypothesis testing (t-tests, F-tests, Jarque-Bera, ADF, KPSS).
+  \item Robust standard errors (Newey-West, clustered).
+\end{itemize}
+
+\subsection{Machine Learning with Scikit-learn}
+
+Used for:
+\begin{itemize}
+  \item Classification and regression models.
+  \item Cross-validation and hyperparameter search.
+  \item Feature selection and dimensionality reduction.
+  \item Clustering and anomaly detection.
+  \item SHAP value integration for interpretability.
+\end{itemize}
+
+\subsection{Gradient Boosting with XGBoost/LightGBM}
+
+Used for:
+\begin{itemize}
+  \item High-performance predictive modeling.
+  \item Feature importance ranking.
+  \item Early stopping and regularization.
+\end{itemize}
+
+\subsection{Convex Optimization with CVXPY}
+
+Used for:
+\begin{itemize}
+  \item Portfolio optimization beyond mean-variance (CVaR, risk parity).
+  \item Robust optimization problems.
+  \item Constrained optimization with complex constraints.
+\end{itemize}
+
+\subsection{Volatility Modeling with ARCH}
+
+Used for:
+\begin{itemize}
+  \item GARCH, EGARCH, GJR-GARCH models.
+  \item Multivariate GARCH (DCC, BEKK).
+  \item Volatility forecasting.
+\end{itemize}
+
+\section{Figure Generation Pipeline}
+\label{sec:modeling:figures}
+
+\subsection{Style Configuration}
+
+\file{matplotlib\_config.py} (79 lines) sets the publication-quality defaults:
+
+\begin{itemize}
+  \item \textbf{Fonts:} DejaVu Serif, Times New Roman (serif family).
+  \item \textbf{Colors:} 8-color muted palette (navy, crimson, forest green, brown, purple, teal, olive, charcoal).
+  \item \textbf{Layout:} Inward ticks, no top/right spines, print-safe grid (alpha 0.25).
+  \item \textbf{Resolution:} 150 DPI for display, 300 DPI for save.
+  \item \textbf{Layout engine:} Constrained layout (avoids \texttt{tight\_layout} conflicts).
+\end{itemize}
+
+\subsection{Figure Capture}
+
+\file{figure\_capture.py} (104 lines) processes all open matplotlib figures:
+
+\begin{enumerate}
+  \item Iterates over \texttt{plt.get\_fignums()}.
+  \item For each figure, checks if it is empty using two-stage analysis:
+  \begin{itemize}
+    \item \textbf{Stage 1:} Inspects axes for artists (lines, patches, images, collections, texts, tables).
+    \item \textbf{Stage 2:} Renders to image and measures pixel variance (threshold: 50.0).
+  \end{itemize}
+  \item Non-empty figures receive the AutoScholar watermark (teal, bottom-right).
+  \item Figures are encoded as base64 PNG strings.
+  \item All figures are closed to free memory.
+\end{enumerate}
+
+\subsection{Vision Analysis}
+
+\file{figureAnalysisService.ts} (113 lines) optionally sends figures to Claude Opus for vision-based analysis:
+
+\begin{itemize}
+  \item Chart type identification.
+  \item Data description.
+  \item Key trend identification.
+  \item Notable value extraction.
+  \item Parallel processing via \texttt{Promise.all}.
+\end{itemize}
+
+\section{Script Management and Repair}
+\label{sec:modeling:repair}
+
+\subsection{Script Lifecycle}
+
+The ScriptManager (\file{scriptManager.ts}, 276 lines) tracks Python scripts through their lifecycle:
+
+\begin{enumerate}
+  \item \textbf{Save:} Script content saved to session-scoped temp directory with unique ID.
+  \item \textbf{Execute:} Script run via the Python subprocess.
+  \item \textbf{Error capture:} Structured error parsing via the StructuredLogger.
+  \item \textbf{Repair:} Claude reads the script and errors, generates a patch.
+  \item \textbf{Patch:} DiffEngine applies the patch (up to 8 attempts).
+  \item \textbf{Re-run:} Patched script re-executed.
+  \item \textbf{Cleanup:} Session scripts cleaned up on session end or after 24 hours.
+\end{enumerate}
+
+\subsection{Diff Engine}
+
+The DiffEngine (\file{diffEngine.ts}, 400 lines) supports three patching strategies:
+
+\begin{description}
+  \item[Strategy 1: Standard unified diff] with fuzzy matching (up to 50-line offset tolerance). Parses \texttt{@@} hunk headers and applies line-by-line.
+  \item[Strategy 2: Search-replace blocks] in three LLM-friendly formats:
+  \begin{itemize}
+    \item Marker-based: \texttt{<<<< SEARCH / ==== / >>>> REPLACE}
+    \item Labeled format with code blocks.
+    \item Raw \texttt{-/+} line extraction.
+  \end{itemize}
+  \item[Strategy 3: Trimmed/stripped matching] as a last-resort fallback that ignores whitespace differences.
+\end{description}
+
+\subsection{Structured Error Parsing}
+
+The StructuredLogger (\file{structuredLogger.ts}, 145 lines) converts Python tracebacks into structured JSON:
+
+\begin{lstlisting}[style=typescript, caption=Structured error output format.]
+interface StructuredError {
+  type: string;      // "KeyError", "ImportError", etc.
+  message: string;
+  file: string;
+  line: number;
+  traceback: string;
+}
+\end{lstlisting}
+
+This structured format enables the \governor to classify errors by type and generate pattern-specific recovery advice.

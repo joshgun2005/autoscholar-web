@@ -196,6 +196,55 @@ async function firecrawlRequest(endpoint: string, data: any, timeoutMs: number =
   }
 }
 
+// ── Async Job Polling (for crawl and batch scrape endpoints) ──────────────
+// Firecrawl v2 crawl and batch/scrape endpoints are async — they return a job ID.
+// We must poll GET /{endpoint}/{jobId} until status === 'completed'.
+
+async function pollFirecrawlJob(endpoint: string, jobId: string, maxWaitMs: number = 120000): Promise<any> {
+  if (!FIRECRAWL_API_KEY) throw new Error('FIRECRAWL_API_KEY not configured');
+
+  const pollInterval = 3000; // 3 seconds
+  const startTime = Date.now();
+  let lastStatus = '';
+
+  while (Date.now() - startTime < maxWaitMs) {
+    try {
+      const response = await axios.get(`${FIRECRAWL_BASE_URL}${endpoint}/${jobId}`, {
+        headers: {
+          'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+        maxContentLength: 50 * 1024 * 1024,
+      });
+
+      const data = response.data;
+      const status = data.status || data.state || '';
+
+      if (status !== lastStatus) {
+        console.log(`[Firecrawl Poll] ${endpoint}/${jobId}: status=${status}`);
+        lastStatus = status;
+      }
+
+      if (status === 'completed') {
+        return data;
+      }
+      if (status === 'failed' || status === 'cancelled') {
+        throw new Error(`Firecrawl job ${status}: ${data.error || 'unknown error'}`);
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    } catch (error: any) {
+      if (error.message?.includes('Firecrawl job')) throw error;
+      console.warn(`[Firecrawl Poll] Poll error (retrying): ${error.message}`);
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+  }
+
+  throw new Error(`Firecrawl job timeout: ${endpoint}/${jobId} did not complete within ${maxWaitMs / 1000}s`);
+}
+
 // ==================== UPDATED FUNCTIONS WITH ALL PARAMETERS ====================
 
 // Scrape - Single URL with full parameter support
@@ -254,7 +303,12 @@ export async function scrapeFirecrawl(options: FirecrawlScrapeOptions): Promise<
           : undefined
       });
 
-      console.log(`[Firecrawl Scrape] ✓ Summarized: ${summaryResult.metadata.compressionRatio.toFixed(1)}x compression (${summaryResult.metadata.model})`);
+      const meta = summaryResult.metadata as Record<string, any> | undefined;
+      if (meta?.compressionRatio) {
+        console.log(`[Firecrawl Scrape] ✓ Summarized: ${meta.compressionRatio.toFixed(1)}x compression (${meta.model})`);
+      } else {
+        console.log(`[Firecrawl Scrape] ✓ Content processed (${content.length} → ${summaryResult.summary.length} chars)`);
+      }
 
       return {
         ...data,
@@ -263,11 +317,11 @@ export async function scrapeFirecrawl(options: FirecrawlScrapeOptions): Promise<
         metadata: {
           ...data.metadata,
           summarized: true,
-          originalLength: summaryResult.metadata.originalLength,
-          summaryLength: summaryResult.metadata.summaryLength,
-          compressionRatio: summaryResult.metadata.compressionRatio,
-          summaryModel: summaryResult.metadata.model,
-          keyPoints: summaryResult.keyPoints,
+          originalLength: meta?.originalLength ?? content.length,
+          summaryLength: meta?.summaryLength ?? summaryResult.summary.length,
+          compressionRatio: meta?.compressionRatio,
+          summaryModel: meta?.model,
+          keyPoints: (summaryResult as any).keyPoints,
           documentType: docType
         }
       };
@@ -320,6 +374,16 @@ export async function crawlFirecrawl(options: FirecrawlCrawlOptions): Promise<Fi
   if (options.zeroDataRetention !== undefined) requestData.zeroDataRetention = options.zeroDataRetention;
 
   const response = await firecrawlRequest('/crawl', requestData);
+
+  // Firecrawl v2 crawl is async — detect job ID and poll for results
+  if (response.id && !response.data) {
+    console.log(`[Firecrawl Crawl] Async job started: ${response.id}, polling...`);
+    const completed = await pollFirecrawlJob('/crawl', response.id, 120000);
+    const pageCount = completed.data?.length || 0;
+    console.log(`[Firecrawl Crawl] Crawled ${pageCount} pages from ${options.url}`);
+    return completed;
+  }
+
   const pageCount = response.data?.length || 0;
   console.log(`[Firecrawl Crawl] Crawled ${pageCount} pages from ${options.url}`);
   return response;
@@ -450,6 +514,16 @@ export async function batchScrapeFirecrawl(options: FirecrawlBatchScrapeOptions)
   if (options.zeroDataRetention !== undefined) requestData.zeroDataRetention = options.zeroDataRetention;
 
   const response = await firecrawlRequest('/batch/scrape', requestData);
+
+  // Firecrawl v2 batch scrape may be async — detect job ID and poll
+  if (response.id && !response.data) {
+    console.log(`[Firecrawl Batch Scrape] Async job started: ${response.id}, polling...`);
+    const completed = await pollFirecrawlJob('/batch/scrape', response.id, 180000);
+    const resultCount = completed.data?.length || 0;
+    console.log(`[Firecrawl Batch Scrape] Scraped ${resultCount}/${options.urls.length} URL(s)`);
+    return completed.data || completed;
+  }
+
   console.log(`[Firecrawl Batch Scrape] Scraped ${options.urls.length} URL(s)`);
   return response.data || response;
 }

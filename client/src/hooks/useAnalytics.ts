@@ -50,7 +50,7 @@ export function useAnalytics(status: 'idle' | 'generating' | 'error', currentQue
  * Get or create a unique session ID for this browser session
  */
 function getOrCreateSessionId(): string {
-  const key = 'vibequant_session_id';
+  const key = 'autoscholar_session_id';
   let sessionId = sessionStorage.getItem(key);
 
   if (!sessionId) {

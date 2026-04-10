@@ -1,0 +1,254 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 14 — PROPOSED IMPROVEMENTS
+%% ══════════════════════════════════════════════════════════════
+\chapter{Proposed Improvements}
+\label{ch:improvements}
+
+\section{AutoScholar v2: Deep Search Architecture}
+\label{sec:improve:deepsearch}
+
+\subsection{Motivation}
+
+The current system uses a single-pass approach: one Claude context window handles the entire pipeline.
+A ``Deep Search'' architecture would decompose the pipeline into multiple specialized agents, each with their own context window, communicating through a shared state store.
+
+\subsection{Proposed Architecture}
+
+\begin{description}
+  \item[Agent Pool.] Maintain a pool of specialized agent instances:
+  \begin{itemize}
+    \item \textbf{Gauss Agent} (Haiku/Sonnet) --- Lightweight, fast literature search.
+    \item \textbf{Turing Agent} (Haiku/Sonnet) --- Parallel data collection across multiple sources.
+    \item \textbf{Newton Agent} (Sonnet) --- Data preparation and quality validation.
+    \item \textbf{Fisher Agent} (Opus) --- Complex analysis requiring deep reasoning.
+    \item \textbf{Euler Agent} (Opus) --- Orchestration and academic writing.
+    \item \textbf{Popper Agent} (Sonnet) --- Independent review with no context contamination.
+  \end{itemize}
+
+  \item[Shared State Store.] A Redis or PostgreSQL-backed state store holding:
+  \begin{itemize}
+    \item Discovered papers and citations.
+    \item Downloaded datasets and metadata.
+    \item Analysis results and figures.
+    \item Written sections and BibTeX entries.
+  \end{itemize}
+
+  \item[Message Bus.] An event-driven message bus (Redis Streams, NATS) enabling:
+  \begin{itemize}
+    \item Parallel execution of independent stages.
+    \item Dynamic agent scaling based on workload.
+    \item Fault isolation between agents.
+  \end{itemize}
+\end{description}
+
+\subsection{Benefits}
+
+\begin{itemize}
+  \item \textbf{Parallel execution:} Gauss and Turing can run concurrently.
+  \item \textbf{Cost optimization:} Use cheaper models (Haiku) for simple tasks.
+  \item \textbf{Fault isolation:} A Python crash in Fisher doesn't affect Euler.
+  \item \textbf{Context efficiency:} Each agent only needs context relevant to its task.
+  \item \textbf{Independent review:} Popper reviews without seeing the generation process, reducing self-review bias.
+\end{itemize}
+
+\section{Journal++ Model}
+\label{sec:improve:journal}
+
+\subsection{Multi-Tier Publication}
+
+Introduce quality tiers for published papers:
+
+\begin{description}
+  \item[Tier A (Score $\geq$ 80):] ``Featured Research'' --- Highlighted on the journal homepage, included in monthly digests.
+  \item[Tier B (Score 65--79):] ``Published Research'' --- Standard publication, included in domain listings.
+  \item[Tier C (Score 45--64):] ``Working Papers'' --- Published with a disclaimer, excluded from quality metrics.
+  \item[Rejected (Score $<$ 45):] Archived but not published. Available via admin API for analysis.
+\end{description}
+
+\subsection{Multi-Pass Review}
+
+\begin{enumerate}
+  \item \textbf{Pass 1:} \popper generates initial review (current system).
+  \item \textbf{Pass 2:} A second reviewer (different model or temperature) provides an independent assessment.
+  \item \textbf{Pass 3:} Meta-reviewer reconciles the two reviews and makes the final decision.
+  \item \textbf{Optional:} Human reviewer for Tier A candidates.
+\end{enumerate}
+
+\subsection{Citation Network}
+
+Enable cross-paper citation:
+\begin{itemize}
+  \item When a new paper is generated, search the existing corpus for relevant prior work.
+  \item Auto-generate BibTeX entries for \autoscholar papers.
+  \item Track citation relationships in the database.
+  \item Display citation graphs on paper landing pages.
+\end{itemize}
+
+\subsection{Revision Workflow}
+
+Instead of single-pass publication:
+\begin{enumerate}
+  \item Generate paper (current pipeline).
+  \item Review (Popper).
+  \item If score 45--65: trigger a targeted revision cycle.
+  \item Euler addresses specific criticisms, re-runs analysis if needed.
+  \item Second review.
+  \item Publish or reject based on improved score.
+\end{enumerate}
+
+\section{Better Memory System}
+\label{sec:improve:memory}
+
+\subsection{Cross-Paper Knowledge Base}
+
+Implement a persistent knowledge base that accumulates across paper generations:
+
+\begin{description}
+  \item[Topic Memory.] Track topics covered with timestamps. Prevent duplicate topics within a configurable window (e.g., 30 days). Weight prompt selection away from recently covered areas.
+
+  \item[Method Memory.] Track which methods have been applied to which domains. Prefer novel combinations. Detect and avoid repetitive methodological patterns.
+
+  \item[Data Source Memory.] Track which data sources have been used, their reliability, and common issues. Learn which FMP endpoints frequently return errors for specific tickers.
+
+  \item[Failure Memory.] Record common failure patterns with their resolutions. When a similar error occurs, inject the known solution as a governor directive.
+
+  \item[Quality Memory.] Track Popper scores by domain, method, and prompt type. Adjust future prompt selection to favor combinations that historically produce higher scores.
+\end{description}
+
+\subsection{Implementation}
+
+\begin{itemize}
+  \item Store knowledge base entries in a dedicated database table with vector embeddings for semantic search.
+  \item Inject relevant knowledge base entries into the system prompt at the start of each run.
+  \item Limit injected context to 5,000 tokens to avoid overwhelming the system prompt.
+  \item Use a sliding window to decay old entries and prioritize recent learnings.
+\end{itemize}
+
+\section{True Novelty Detection}
+\label{sec:improve:novelty}
+
+\subsection{Current Limitation}
+
+The current gap detection relies on Claude's reasoning about a small sample of papers.
+True novelty requires systematic comparison against the full academic corpus.
+
+\subsection{Proposed System}
+
+\begin{enumerate}
+  \item \textbf{Embedding-based search:} Compute embeddings for all paper abstracts (generated and external) using a dedicated embedding model.
+  \item \textbf{Novelty scoring:} Before starting a paper, compute the cosine similarity between the proposed topic and all existing papers. Flag topics with similarity $> 0.9$ to any existing paper.
+  \item \textbf{Contribution verification:} After writing, verify that the paper's stated contributions are not already present in the literature by embedding comparison.
+  \item \textbf{Plagiarism detection:} Compare generated text against existing papers to detect excessive similarity (beyond proper citation).
+\end{enumerate}
+
+\subsection{Technical Requirements}
+
+\begin{itemize}
+  \item Vector database (pgvector, Pinecone, or Qdrant).
+  \item Embedding model (OpenAI Ada, BGE, or E5 via OpenRouter).
+  \item Nightly batch embedding job for new papers.
+  \item Similarity threshold tuning based on domain characteristics.
+\end{itemize}
+
+\section{Dataset Versioning}
+\label{sec:improve:versioning}
+
+\subsection{Problem}
+
+Currently, data is fetched at pipeline runtime, and the raw API responses are not stored.
+This means:
+\begin{itemize}
+  \item Reproducibility requires re-fetching from live APIs.
+  \item API changes can break reproduction.
+  \item There is no versioning of datasets across papers.
+\end{itemize}
+
+\subsection{Proposed System}
+
+\begin{description}
+  \item[Data Lake.] Store all fetched API responses in a versioned data lake (S3 or local filesystem with content-addressable storage).
+
+  \item[Dataset Registry.] Maintain a registry of datasets with:
+  \begin{itemize}
+    \item Content hash (SHA-256) for deduplication.
+    \item Source API, parameters, and timestamp.
+    \item Data schema (column types, row count).
+    \item Usage tracking (which papers reference which datasets).
+  \end{itemize}
+
+  \item[Cache Layer.] Before fetching from external APIs, check the cache:
+  \begin{itemize}
+    \item If data exists and is $<$ 24 hours old, use cached version.
+    \item If data exists but is stale, fetch new version and store alongside.
+    \item Track all versions for reproducibility.
+  \end{itemize}
+\end{description}
+
+\section{Reproducibility Layer}
+\label{sec:improve:reproducibility}
+
+\subsection{Enhanced Project Archives}
+
+\begin{enumerate}
+  \item \textbf{Pin library versions:} Generate \texttt{requirements.txt} with exact version pins (e.g., \texttt{pandas==2.1.4}).
+  \item \textbf{Include raw data:} Bundle fetched API responses in the project ZIP.
+  \item \textbf{Set random seeds:} Inject \texttt{random.seed(42); np.random.seed(42)} into all scripts.
+  \item \textbf{Docker support:} Generate a \texttt{Dockerfile} with the exact Python version and dependencies.
+  \item \textbf{GitHub Actions:} Generate a CI pipeline that re-runs the analysis and verifies outputs.
+\end{enumerate}
+
+\subsection{Verification Service}
+
+\begin{itemize}
+  \item Automated re-execution of project archives in a clean environment.
+  \item Comparison of outputs (figures, tables, statistics) against the published paper.
+  \item Reproducibility score based on output match percentage.
+  \item Public reproducibility badge on paper landing pages.
+\end{itemize}
+
+\section{Additional Improvements}
+\label{sec:improve:additional}
+
+\subsection{Governor v2: Hybrid Rule-LLM}
+
+Enhance the governor with selective LLM calls for complex decisions:
+\begin{itemize}
+  \item Use rules for common patterns (current behavior).
+  \item Use Claude Haiku for novel error patterns not covered by rules.
+  \item Gradually convert successful LLM decisions into new rules.
+\end{itemize}
+
+\subsection{Interactive Revision Mode}
+
+Allow human researchers to:
+\begin{itemize}
+  \item Request specific revisions to generated papers.
+  \item Provide additional data or constraints.
+  \item Override Popper's review decision.
+  \item Add their own analysis as co-authors.
+\end{itemize}
+
+\subsection{Multi-Language Support}
+
+\begin{itemize}
+  \item Generate papers in French, Spanish, German, Chinese, and Japanese.
+  \item Language-specific style guides and citation formats.
+  \item Bilingual abstracts.
+\end{itemize}
+
+\subsection{Real-Time Data Integration}
+
+\begin{itemize}
+  \item WebSocket connections to live market data feeds.
+  \item Real-time event detection triggering paper generation.
+  \item Breaking news analysis and rapid-response research.
+\end{itemize}
+
+\subsection{Performance Optimization}
+
+\begin{itemize}
+  \item Python process pooling to amortize startup costs.
+  \item Caching layer for frequently accessed API data.
+  \item Streaming \LaTeX{} compilation (compile sections as they are written).
+  \item Parallel tool execution for independent tool calls.
+\end{itemize}

@@ -1,0 +1,324 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 10 — FAILURE HANDLING SYSTEM
+%% ══════════════════════════════════════════════════════════════
+\chapter{Failure Handling and Recovery}
+\label{ch:failure}
+
+\section{Overview}
+\label{sec:failure:overview}
+
+\autoscholar operates in a complex environment where failures are expected at every layer: external APIs may be unavailable, Python code may crash, \LaTeX{} compilation may fail, and the LLM itself may produce malformed output.
+The system employs a defense-in-depth strategy with multiple failure handling mechanisms.
+
+\section{Claude API Failure Handling}
+\label{sec:failure:claude}
+
+\subsection{Retry with Exponential Backoff}
+
+The streaming function \func{callClaudeStreamingWithRetry} (\file{claudeStreaming.ts}) implements a robust retry strategy:
+
+\begin{algorithm}[H]
+\caption{Claude API Retry Strategy}
+\label{alg:claude-retry}
+\SetAlgoLined
+\KwIn{Query, messages, max attempts = 5}
+
+\For{attempt $\gets 1$ \KwTo 5}{
+  result $\gets$ \func{callClaudeStreaming}(query, messages)\;
+  \uIf{result is success}{
+    \Return{result}\;
+  }
+  \uIf{error is 429 (rate limit) or 529 (overloaded)}{
+    delay $\gets 2^{\text{attempt}} \times 1000$ ms\;
+    \textbf{sleep}(delay)\;
+    notify client via \texttt{retry} SSE event\;
+  }
+  \uElseIf{error is timeout or connection reset}{
+    delay $\gets 2^{\text{attempt}} \times 1000$ ms\;
+    \textbf{sleep}(delay)\;
+  }
+  \Else{
+    \textbf{throw} error (non-retryable)\;
+  }
+}
+\textbf{throw} MaxRetriesExceeded\;
+\end{algorithm}
+
+\subsection{Transient Error Categories}
+
+\begin{table}[H]
+\centering
+\caption{Claude API transient error handling.}
+\label{tab:claude-errors}
+\begin{tabularx}{\textwidth}{lXl}
+\toprule
+\textbf{Error} & \textbf{Handling} & \textbf{Max Retries} \\
+\midrule
+HTTP 429 (Rate Limit) & Exponential backoff, notify client & 5 \\
+HTTP 529 (Overloaded) & Exponential backoff, notify client & 5 \\
+Connection timeout & Exponential backoff & 5 \\
+Connection reset & Exponential backoff & 5 \\
+HTTP 500 (Server Error) & Not retried (treated as fatal) & 0 \\
+HTTP 400 (Bad Request) & Not retried (likely prompt issue) & 0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Token Overflow Prevention}
+
+Before sending messages to Claude, the system:
+
+\begin{enumerate}
+  \item Estimates total token count using the 4-char/token heuristic.
+  \item If tokens $>$ 500K, triggers history summarization.
+  \item Truncates individual tool results $>$ 15K characters.
+  \item If summarization fails, drops the oldest messages until under budget.
+\end{enumerate}
+
+\section{Python Execution Failure Handling}
+\label{sec:failure:python}
+
+\subsection{Pre-Execution Patching}
+
+The TypeScript bridge applies automatic patches to prevent known failure patterns:
+
+\begin{description}
+  \item[Deprecated APIs:] Pandas frequency aliases, NumPy functions, scikit-learn parameter names.
+  \item[Library conflicts:] Matplotlib \texttt{tight\_layout} with colorbars.
+  \item[Data fabrication:] Detection and warning for random data generation without API calls.
+\end{description}
+
+\subsection{Error Classification}
+
+The StructuredLogger (\file{structuredLogger.ts}) classifies Python errors into categories:
+
+\begin{table}[H]
+\centering
+\caption{Python error classification.}
+\label{tab:python-errors}
+\begin{tabularx}{\textwidth}{lXl}
+\toprule
+\textbf{Error Type} & \textbf{Governor Response} & \textbf{Recovery} \\
+\midrule
+\texttt{ModuleNotFoundError} & Install package via \texttt{install\_python\_package} tool & Automatic \\
+\texttt{MemoryError} & Reduce data size, simplify analysis & Profile switch \\
+\texttt{KeyError} / \texttt{IndexError} & Inspect data schema, fix column references & Script patch \\
+\texttt{ConvergenceWarning} & Simplify model, adjust parameters & Profile switch \\
+\texttt{LinAlgError} (Singular) & Check multicollinearity, drop variables & Script patch \\
+\texttt{SyntaxError} & Fix code via patch & Script patch \\
+\texttt{ValueError} & Context-dependent recovery & Script patch \\
+\texttt{TimeoutError} & Reduce computation scope & Profile switch \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Script Repair Loop}
+
+When a Python script fails:
+
+\begin{enumerate}
+  \item The StructuredLogger parses the traceback into structured JSON.
+  \item The error is formatted for Claude with context (script content, line numbers, error type).
+  \item Claude reads the script via \texttt{read\_python\_script}.
+  \item Claude generates a patch via \texttt{apply\_patch}.
+  \item The DiffEngine applies the patch (trying 3 strategies: unified diff, search-replace, fuzzy matching).
+  \item The patched script is re-executed via \texttt{run\_python\_script}.
+  \item If the error persists, the cycle repeats (up to 8 attempts).
+\end{enumerate}
+
+\subsection{Retry Budget System}
+
+The \governor enforces a Python retry budget of 3 per pipeline run:
+
+\begin{enumerate}
+  \item Each Python error decrements the budget.
+  \item Each successful execution recovers 0.05 confidence.
+  \item When the budget reaches 0, the \governor emits \texttt{force\_finalize}, instructing Claude to skip remaining analysis and proceed to writing with available results.
+  \item This prevents infinite error loops from consuming the entire pipeline run.
+\end{enumerate}
+
+\section{LaTeX Compilation Failure Handling}
+\label{sec:failure:latex}
+
+\subsection{Error Detection}
+
+The \LaTeX{} log parser (\file{latexLogParser.ts}) detects errors by:
+
+\begin{enumerate}
+  \item Scanning the log file for \texttt{!} error markers.
+  \item Extracting line numbers from \texttt{l.N} patterns.
+  \item Classifying errors into 8 types.
+  \item Counting overfull/underfull box warnings.
+  \item Extracting offending commands.
+\end{enumerate}
+
+\subsection{Compilation Fallback Strategies}
+
+\begin{description}
+  \item[Primary:] Full pdflatex + bibtex compilation (4 passes).
+  \item[Fallback 1:] pdflatex only (no bibliography, 1 pass).
+  \item[Fallback 2:] Simplified \LaTeX{} (stripped packages, basic formatting).
+  \item[Fallback 3:] Direct PDF generation via Puppeteer (markdown $\to$ HTML $\to$ PDF).
+\end{description}
+
+\subsection{Repair Budget}
+
+The \governor enforces a \LaTeX{} retry budget of 3.
+When exhausted, the \texttt{latex\_fallback} profile restricts the system to basic \LaTeX{} commands, avoiding complex packages and environments.
+
+\section{External API Failure Handling}
+\label{sec:failure:api}
+
+\subsection{Rate Limiting}
+
+\begin{description}
+  \item[Semantic Scholar:] Exponential backoff on 429 responses (1s, 2s, 4s delays, max 3 retries).
+  \item[FMP:] No retry; relies on daily quota management (manual).
+  \item[Firecrawl:] Async job polling with 3s intervals, 120s max wait.
+  \item[Tavily:] Standard HTTP retry.
+\end{description}
+
+\subsection{Data Source Fallback Chains}
+
+The system prompt defines fallback chains for data acquisition:
+
+\begin{enumerate}
+  \item Stock data: FMP $\to$ EODHD $\to$ web scraping.
+  \item Macro data: FRED $\to$ World Bank $\to$ IMF $\to$ OECD.
+  \item Academic data: Multi-source parallel (all 5 databases simultaneously).
+  \item Web data: Tavily $\to$ Firecrawl $\to$ Exa.
+\end{enumerate}
+
+If all sources fail for a required dataset, the \governor detects a data quality issue and may switch to the \texttt{conservative} profile with relaxed data requirements.
+
+\subsection{Timeout Configuration}
+
+\begin{table}[H]
+\centering
+\caption{External API timeout configuration.}
+\label{tab:api-timeouts}
+\begin{tabular}{lr}
+\toprule
+\textbf{Service} & \textbf{Timeout} \\
+\midrule
+FMP API & 60s \\
+EODHD API & 30s \\
+Semantic Scholar & 15s \\
+Exa (search) & 15s \\
+Exa (content) & 20s \\
+Firecrawl (sync) & 30s \\
+Firecrawl (async) & 120s \\
+Tavily (search) & 30s \\
+Tavily (research) & 120s \\
+World Bank & 20s \\
+IMF & 20s \\
+OECD & 30s \\
+Polymarket & 15s \\
+Python subprocess & 90s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Pipeline-Level Failure Handling}
+\label{sec:failure:pipeline}
+
+\subsection{Heartbeat Monitoring}
+
+Each active run updates its heartbeat every 10 seconds.
+The scheduler monitors heartbeats and marks runs as \texttt{failed} if no update is received within the configured timeout (default 300s).
+
+\subsection{Consecutive Failure Detection}
+
+The scheduler tracks consecutive failures:
+\begin{itemize}
+  \item After \texttt{maxConsecutiveFailures} (default: 5) consecutive failures, the scheduler auto-pauses to prevent resource waste.
+  \item An administrator must investigate and re-enable the scheduler.
+\end{itemize}
+
+\subsection{Server Restart Recovery}
+
+On server startup:
+\begin{enumerate}
+  \item All active runs (status $\in$ \{queued, researching, analyzing, drafting, validating\}) are force-failed.
+  \item This prevents zombie processes from holding resources.
+  \item Administrators can resume specific runs from checkpoints if needed.
+\end{enumerate}
+
+\subsection{Stale Cleanup}
+
+Periodic cleanup runs every 30 minutes for:
+\begin{itemize}
+  \item Stale \LaTeX{} compilations (temp directories older than 1 hour).
+  \item Stale session broadcaster entries (no activity for 30 minutes).
+  \item Orphaned paper runs (active status but no heartbeat for $>$ timeout).
+\end{itemize}
+
+\section{LLM Output Failure Handling}
+\label{sec:failure:llm}
+
+\subsection{Malformed JSON}
+
+The 6-strategy JSON parser (\func{parseJsonResponse} in \file{literatureGapFinderService.ts}) handles:
+
+\begin{enumerate}
+  \item Direct \texttt{JSON.parse}.
+  \item Strip markdown code fences.
+  \item Regex extraction from mixed text.
+  \item Fix common issues (trailing commas, single quotes).
+  \item Partial JSON extraction (last valid closing bracket).
+  \item Fallback with raw text as the content field.
+\end{enumerate}
+
+\subsection{Tool Call Failures}
+
+If Claude issues a tool call with invalid parameters:
+\begin{enumerate}
+  \item The tool executor catches the error.
+  \item An error result is returned to Claude with the error message.
+  \item Claude can retry with corrected parameters.
+  \item The \governor tracks the failure and may intervene.
+\end{enumerate}
+
+\subsection{Infinite Loop Prevention}
+
+Several mechanisms prevent infinite loops:
+\begin{itemize}
+  \item \textbf{Tool call depth limit:} 180 for auto-paper, 45 for interactive chat.
+  \item \textbf{Section rejection limit:} 3 rejections per section before accepting the best version.
+  \item \textbf{Script repair limit:} 8 patch attempts per script.
+  \item \textbf{Retry budgets:} 3/3/2 for Python/\LaTeX{}/data before force-finalize.
+  \item \textbf{Heartbeat timeout:} 5 minutes of inactivity triggers failure.
+\end{itemize}
+
+\section{Error Reporting and Observability}
+\label{sec:failure:observability}
+
+\subsection{Logging}
+
+Daily log files (\file{logs/vibesurf-YYYY-MM-DD.log}) capture:
+\begin{itemize}
+  \item HTTP request logs (method, path, status, duration, user agent).
+  \item Pipeline progress events.
+  \item Error traces with stack traces.
+  \item Governor decision records.
+\end{itemize}
+
+\subsection{SSE Error Events}
+
+Clients receive real-time error notifications via SSE \texttt{error} events, including:
+\begin{itemize}
+  \item Error messages.
+  \item Retry notifications with attempt counts and delays.
+  \item Pipeline stage transitions.
+  \item Final failure reasons.
+\end{itemize}
+
+\subsection{Admin Dashboard}
+
+The admin interface provides:
+\begin{itemize}
+  \item Real-time pipeline run status with governor state.
+  \item Historical run analysis with failure reasons.
+  \item Governor decision logs with intervention counts.
+  \item System health metrics (active runs, error rates, resource usage).
+\end{itemize}

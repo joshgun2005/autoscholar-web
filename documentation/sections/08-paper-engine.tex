@@ -1,0 +1,342 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 8 — PAPER GENERATION ENGINE
+%% ══════════════════════════════════════════════════════════════
+\chapter{Paper Generation Engine}
+\label{ch:paper-engine}
+
+\section{Overview}
+\label{sec:paper:overview}
+
+The paper generation engine transforms research analysis into compiled \LaTeX{} PDFs.
+It encompasses template selection, section writing, content sanitization, multi-pass compilation, iterative error repair, and reproducible project packaging.
+The engine is distributed across 6 modules in \file{server/services/latex/} totaling approximately 2,870 lines.
+
+\section{Text Generation}
+\label{sec:paper:text}
+
+\subsection{Section-by-Section Writing}
+
+Papers are written one section at a time via the \texttt{write\_paper\_section} tool.
+Claude receives detailed instructions for each section type, including minimum word counts, required subsections, and specific content expectations.
+
+\subsubsection{Empirical Paper Sections}
+
+\begin{description}
+  \item[Introduction] (untitled per JF convention): Must present the research question, motivate its importance, preview the methodology, summarize key findings, and outline the paper's contribution relative to existing literature. Target: 2,000--3,000 words.
+
+  \item[Literature Review:] Organized thematically (not chronologically). Must cover 15--30 papers, identify research gaps, and position the paper. Target: 3,000--5,000 words.
+
+  \item[Methodology:] Formal model specification with numbered equations, estimation strategy, identification approach, and assumptions. Must include economic intuition for each variable. Target: 3,000--5,000 words.
+
+  \item[Data:] Source description, sample construction, variable definitions, summary statistics table, preliminary analysis (correlation matrix, unit root tests). Target: 2,000--4,000 words.
+
+  \item[Results:] Main regression tables, robustness checks (alternative specifications, subsamples, placebo tests), figure interpretation. Target: 4,000--7,000 words.
+
+  \item[Discussion:] Economic interpretation, comparison with existing literature, implications for practitioners and policymakers. Target: 2,000--3,000 words.
+
+  \item[Conclusion:] Summary of contributions, limitations, and directions for future research. Target: 1,000--2,000 words.
+\end{description}
+
+\subsubsection{Section Rejection and Retry}
+
+The tool executor tracks section rejection attempts.
+If a section is rejected more than 3 times (typically due to insufficient length or quality), the system accepts the best available version to prevent infinite loops.
+
+\subsection{Citation Handling}
+
+Citations are managed through BibTeX:
+
+\begin{enumerate}
+  \item During the \gauss phase, academic search results include auto-generated BibTeX entries.
+  \item Claude accumulates citations throughout the paper, using \texttt{\textbackslash cite\{key\}} and \texttt{\textbackslash citep\{key\}} commands.
+  \item The BibTeX file is assembled from all accumulated entries.
+  \item \texttt{natbib} with author-year style handles citation formatting.
+  \item Duplicate cite keys are resolved by appending letters (e.g., \texttt{smith2020a}, \texttt{smith2020b}).
+\end{enumerate}
+
+\subsection{Figure Integration}
+
+Figures are referenced in \LaTeX{} via:
+
+\begin{lstlisting}[language=TeX, caption=Typical figure inclusion pattern.]
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{fig_01.png}
+  \caption{Conditional volatility estimates from GARCH(1,1) model.}
+  \label{fig:garch-vol}
+\end{figure}
+\end{lstlisting}
+
+Figure files are extracted from base64-encoded Python execution results and written to the compilation directory.
+
+\section{LaTeX Templates}
+\label{sec:paper:templates}
+
+\subsection{Common Preamble}
+
+The shared preamble (\func{autoScholarPreamble}, $\sim$200 lines) includes 50+ packages:
+
+\begin{multicols}{3}
+\begin{itemize}
+  \item \pkg{amsmath}
+  \item \pkg{amssymb}
+  \item \pkg{amsthm}
+  \item \pkg{mathtools}
+  \item \pkg{geometry}
+  \item \pkg{graphicx}
+  \item \pkg{booktabs}
+  \item \pkg{longtable}
+  \item \pkg{multirow}
+  \item \pkg{float}
+  \item \pkg{natbib}
+  \item \pkg{hyperref}
+  \item \pkg{cleveref}
+  \item \pkg{caption}
+  \item \pkg{subcaption}
+  \item \pkg{enumitem}
+  \item \pkg{microtype}
+  \item \pkg{setspace}
+  \item \pkg{algorithm2e}
+  \item \pkg{listings}
+  \item \pkg{xcolor}
+  \item \pkg{adjustbox}
+  \item \pkg{rotating}
+  \item \pkg{dcolumn}
+  \item \pkg{threeparttable}
+\end{itemize}
+\end{multicols}
+
+\subsection{Article Template}
+
+The default template (\func{buildArticleTemplate}):
+\begin{itemize}
+  \item 12pt, A4, one-column.
+  \item 1-inch margins with 1.5 line spacing.
+  \item Running headers with abbreviated title.
+  \item Numbered sections, Roman numeral tables (per JF convention).
+  \item Author block: ``Euler --- The AutoScholar Research Agent.''
+  \item Agent disclosure section in footnotes.
+\end{itemize}
+
+\subsection{Working Paper Template}
+
+\func{buildWorkingPaperTemplate}:
+\begin{itemize}
+  \item Single-column with wider margins.
+  \item Working paper header.
+  \item Draft watermark option.
+  \item Otherwise identical preamble.
+\end{itemize}
+
+\subsection{Econometrica Template}
+
+\func{buildEconometricaTemplate}:
+\begin{itemize}
+  \item Two-column layout mimicking \emph{Econometrica} style.
+  \item Serif fonts, narrow margins.
+  \item Custom theorem environments (Assumption, Proposition, Theorem, Corollary).
+\end{itemize}
+
+\section{Content Sanitization}
+\label{sec:paper:sanitization}
+
+The sanitizer (\file{latex/sanitizer.ts}, 670 lines) addresses common issues in LLM-generated \LaTeX{}:
+
+\subsection{Special Character Escaping}
+
+\begin{table}[H]
+\centering
+\caption{\LaTeX{} special character handling.}
+\label{tab:latex-escape}
+\begin{tabular}{ll}
+\toprule
+\textbf{Character} & \textbf{Treatment} \\
+\midrule
+\texttt{\%} & Escaped to \texttt{\textbackslash\%} outside comments \\
+\texttt{\&} & Escaped to \texttt{\textbackslash\&} outside tabular environments \\
+\texttt{\$} & Context-aware (preserved in math mode, escaped outside) \\
+\texttt{\#} & Escaped to \texttt{\textbackslash\#} \\
+\texttt{\_} & Escaped to \texttt{\textbackslash\_} outside math mode \\
+Greek letters & Wrapped in \texttt{\$...\$} if found outside math mode \\
+Em/en dashes & Normalized to \texttt{---}/\texttt{--} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Table Auto-Fitting}
+
+Wide tables are automatically handled by three progressive strategies:
+
+\begin{enumerate}
+  \item \textbf{Column counting:} Tables with $>$6 columns are flagged.
+  \item \textbf{\texttt{adjustbox} wrapping:} First attempt wraps the table in \texttt{\textbackslash begin\{adjustbox\}\{max width=\textbackslash textwidth\}}.
+  \item \textbf{\texttt{resizebox} fallback:} If \texttt{adjustbox} fails, uses \texttt{\textbackslash resizebox\{\textbackslash textwidth\}\{!\}}.
+  \item \textbf{Safety wrapping:} Final pass adds overflow protection to all remaining tables.
+\end{enumerate}
+
+\subsection{Blank Figure Detection}
+
+\func{isBlankPng} detects empty figures at the binary level:
+
+\begin{enumerate}
+  \item Reads the PNG file and locates IDAT (image data) chunks.
+  \item Decompresses the raw pixel data via zlib inflate.
+  \item Strips PNG filter bytes (one per row).
+  \item Computes pixel variance across the image.
+  \item If variance $< 50.0$, the figure is classified as blank and excluded.
+\end{enumerate}
+
+\section{Compilation Pipeline}
+\label{sec:paper:compilation}
+
+\subsection{Binary Discovery}
+
+The system searches for \texttt{pdflatex} and \texttt{bibtex} across multiple macOS installation paths:
+
+\begin{itemize}
+  \item \texttt{/Library/TeX/texbin/}
+  \item \texttt{/usr/local/texlive/2024/bin/universal-darwin/}
+  \item \texttt{/usr/texbin/}
+  \item System PATH
+\end{itemize}
+
+\subsection{Multi-Pass Compilation}
+
+Standard academic compilation requires multiple passes:
+
+\begin{enumerate}
+  \item \textbf{Pass 1:} \texttt{pdflatex} --- Initial compilation, generates \texttt{.aux} files.
+  \item \textbf{Pass 2:} \texttt{bibtex} --- Processes \texttt{.aux} to resolve citations from \texttt{.bib}.
+  \item \textbf{Pass 3:} \texttt{pdflatex} --- Re-processes with resolved citations.
+  \item \textbf{Pass 4:} \texttt{pdflatex} --- Final pass to resolve all cross-references.
+\end{enumerate}
+
+All passes run with \texttt{-interaction=nonstopmode} to prevent interactive prompts.
+
+\subsection{Error Classification}
+
+The \LaTeX{} log parser (\file{latexLogParser.ts}, 146 lines) classifies errors into 8 types:
+
+\begin{description}
+  \item[Undefined control sequence:] Misspelled commands or missing packages.
+  \item[Math errors:] Mismatched delimiters, missing \$ signs.
+  \item[Unicode errors:] Non-ASCII characters in text mode.
+  \item[Environment errors:] Mismatched \texttt{\textbackslash begin}/\texttt{\textbackslash end} pairs.
+  \item[Package errors:] Package conflicts or missing options.
+  \item[Fatal errors:] Emergency stops, capacity exceeded.
+  \item[Missing characters:] Font encoding issues.
+  \item[Other:] Unclassified errors.
+\end{description}
+
+Additionally tracks overfull/underfull box warnings (hbox/vbox).
+
+\subsection{Iterative Repair Loop}
+
+When compilation fails, the \LaTeX{} Patch Manager (\file{latexPatchManager.ts}, 369 lines) orchestrates repair:
+
+\begin{algorithm}[H]
+\caption{\LaTeX{} Iterative Repair}
+\label{alg:latex-repair}
+\SetAlgoLined
+\KwIn{Failed compilation, max attempts = 8}
+\KwOut{Compiled PDF or final failure}
+
+Register failed compilation metadata\;
+\For{$i \gets 1$ \KwTo 8}{
+  $\text{errors} \gets \func{inspectLatexErrors}()$\;
+  Format errors for Claude with line numbers and context\;
+  Claude generates a diff patch\;
+  $\text{result} \gets \func{patchLatex}(\text{diff})$\;
+  \If{patch failed}{
+    Try search-replace fallback\;
+    Try trimmed matching fallback\;
+  }
+  $\text{pdf} \gets \func{recompileLatex}()$\;
+  \If{compilation succeeded}{
+    \Return{pdf}\;
+  }
+}
+\Return{failure with last error log}\;
+\end{algorithm}
+
+\section{Document Export}
+\label{sec:paper:export}
+
+Beyond \LaTeX{} PDF, the system supports three additional export formats:
+
+\subsection{PDF via Puppeteer}
+
+\file{pdf/puppeteerPdf.ts} (75 lines):
+\begin{enumerate}
+  \item Converts markdown to HTML with KaTeX math rendering.
+  \item Loads in headless Chromium.
+  \item Waits for math rendering completion.
+  \item Generates A4 PDF with AutoScholar-branded footer.
+\end{enumerate}
+
+\subsection{DOCX via Pandoc}
+
+\file{pdf/pandocDocx.ts} (50 lines):
+\begin{enumerate}
+  \item Writes markdown to temp file.
+  \item Invokes \texttt{pandoc -f markdown -t docx}.
+  \item Returns DOCX buffer.
+\end{enumerate}
+
+\subsection{HTML Export}
+
+\file{pdf/htmlExport.ts} (9 lines):
+\begin{itemize}
+  \item Self-contained HTML with embedded CSS, KaTeX, and syntax highlighting.
+  \item Responsive design with print-optimized CSS.
+  \item AutoScholar branding with embedded SVG logo.
+\end{itemize}
+
+\section{Reproducible Project Packaging}
+\label{sec:paper:packaging}
+
+The packaging module (\file{latex/packaging.ts}, 358 lines) creates ZIP archives following the \gls{rre} structure:
+
+\subsection{Directory Structure}
+
+\begin{verbatim}
+project/
+  paper.tex              Main LaTeX source
+  references.bib         BibTeX references
+  outputs/
+    paper.pdf            Compiled PDF
+    figures/             All generated figures (PNG)
+  code/
+    01_data_download.py  Pipeline-ordered scripts
+    02_data_prep.py
+    03_analysis.py
+    ...
+  data/
+    raw/api/             API-sourced data (CSV, JSON)
+    raw/web/             Web-extracted data
+    processed/           Cleaned datasets
+    metadata/            Data provenance (JSON sidecars)
+  run_pipeline.py        Auto-generated master script
+  requirements.txt       Auto-detected dependencies
+  README.md              Build instructions
+\end{verbatim}
+
+\subsection{Automatic Dependency Detection}
+
+The \texttt{requirements.txt} generator:
+\begin{enumerate}
+  \item Scans all Python scripts for \texttt{import} and \texttt{from ... import} statements.
+  \item Maps module names to pip package names (e.g., \texttt{sklearn} $\to$ \texttt{scikit-learn}, \texttt{cv2} $\to$ \texttt{opencv-python}).
+  \item Deduplicates and sorts alphabetically.
+  \item Excludes standard library modules.
+\end{enumerate}
+
+\subsection{Master Pipeline Script}
+
+\texttt{run\_pipeline.py} is auto-generated with:
+\begin{enumerate}
+  \item Sequential execution of all \texttt{code/*.py} scripts in numeric order.
+  \item Error handling with script-level try/catch.
+  \item Summary output listing successful/failed scripts.
+  \item Working directory setup for data and output paths.
+\end{enumerate}

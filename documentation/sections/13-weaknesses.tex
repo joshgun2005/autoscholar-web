@@ -1,0 +1,206 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 13 — CRITICAL EVALUATION & WEAKNESSES
+%% ══════════════════════════════════════════════════════════════
+\chapter{Critical Evaluation and Weaknesses}
+\label{ch:weaknesses}
+
+\section{Scientific Rigor}
+\label{sec:weak:rigor}
+
+\subsection{Identification Strategy}
+
+The most fundamental weakness in \autoscholar's research output is the treatment of causal identification.
+While the system prompt mandates identification strategies (instrumental variables, difference-in-differences, regression discontinuity), the system has no way to verify that:
+
+\begin{itemize}
+  \item Instruments are actually valid (relevant and excludable).
+  \item Parallel trends assumptions hold for DiD designs.
+  \item Assignment mechanisms are genuinely discontinuous for RD designs.
+  \item Confounders are adequately controlled.
+\end{itemize}
+
+Claude may claim to use a valid instrument without verifying the exclusion restriction, or assert parallel trends without formal testing.
+These are precisely the kinds of judgments that require deep domain expertise and cannot be reliably automated.
+
+\subsection{Statistical Inference}
+
+\begin{itemize}
+  \item \textbf{P-hacking risk:} The system runs multiple specifications and selects results to present, without correction for multiple hypothesis testing. There is no Bonferroni, Holm-Bonferroni, or false discovery rate correction.
+  \item \textbf{Overfitting in ML:} While cross-validation is mandated, the system may select hyperparameters that overfit to the specific dataset without adequate regularization.
+  \item \textbf{Distribution assumptions:} Parametric VaR assumes normal returns, which is known to be violated. The system does not always verify distributional assumptions before applying parametric methods.
+\end{itemize}
+
+\subsection{Data Quality}
+
+\begin{itemize}
+  \item \textbf{No manual data inspection:} The system cannot visually inspect data for anomalies the way a human researcher would.
+  \item \textbf{Look-ahead bias:} When constructing time-series features, the system may inadvertently introduce future information (e.g., using filing dates instead of announcement dates).
+  \item \textbf{Survivorship bias:} Using current stock lists to study historical performance introduces survivorship bias that the system does not systematically address.
+\end{itemize}
+
+\section{Reproducibility}
+\label{sec:weak:reproducibility}
+
+\subsection{Strengths}
+
+The reproducible project ZIP is a genuine strength:
+\begin{itemize}
+  \item Complete Python scripts with numeric ordering.
+  \item Data provenance documentation.
+  \item Auto-generated \texttt{requirements.txt}.
+  \item Master pipeline script.
+\end{itemize}
+
+\subsection{Weaknesses}
+
+\begin{itemize}
+  \item \textbf{API dependency:} Scripts require live API keys (FMP, EODHD, etc.) to reproduce. Raw data is not always included in the ZIP.
+  \item \textbf{Non-determinism:} Random seeds are not always set, making Monte Carlo and bootstrapping results non-reproducible.
+  \item \textbf{API versioning:} External API responses may change over time, producing different results on re-execution.
+  \item \textbf{Library versions:} \texttt{requirements.txt} does not pin specific versions.
+\end{itemize}
+
+\section{Robustness}
+\label{sec:weak:robustness}
+
+\subsection{Single Point of Failure: Claude API}
+
+The entire system depends on a single external service (Anthropic's Claude API).
+If the API is unavailable, rate-limited, or degraded, the entire pipeline halts.
+There is no failover to alternative LLMs.
+
+\subsection{Monolithic Architecture}
+
+The single-process Node.js server means:
+\begin{itemize}
+  \item A crash affects all concurrent sessions and pipeline runs.
+  \item CPU-intensive operations (JSON parsing, \LaTeX{} sanitization) block the event loop.
+  \item Memory leaks in long-running sessions can degrade the server over time.
+\end{itemize}
+
+\subsection{File System Dependency}
+
+\begin{itemize}
+  \item Scripts, figures, and \LaTeX{} files are stored on the local filesystem.
+  \item No redundancy or backup mechanism.
+  \item Disk space is not monitored or managed.
+\end{itemize}
+
+\section{Quality Control Limitations}
+\label{sec:weak:quality}
+
+\subsection{Self-Review Bias}
+
+The \popper reviewer uses the same model (Claude Opus 4.6) that generated the paper.
+This creates a systematic positive bias:
+\begin{itemize}
+  \item The reviewer may accept reasoning patterns it would generate itself.
+  \item Subtle methodological errors that the generator would not notice are equally invisible to the reviewer.
+  \item Writing quality scores are inflated because the reviewer shares the generator's style preferences.
+\end{itemize}
+
+\subsection{Low Rejection Threshold}
+
+The default publication threshold of 45/100 is permissive.
+Papers scoring 45--55 often have significant weaknesses:
+\begin{itemize}
+  \item Incomplete analysis (some sections may be stubs).
+  \item Weak empirical results (insignificant coefficients presented as findings).
+  \item Missing robustness checks.
+  \item Poorly integrated figures.
+\end{itemize}
+
+\subsection{No Human Review}
+
+There is no mechanism for human review before or after publication.
+The autonomous journal publishes everything above the threshold, including papers with:
+\begin{itemize}
+  \item Factually incorrect claims.
+  \item Methodologically unsound analysis.
+  \item Fabricated-looking data patterns.
+  \item Plagiarized-equivalent content (multiple papers on similar topics may share significant text).
+\end{itemize}
+
+\section{Security Concerns}
+\label{sec:weak:security}
+
+\subsection{Python Sandbox}
+
+The Python execution environment, while isolated in a subprocess, has:
+\begin{itemize}
+  \item Full network access (for API calls).
+  \item Read access to the filesystem.
+  \item No resource limits (CPU, memory, disk).
+  \item No syscall filtering or container isolation.
+\end{itemize}
+
+Since Claude writes the Python code, prompt injection could theoretically lead to arbitrary code execution.
+
+\subsection{Admin Authentication}
+
+The admin authentication system is minimal:
+\begin{itemize}
+  \item Single shared password (default: ``admin123'').
+  \item No multi-factor authentication.
+  \item No audit log for admin actions.
+  \item No role-based access control.
+\end{itemize}
+
+\subsection{API Key Storage}
+
+User-provided API keys are stored with XOR obfuscation (not encryption) using the session secret.
+XOR with a known key is trivially reversible.
+
+\section{Scalability Weaknesses}
+\label{sec:weak:scalability}
+
+\begin{itemize}
+  \item \textbf{SQLite write contention:} Under concurrent paper generation, SQLite's single-writer model can cause lock contention.
+  \item \textbf{In-memory state:} Rate limiter, session broadcaster, and governor state are in-process and lost on restart.
+  \item \textbf{No horizontal scaling:} Cannot run multiple server instances behind a load balancer without significant refactoring.
+  \item \textbf{File-based artifacts:} Script management and \LaTeX{} compilation use local temp directories, preventing distributed execution.
+\end{itemize}
+
+\section{Content Quality Weaknesses}
+\label{sec:weak:content}
+
+\subsection{Hallucination Risk}
+
+Despite extensive tool access, Claude may:
+\begin{itemize}
+  \item Fabricate citations that don't exist.
+  \item Misinterpret tool results (e.g., confusing nominal and real values).
+  \item Generate plausible-sounding but incorrect economic interpretations.
+  \item Report statistical results that don't match the actual computation.
+\end{itemize}
+
+\subsection{Template Repetitiveness}
+
+Papers generated from similar prompts may share:
+\begin{itemize}
+  \item Identical introductory paragraphs.
+  \item Same literature review structure.
+  \item Similar methodology descriptions.
+  \item Common phrases and sentence structures.
+\end{itemize}
+
+The JF Writing Style Directive's AI detection countermeasures (lexical diversity, syntactic variation) partially address this but cannot fully eliminate it.
+
+\subsection{Depth vs. Breadth}
+
+The system tends to produce breadth over depth:
+\begin{itemize}
+  \item Many variables tested superficially rather than deep investigation of a few.
+  \item Multiple model specifications without thorough economic motivation for each.
+  \item Robustness checks that are mechanical rather than meaningful.
+\end{itemize}
+
+\section{Ethical Considerations}
+\label{sec:weak:ethics}
+
+\begin{itemize}
+  \item \textbf{Transparency:} All papers include an agent disclosure section, clearly identifying the AI author. The ASID system distinguishes AI-generated papers from human-authored DOI publications.
+  \item \textbf{Misuse potential:} The system could be used to generate fraudulent research papers or flood academic databases with low-quality content.
+  \item \textbf{Academic integrity:} Students or researchers could use the system to produce papers and claim them as their own work.
+  \item \textbf{Market impact:} Financial research papers could influence investment decisions; AI-generated analysis carries different reliability than human expert analysis.
+\end{itemize}

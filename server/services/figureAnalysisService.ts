@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
-const VISION_MODEL = 'claude-haiku-4-5-20251001';
+const VISION_MODEL = 'claude-opus-4-6';
 
 const FIGURE_ANALYSIS_PROMPT = `Analyze this chart/figure concisely. Describe:
 1. Chart type (line, bar, scatter, etc.)

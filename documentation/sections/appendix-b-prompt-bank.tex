@@ -1,0 +1,191 @@
+%% ══════════════════════════════════════════════════════════════
+%%  APPENDIX B — PROMPT BANK SPECIFICATION
+%% ══════════════════════════════════════════════════════════════
+\chapter{Prompt Bank Specification}
+\label{app:prompt-bank}
+
+This appendix documents the structure and content of \autoscholar's prompt bank, which drives autonomous paper generation with 1,000+ deterministically generated research prompts.
+
+\section{Construction Algorithm}
+\label{sec:prompts:algorithm}
+
+The prompt bank is built at import time by the function \func{buildPromptBank} in \file{server/services/prompt-bank/index.ts}.
+The algorithm interleaves three dimensions:
+
+\begin{algorithm}[H]
+\caption{Prompt Bank Construction}
+\label{alg:prompt-bank}
+\SetAlgoLined
+\KwIn{Domains $\mathcal{D}$ (24), Methods $\mathcal{M}$ (24), Topics $\mathcal{T}$ (14 per domain), Compatibility $\mathcal{C}$}
+\KwOut{Prompt bank $\mathcal{P}$ with $\leq 1500$ entries}
+
+$\mathcal{P} \gets []$\;
+$v \gets 0$\; \tcp{variation index}
+\While{$|\mathcal{P}| < 1500$ \textbf{and} $v < 24$}{
+  \ForEach{topic index $t \in [0, 13]$}{
+    \ForEach{domain $d \in \mathcal{D}$}{
+      $\text{methods} \gets \mathcal{C}[d]$\;
+      $m \gets \text{methods}[v \bmod |\text{methods}|]$\;
+      $\text{topic} \gets \mathcal{T}[d][t]$\;
+      $\text{prompt} \gets \text{formatPrompt}(d, m, \text{topic})$\;
+      $\mathcal{P}.\text{push}(\{d, m, \text{topic}, \text{prompt}\})$\;
+    }
+  }
+  $v \gets v + 1$\;
+}
+\Return{$\mathcal{P}$}\;
+\end{algorithm}
+
+The iteration order (variation $\to$ topic $\to$ domain) ensures that consecutive prompts always switch domains, providing maximum topic diversity for sequential selection.
+
+\section{Research Domains}
+\label{sec:prompts:domains}
+
+\begin{longtable}{rl}
+\caption{24 research domains.} \label{tab:domains} \\
+\toprule
+\textbf{\#} & \textbf{Domain} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{\#} & \textbf{Domain} \\
+\midrule
+\endhead
+1 & Market Microstructure \\
+2 & Volatility Modeling \\
+3 & Asset Allocation \& Portfolio Management \\
+4 & Machine Learning in Finance \\
+5 & Macro-Finance \\
+6 & Cryptocurrency \& DeFi \\
+7 & ESG \& Sustainable Finance \\
+8 & Market Anomalies \& Factor Investing \\
+9 & Financial Econometrics \\
+10 & Systemic Risk \& Financial Stability \\
+11 & Behavioral Finance \\
+12 & Derivatives \& Options \\
+13 & Credit Risk \& Fixed Income \\
+14 & Monetary Policy \& Central Banking \\
+15 & Banking \& Financial Intermediation \\
+16 & Commodities \& Energy Finance \\
+17 & Emerging Markets \\
+18 & Fintech \& Digital Finance \\
+19 & Statistical Inference \\
+20 & Machine Learning Prediction \\
+21 & Deep Learning \& Neural Networks \\
+22 & Applied Statistics \\
+23 & Supervised \& Unsupervised Learning \\
+24 & AI for Scientific Discovery \\
+\bottomrule
+\end{longtable}
+
+\section{Methodological Approaches}
+\label{sec:prompts:methods}
+
+\begin{longtable}{rl}
+\caption{24 methodological approaches.} \label{tab:methods} \\
+\toprule
+\textbf{\#} & \textbf{Method} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{\#} & \textbf{Method} \\
+\midrule
+\endhead
+1 & Panel Regression with Fixed Effects \\
+2 & Generalized Method of Moments (GMM) \\
+3 & Event Study Methodology \\
+4 & Vector Autoregression (VAR/VECM) \\
+5 & DCC-GARCH Multivariate Volatility \\
+6 & Difference-in-Differences (DiD) \\
+7 & Regression Discontinuity Design (RDD) \\
+8 & Instrumental Variables (2SLS/IV) \\
+9 & Quantile Regression \\
+10 & Stochastic Volatility Models \\
+11 & Copula-Based Dependence Modeling \\
+12 & Propensity Score Matching \\
+13 & Fama-MacBeth Two-Stage Regression \\
+14 & Structural Equation Modeling \\
+15 & Bayesian Estimation \\
+16 & High-Frequency Econometrics \\
+17 & Affine Term Structure Models \\
+18 & Dynamic Factor Models \\
+19 & Bootstrap \& Permutation Testing \\
+20 & Random Forest \& Gradient Boosting \\
+21 & LSTM \& Transformer Networks \\
+22 & Non-Parametric Density Estimation \\
+23 & K-Means \& Hierarchical Clustering \\
+24 & Reinforcement Learning \\
+\bottomrule
+\end{longtable}
+
+\section{Domain--Method Compatibility Matrix}
+\label{sec:prompts:compat}
+
+Not all domain--method combinations are meaningful.
+The compatibility matrix (\file{prompt-bank/domains.ts}) maps each domain to its valid methods.
+For example:
+
+\begin{itemize}
+  \item \textbf{Market Microstructure:} Panel FE, GMM, Event Study, High-Frequency Econometrics, Quantile Regression, ...
+  \item \textbf{Machine Learning in Finance:} Random Forest, LSTM/Transformer, K-Means, Reinforcement Learning, ...
+  \item \textbf{Statistical Inference:} Bootstrap, Non-Parametric Density, Bayesian Estimation, Quantile Regression, ...
+\end{itemize}
+
+Finance domains are primarily compatible with econometric methods, while statistics/ML/AI domains are compatible with their respective method families.
+Cross-pollination is allowed where meaningful (e.g., Bayesian methods for finance, panel regression for ML comparisons).
+
+\section{Topic Examples}
+\label{sec:prompts:topics}
+
+Each domain has 14 specific research topics (\file{prompt-bank/topics.ts}, 415 lines).
+Examples:
+
+\subsection{Market Microstructure Topics}
+
+\begin{enumerate}
+  \item Intraday volatility patterns and market maker behavior
+  \item High-frequency trading impact on price discovery
+  \item Dark pool trading volume and market quality
+  \item Bid-ask spread determinants across market regimes
+  \item Flash crash dynamics and circuit breaker effectiveness
+  \item Limit order book dynamics and information asymmetry
+  \item Market fragmentation effects on execution quality
+  \item Algorithmic trading and systemic risk propagation
+  \item Price impact of large institutional trades
+  \item Cross-market information transmission at the tick level
+  \item Maker-taker fee models and liquidity provision incentives
+  \item Odd-lot trading and retail investor behavior
+  \item Market microstructure during stress events
+  \item Co-location advantages and speed competition in equity markets
+\end{enumerate}
+
+\subsection{ESG \& Sustainable Finance Topics}
+
+\begin{enumerate}
+  \item ESG score divergence across rating agencies
+  \item Green bond pricing premiums and issuer characteristics
+  \item Carbon risk and asset pricing
+  \item ESG momentum and factor investing
+  \item Corporate governance and firm value
+  \item Climate transition risk in credit markets
+  \item Social responsibility and cost of capital
+  \item Environmental regulation and competitive advantage
+  \item ESG integration in portfolio optimization
+  \item Greenwashing detection in corporate disclosures
+  \item Biodiversity risk and financial returns
+  \item Impact investing performance measurement
+  \item Stranded assets and energy transition
+  \item ESG controversies and stock price reactions
+\end{enumerate}
+
+\section{Prompt Format}
+\label{sec:prompts:format}
+
+Each generated prompt follows the structure:
+
+\begin{quote}
+\texttt{Write a research paper on [topic] using [method] methodology.
+The paper should focus on the [domain] domain and provide rigorous empirical evidence using real financial data.}
+\end{quote}
+
+The prompt upgrader (\func{upgradeResearchPrompt}) then expands this into a detailed 400--700 word research specification before it reaches Claude.

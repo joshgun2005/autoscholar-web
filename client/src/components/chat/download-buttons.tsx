@@ -1,22 +1,19 @@
-import { FileText, FileDown, FileType, Loader2, Presentation, Code, BookText } from "lucide-react";
+import { FileText, FileDown, FileType, Loader2, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
 
 interface DownloadButtonsProps {
   question: string;
   answer: string;
   contentRef?: React.RefObject<HTMLElement>;
-  figureUrls?: string[];
 }
 
-export function DownloadButtons({ question, answer, contentRef, figureUrls = [] }: DownloadButtonsProps) {
+export function DownloadButtons({ question, answer, contentRef }: DownloadButtonsProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isGeneratingDOCX, setIsGeneratingDOCX] = useState(false);
   const [isGeneratingHTML, setIsGeneratingHTML] = useState(false);
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
 
   const handleDownloadMarkdown = () => {
     const content = answer;
@@ -24,7 +21,7 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `vibequant-${Date.now()}.md`;
+    a.download = `autoscholar-${Date.now()}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -59,7 +56,7 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `vibequant-${Date.now()}.pdf`;
+      a.download = `autoscholar-${Date.now()}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -104,7 +101,7 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `vibequant-${Date.now()}.docx`;
+      a.download = `autoscholar-${Date.now()}.docx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -149,7 +146,7 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `vibequant-${Date.now()}.html`;
+      a.download = `autoscholar-${Date.now()}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -169,41 +166,6 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
     } finally {
       setIsGeneratingHTML(false);
     }
-  };
-
-  const handleConvertToReport = () => {
-    try {
-      sessionStorage.setItem('reportContent', JSON.stringify({ question, answer, figureUrls }));
-    } catch {
-      try {
-        sessionStorage.setItem('reportContent', JSON.stringify({ question, answer, figureUrls: [] }));
-      } catch { /* noop */ }
-    }
-    setLocation('/report-generator');
-    toast({
-      title: "Redirection...",
-      description: "Ouverture du générateur de rapport corporatif",
-    });
-  };
-
-  const handleConvertToSlides = () => {
-    // Store content in sessionStorage to pass to slides generator page
-    // figureUrls can be large base64 strings — try with them first, fall back without
-    try {
-      sessionStorage.setItem('slidesContent', JSON.stringify({ question, answer, figureUrls }));
-    } catch {
-      try {
-        sessionStorage.setItem('slidesContent', JSON.stringify({ question, answer, figureUrls: [] }));
-      } catch {
-        // sessionStorage unavailable — slides page will handle missing data
-      }
-    }
-    setLocation('/slides-generator');
-
-    toast({
-      title: "Redirection...",
-      description: "Ouverture du générateur de slides",
-    });
   };
 
   return (
@@ -274,26 +236,6 @@ export function DownloadButtons({ question, answer, contentRef, figureUrls = [] 
             <span className="hidden sm:inline">Télécharger HTML</span>
           </>
         )}
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleConvertToReport}
-        className="gap-2 hover:bg-muted transition-colors"
-        disabled={isGeneratingPDF || isGeneratingDOCX || !question || !answer}
-      >
-        <BookText className="w-4 h-4" />
-        <span className="hidden sm:inline">Rapport Corporatif</span>
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleConvertToSlides}
-        className="gap-2 hover:bg-muted transition-colors"
-        disabled={isGeneratingPDF || isGeneratingDOCX || !question || !answer}
-      >
-        <Presentation className="w-4 h-4" />
-        <span className="hidden sm:inline">Convertir en Slides</span>
       </Button>
     </>
   );

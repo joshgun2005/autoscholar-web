@@ -1,0 +1,614 @@
+%% ══════════════════════════════════════════════════════════════
+%%  CHAPTER 3 — AGENTIC ARCHITECTURE DEEP DIVE
+%% ══════════════════════════════════════════════════════════════
+\chapter{Agentic Architecture}
+\label{ch:agents}
+
+\section{Overview of the Multi-Agent System}
+\label{sec:agents:overview}
+
+\autoscholar employs a \emph{prompt-based multi-agent architecture} where a single \gls{llm} instance (\claude) assumes different roles throughout the research pipeline.
+Unlike frameworks where each agent is a separate model instance with its own context, \autoscholar's agents are conceptual personas defined in the system prompt (\file{server/services/claude/systemPrompt.ts}, 1,798 lines).
+Claude switches between these personas based on the current pipeline stage, guided by explicit instructions in the system prompt and reinforced by \governor directives.
+
+The architecture comprises seven distinct agent roles:
+
+\begin{table}[H]
+\centering
+\caption{Agent roles in the \autoscholar system.}
+\label{tab:agent-roles}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Agent} & \textbf{Named After} & \textbf{Role} \\
+\midrule
+\euler & Leonhard Euler & Global orchestrator, academic writer, \LaTeX{} compiler \\
+\gauss & Carl Friedrich Gauss & Literature gap analysis and research question formulation \\
+\turing & Alan Turing & Data collection from APIs, databases, and web sources \\
+\newton & Isaac Newton & Dataset preparation, cleaning, feature engineering \\
+\fisher & Ronald Fisher & Empirical analysis, econometric modeling, figure generation \\
+\governor & --- & Rule-based pipeline supervisor (no LLM) \\
+\popper & Karl Popper & AI-powered peer review and quality validation \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Euler --- The Global Orchestrator}
+\label{sec:agents:euler}
+
+\subsection{Role and Responsibilities}
+
+\euler is the master agent that coordinates the entire research pipeline.
+It is the ``default mode'' of Claude throughout the session and has three primary responsibilities:
+
+\begin{enumerate}
+  \item \textbf{Pipeline orchestration.} \euler decides when to transition between pipeline phases (literature review $\to$ data collection $\to$ analysis $\to$ writing $\to$ compilation).
+  \item \textbf{Academic writing.} \euler authors all paper sections in \LaTeX{}, following the Journal of Finance writing style directive (282 lines of style instructions).
+  \item \textbf{LaTeX compilation.} \euler manages the paper compilation process, including section assembly, BibTeX generation, and iterative error repair.
+\end{enumerate}
+
+\subsection{Decision-Making Process}
+
+\euler's decision-making is governed by the system prompt's 7-step research pipeline:
+
+\begin{algorithm}[H]
+\caption{Euler's Research Pipeline Orchestration}
+\label{alg:euler-pipeline}
+\SetAlgoLined
+\KwIn{Research prompt $p$, available tools $\mathcal{T}$}
+\KwOut{Compiled PDF paper, project ZIP}
+
+\textbf{Step 1: Gap Analysis} (invoke \gauss)\;
+Search academic databases for existing literature\;
+Identify research gaps and formulate hypotheses\;
+
+\textbf{Step 2: Data Collection} (invoke \turing)\;
+Query financial APIs, macroeconomic databases, web sources\;
+Download datasets to the Python environment\;
+
+\textbf{Step 3: Data Preparation} (invoke \newton)\;
+Clean, merge, and transform raw datasets\;
+Construct derived variables and panel structures\;
+
+\textbf{Step 4: Empirical Analysis} (invoke \fisher)\;
+Estimate models, run robustness checks\;
+Generate publication-quality figures and tables\;
+
+\textbf{Step 5: Paper Writing} (invoke \euler writing mode)\;
+Write each section using \texttt{write\_paper\_section} tool\;
+Target 60--90 pages of content\;
+
+\textbf{Step 6: Compilation} (invoke \euler compilation mode)\;
+Compile \LaTeX{} via \texttt{compile\_research\_paper}\;
+If errors, enter repair loop (read $\to$ patch $\to$ recompile)\;
+
+\textbf{Step 7: Packaging}\;
+Create reproducible project ZIP via \texttt{compile\_research\_paper}\;
+\end{algorithm}
+
+\subsection{State Transitions}
+
+\euler does not maintain explicit state---its ``state'' is the conversation history and the accumulated tool results within the 1M-token context window.
+State transitions are implicit: when \euler finishes analyzing literature, it naturally transitions to data collection by invoking \turing-associated tools.
+
+The system prompt provides explicit ordering constraints:
+\begin{quote}
+\itshape
+``The 7-step pipeline is MANDATORY. You cannot write a paper section before collecting data, and you cannot collect data before identifying what data you need through gap analysis.''
+\end{quote}
+
+\subsection{Writing Mode}
+
+When \euler enters writing mode, it follows the Journal of Finance style directive (\file{governor/jfWritingStyle.ts}, 282 lines), which includes:
+
+\begin{itemize}
+  \item Prose identity guidance from editors Campbell Harvey, John Cochrane, Andrei Shleifer, Lubos Pastor, and Craig Holden.
+  \item Official JF formatting rules (100-word abstract limit, Roman numeral tables, unnumbered introduction).
+  \item A banned language registry with 100+ banned words/phrases and tier-based restrictions.
+  \item Section-by-section writing conventions.
+  \item Advanced prose craft techniques (emphatic stress, topic-comment structure).
+  \item AI detection countermeasures (lexical diversity, syntactic variation).
+  \item An 8-pass verification checklist.
+\end{itemize}
+
+\subsection{Tool Access}
+
+\euler has access to all 213 tools, but primarily uses:
+
+\begin{itemize}
+  \item \texttt{write\_paper\_section} --- Write individual paper sections in \LaTeX{}.
+  \item \texttt{compile\_research\_paper} --- Assemble sections and compile to PDF.
+  \item \texttt{read\_latex\_source} / \texttt{inspect\_latex\_errors} / \texttt{patch\_latex} / \texttt{recompile\_latex} --- The 4-step \LaTeX{} repair loop.
+  \item \texttt{generate\_research\_paper} --- Direct single-call paper generation (legacy path).
+\end{itemize}
+
+\section{Gauss --- The Gap Finder}
+\label{sec:agents:gauss}
+
+\subsection{Role and Responsibilities}
+
+\gauss is the literature discovery and gap analysis agent, responsible for identifying what research has been done and---critically---what has \emph{not} been done.
+It is implemented as both a conceptual role in the system prompt and a standalone service (\file{literatureGapFinderService.ts}, 811 lines).
+
+\subsection{The 7-Step Gap Discovery Pipeline}
+
+\gauss implements a sophisticated multi-stage pipeline:
+
+\begin{description}
+  \item[Step 1: Search Strategy Planning.] Claude generates 7 diverse search queries from different angles for the target topic. This ensures broad coverage rather than narrow keyword matching.
+
+  \item[Step 2: Multi-Source Parallel Search.] Queries are dispatched simultaneously to 4 academic databases:
+  \begin{itemize}
+    \item \textbf{Semantic Scholar} --- AI-powered academic search with citation data, retry with exponential backoff on rate limits.
+    \item \textbf{OpenAlex} --- Open bibliographic database with 200M+ works.
+    \item \textbf{arXiv} --- Preprint server for cutting-edge research.
+    \item \textbf{CrossRef} --- DOI registration agency with 130M+ records.
+  \end{itemize}
+  Results are standardized into \texttt{AcademicPaper} objects with auto-generated BibTeX.
+
+  \item[Step 3: Citation Network Expansion.] For high-impact papers ($>$50 citations), \gauss retrieves their references and citing papers via OpenAlex and CrossRef, expanding the literature landscape.
+
+  \item[Step 4: Scientific Structure Extraction.] Claude analyzes each paper to extract:
+  \begin{itemize}
+    \item Methods used (econometric, statistical, ML)
+    \item Datasets employed
+    \item Key findings
+    \item Stated limitations
+    \item Temporal coverage
+  \end{itemize}
+
+  \item[Step 5: Literature Synthesis.] Claude clusters papers into thematic groups and identifies:
+  \begin{itemize}
+    \item Consensus findings
+    \item Contradictions between papers
+    \item Methodological trends
+    \item Temporal evolution of the field
+  \end{itemize}
+
+  \item[Step 6: Gap Detection.] Six specialized gap detection engines run in parallel:
+  \begin{enumerate}
+    \item \textbf{Method gaps} --- Methods used in adjacent fields but not applied to this topic.
+    \item \textbf{Dataset gaps} --- Available datasets that have not been exploited.
+    \item \textbf{Temporal gaps} --- Time periods or recent data not yet studied.
+    \item \textbf{Contradiction gaps} --- Conflicting findings that need resolution.
+    \item \textbf{Limitation gaps} --- Explicitly stated limitations in existing papers.
+    \item \textbf{Cross-disciplinary gaps} --- Insights from other fields applicable here.
+  \end{enumerate}
+
+  \item[Step 7: Gap Validation and Scoring.] Each identified gap is scored for novelty, feasibility, and impact, producing a ranked list of research opportunities.
+\end{description}
+
+\subsection{Robust JSON Parsing}
+
+A critical implementation detail is the 6-strategy JSON parsing system in \func{parseJsonResponse}. Since LLM outputs frequently contain malformed JSON (trailing commas, unescaped quotes, markdown code fences), the parser attempts:
+
+\begin{enumerate}
+  \item Direct \texttt{JSON.parse}.
+  \item Strip markdown code fences and re-parse.
+  \item Extract JSON from mixed text using regex.
+  \item Fix common issues (trailing commas, single quotes).
+  \item Parse partial JSON up to the last valid closing bracket.
+  \item Return a fallback structure with the raw text.
+\end{enumerate}
+
+\subsection{External Tools Used}
+
+\begin{itemize}
+  \item \texttt{academic\_search\_multi} --- Parallel search across all 5 academic databases.
+  \item \texttt{literature\_gap\_finder} --- The full 7-step pipeline.
+  \item \texttt{semantic\_scholar\_search}, \texttt{arxiv\_search}, \texttt{crossref\_lookup}, \texttt{openalex\_search} --- Individual source queries.
+\end{itemize}
+
+\subsection{Failure Modes}
+
+\begin{itemize}
+  \item \textbf{Rate limiting:} Semantic Scholar frequently returns 429s; the system uses exponential backoff (up to 3 retries with 1s, 2s, 4s delays).
+  \item \textbf{Sparse results:} For niche topics, some databases may return zero results. The multi-source approach ensures at least some results are found.
+  \item \textbf{Malformed LLM output:} The 6-strategy JSON parser handles most cases, but extreme malformation can produce degraded gap analysis.
+\end{itemize}
+
+\section{Turing --- The Data Collector}
+\label{sec:agents:turing}
+
+\subsection{Role and Responsibilities}
+
+\turing is responsible for acquiring all raw data needed for the research paper.
+This encompasses financial market data, macroeconomic indicators, academic datasets, and web-sourced information.
+
+\subsection{Data Source Hierarchy}
+
+The system prompt defines a strict data source hierarchy with fallback chains:
+
+\begin{enumerate}
+  \item \textbf{Primary: FMP API} (230+ endpoints) --- Company fundamentals, market quotes, historical prices, technical indicators, SEC filings, insider trading, ESG scores, earnings data, analyst estimates, and more.
+  \item \textbf{Secondary: EODHD} --- Extended historical data back to IPO date, intraday bars, US options chains with Greeks.
+  \item \textbf{Tertiary: FRED} --- 840,000+ macroeconomic time series with unit transformations.
+  \item \textbf{Macro: World Bank / IMF / OECD} --- Free, keyless access to 16,000+ development indicators, WEO data, and 1,475+ OECD dataflows.
+  \item \textbf{Web: Tavily / Firecrawl / Exa} --- When structured APIs lack the required data, web search and extraction fill the gap.
+  \item \textbf{Prediction Markets: Polymarket} --- Implied probabilities for event-driven research.
+\end{enumerate}
+
+\subsection{Data Collection Methods}
+
+\turing uses three classes of data collection tools:
+
+\begin{description}
+  \item[Direct API tools.] 170+ tools that call specific API endpoints (e.g., \texttt{get\_income\_statement}, \texttt{get\_wb\_indicator\_data}, \texttt{get\_fred\_series}). Each returns structured JSON.
+
+  \item[Python data clients.] 5 pre-loaded Python clients (\file{fmp\_client.py}, \file{fred\_client.py}, \file{eodhd\_client.py}, \file{macro\_clients.py}) enable DataFrame-native data acquisition directly in analysis scripts.
+
+  \item[Web data extraction.] The \gls{swdes} (\file{webDatasetService.ts}, 1,431 lines) provides autonomous large-scale web data collection:
+  \begin{enumerate}
+    \item Claude Haiku plans search queries and extraction schemas.
+    \item Parallel multi-source search across Firecrawl, Tavily, and Exa.
+    \item 6-strategy extraction pipeline (schema-based, portal crawling, batch scraping, download links, fallback).
+    \item Schema enforcement and deduplication via Claude Haiku.
+    \item Statistical validation and completeness checks.
+    \item CSV/JSON output with metadata sidecar.
+  \end{enumerate}
+  Capable of collecting up to 100,000 rows from 25+ sources in a single call.
+\end{description}
+
+\subsection{Data Validation}
+
+\turing validates data at collection time:
+\begin{itemize}
+  \item API response schema validation.
+  \item Null/NaN sanitization (especially for EODHD options data).
+  \item Ticker normalization (e.g., ``AAPL'' $\to$ ``AAPL.US'' for EODHD).
+  \item Date format handling (Unix timestamps, ISO strings, datetime objects).
+  \item Result size limiting to prevent context overflow (e.g., historical prices capped at 504 points).
+\end{itemize}
+
+\subsection{Failure Modes}
+
+\begin{itemize}
+  \item \textbf{API key exhaustion:} FMP has daily request limits; the system has no automatic quota management.
+  \item \textbf{Data gaps:} Some tickers or time periods may have missing data; the system relies on Claude to detect and handle gaps.
+  \item \textbf{Timeout:} External API calls use 15--60s timeouts; slow services may cause tool execution failures.
+\end{itemize}
+
+\section{Newton --- The Data Preparer}
+\label{sec:agents:newton}
+
+\subsection{Role and Responsibilities}
+
+\newton transforms raw data into analysis-ready datasets.
+This involves cleaning, merging, feature construction, and quality validation.
+
+\subsection{Data Preparation Pipeline}
+
+\newton operates primarily through the \texttt{execute\_custom\_python\_analysis} tool, running Python code that:
+
+\begin{enumerate}
+  \item \textbf{Cleans raw data.} Handles missing values (forward fill, interpolation, or explicit NaN treatment based on data type), removes duplicates, and corrects data types.
+
+  \item \textbf{Merges datasets.} Aligns time series by date, merges cross-sectional data by identifiers, and handles frequency mismatches (e.g., daily prices with quarterly fundamentals).
+
+  \item \textbf{Constructs derived variables.} Calculates returns (simple, log, excess), volatility measures, momentum indicators, financial ratios, and interaction terms.
+
+  \item \textbf{Builds panel structures.} Constructs entity $\times$ time panels with proper indexing for fixed-effects regression.
+
+  \item \textbf{Validates quality.} Checks for:
+  \begin{itemize}
+    \item Stationarity (ADF/KPSS tests)
+    \item Multicollinearity (VIF)
+    \item Outliers (winsorization at 1\%/99\%)
+    \item Missing data patterns (MCAR/MAR/MNAR)
+    \item Sample size adequacy
+  \end{itemize}
+\end{enumerate}
+
+\subsection{Automatic Error Patching}
+
+The \file{customPython.ts} module applies several automatic fixes to \newton's code before execution:
+
+\begin{itemize}
+  \item \textbf{Deprecated pandas frequencies:} Replaces \texttt{'M'} with \texttt{'ME'}, \texttt{'Q'} with \texttt{'QE'}, etc.
+  \item \textbf{NumPy deprecations:} Replaces \texttt{np.trapz} with \texttt{np.trapezoid}, removes \texttt{np.math} references.
+  \item \textbf{Scikit-learn API changes:} Renames \texttt{n\_iter} to \texttt{max\_iter} for t-SNE.
+  \item \textbf{Matplotlib conflicts:} Patches \texttt{tight\_layout} to handle colorbar conflicts.
+  \item \textbf{Data fabrication detection:} Flags scripts that generate random data without API calls.
+\end{itemize}
+
+\subsection{Failure Modes}
+
+\begin{itemize}
+  \item \textbf{Memory errors:} Large datasets can exceed the Python subprocess memory limit.
+  \item \textbf{Key errors:} Missing columns due to API response schema changes.
+  \item \textbf{Type mismatches:} Mixed types in columns causing downstream computation failures.
+\end{itemize}
+
+\section{Fisher --- The Analysis Engine}
+\label{sec:agents:fisher}
+
+\subsection{Role and Responsibilities}
+
+\fisher conducts all empirical analysis: econometric estimation, statistical inference, machine learning modeling, and figure generation.
+It is the most computationally intensive agent, heavily relying on the Python execution environment.
+
+\subsection{Methodology Tracks}
+
+The system prompt defines four methodology tracks, each with specific model inventories:
+
+\subsubsection{Track 1: Econometrics}
+
+\begin{itemize}
+  \item OLS, WLS, GLS, 2SLS, GMM, panel fixed/random effects
+  \item Time series: ARIMA, VAR, VECM, GARCH(p,q), DCC-GARCH
+  \item Causal inference: difference-in-differences, regression discontinuity, instrumental variables, propensity score matching
+  \item High-frequency: realized volatility, Amihud illiquidity, Kyle's $\lambda$
+\end{itemize}
+
+\subsubsection{Track 2: Statistics}
+
+\begin{itemize}
+  \item Hypothesis testing: t-tests, F-tests, $\chi^2$ tests, Kolmogorov-Smirnov, Mann-Whitney
+  \item Non-parametric: kernel density estimation, bootstrap confidence intervals
+  \item Bayesian: MCMC, variational inference, Bayesian model averaging
+  \item Distribution: quantile regression, extreme value theory, copulas
+\end{itemize}
+
+\subsubsection{Track 3: Machine Learning}
+
+\begin{itemize}
+  \item Supervised: random forests, gradient boosting (XGBoost, LightGBM), SVMs, elastic net
+  \item Unsupervised: K-means, hierarchical clustering, PCA, t-SNE, UMAP
+  \item Validation: cross-validation, grid/random search, learning curves
+  \item Interpretability: SHAP values, partial dependence plots, feature importance
+\end{itemize}
+
+\subsubsection{Track 4: AI/Deep Learning}
+
+\begin{itemize}
+  \item Architectures: LSTM, GRU, Transformer, attention mechanisms
+  \item NLP: sentiment analysis, named entity recognition, topic modeling
+  \item Transfer learning: pre-trained embeddings, fine-tuning
+  \item Evaluation: ablation studies, attention visualization
+\end{itemize}
+
+\subsection{Pre-Built Analysis Services}
+
+In addition to custom Python execution, \fisher has access to 7 dedicated analysis services:
+
+\begin{table}[H]
+\centering
+\caption{Pre-built quantitative analysis services.}
+\label{tab:analysis-services}
+\begin{tabularx}{\textwidth}{lXr}
+\toprule
+\textbf{Service} & \textbf{Capabilities} & \textbf{Lines} \\
+\midrule
+GARCH & GARCH(p,q) estimation, volatility forecasting, persistence metrics & 506 \\
+VaR & Historical, parametric, Monte Carlo, and CVaR/Expected Shortfall & 555 \\
+Monte Carlo & Investment projections with configurable simulations and horizons & 453 \\
+Portfolio Optimizer & Markowitz MVO, efficient frontier, max Sharpe, min volatility & 672 \\
+Risk Metrics & 20+ metrics: Sharpe, Sortino, Calmar, beta, alpha, drawdown & 795 \\
+Options Pricing & Black-Scholes, Greeks, implied volatility (Newton-Raphson) & 589 \\
+Volatility Surface & 3D IV surface construction with cubic interpolation & 520 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Figure Generation}
+
+\fisher generates publication-quality figures following the academic figure style directive (\file{governor/academicFigureStyle.ts}, 429 lines):
+
+\begin{itemize}
+  \item \textbf{Design philosophy:} Monochrome-first, print-first, Tufte data-ink ratio maximization.
+  \item \textbf{Typography:} 9pt serif axis labels, 0.5pt spines, inward ticks.
+  \item \textbf{Color policy:} Black $>$ grayscale $>$ Paul Tol/Okabe-Ito palettes. Rainbow/jet palettes are explicitly prohibited.
+  \item \textbf{Chart conventions:} 16 chart types with specific formatting rules (time-series, event-study CAR, coefficient plots, bar charts, heatmaps, impulse response, RD plots, DiD, fan charts, survival curves).
+  \item \textbf{Export:} 300 DPI PNG for inclusion, PDF with TrueType fonts for publication.
+  \item \textbf{Watermark:} AutoScholar watermark added to all figures.
+\end{itemize}
+
+The matplotlib configuration (\file{figures/matplotlib\_config.py}, 79 lines) sets serif fonts, an 8-color muted palette, inward ticks, minimal chrome, and print-safe grid styling.
+Blank figure detection (\file{figures/figure\_capture.py}, 104 lines) uses two-stage analysis: axes artist inspection followed by pixel-level variance measurement.
+
+\subsection{Failure Modes}
+
+\begin{itemize}
+  \item \textbf{Convergence failures:} GARCH and maximum likelihood models may fail to converge with insufficient or degenerate data.
+  \item \textbf{Singular matrices:} Covariance matrices with perfectly correlated or constant variables.
+  \item \textbf{Memory errors:} Large Monte Carlo simulations or high-dimensional panel datasets.
+  \item \textbf{Module import failures:} Missing Python packages (mitigated by the \texttt{install\_python\_package} tool).
+\end{itemize}
+
+\section{Governor --- The Pipeline Supervisor}
+\label{sec:agents:governor}
+
+\subsection{Architecture}
+
+The \governor is unique among \autoscholar's agents: it is a \textbf{pure rule-based system} with zero LLM calls and zero database access.
+Implemented in \file{governor/governorEngine.ts} (472 lines), it observes tool results in real-time and issues corrective actions when problems are detected.
+
+\subsection{State Model}
+
+The \governor maintains a typed state object (\file{governor/types.ts}, 164 lines):
+
+\begin{lstlisting}[style=typescript, caption=Governor state model (simplified).]
+interface AppState {
+  runId: string;
+  stage: PipelineStage;  // gauss | turing | newton | fisher | euler_write | euler_compile | popper | complete
+  profile: string;       // active prompt profile
+  pythonErrors: number;
+  latexErrors: number;
+  dataIssues: number;
+  retryBudgets: {
+    python: number;   // default: 3
+    latex: number;     // default: 3
+    data: number;      // default: 2
+  };
+  confidence: number;   // 0.0 - 1.0, starts at 1.0
+  figureCount: number;
+  sectionWordCounts: Map<string, number>;
+  warnings: string[];
+  publicationVerdict: PublicationVerdict | null;
+}
+\end{lstlisting}
+
+\subsection{Decision Rules}
+
+The \governor implements 7 decision rules, evaluated in priority order:
+
+\begin{algorithm}[H]
+\caption{Governor Decision Engine}
+\label{alg:governor}
+\SetAlgoLined
+\KwIn{Batch of tool results $B$, current state $S$}
+\KwOut{Governor evaluation (actions, updated state)}
+
+\ForEach{tool result $r \in B$}{
+  \textbf{Rule 1:} Detect pipeline stage from tool name, update $S.\text{stage}$\;
+  \textbf{Rule 2:} If Python error detected:
+    \begin{itemize}
+      \item Parse error pattern (ModuleNotFoundError, MemoryError, KeyError, convergence, singular matrix)
+      \item Generate pattern-specific recovery advice
+      \item Decrement $S.\text{retryBudgets.python}$; if exhausted, emit \texttt{force\_finalize}
+      \item Degrade $S.\text{confidence}$ by 0.15
+      \item Switch to \texttt{debug\_recovery} profile
+    \end{itemize}
+  \textbf{Rule 3:} If data quality issue (empty dataset, missing columns, NaN ratio):
+    \begin{itemize}
+      \item Decrement $S.\text{retryBudgets.data}$
+      \item Switch to \texttt{conservative} profile
+    \end{itemize}
+  \textbf{Rule 4:} If \LaTeX{} compilation failure:
+    \begin{itemize}
+      \item Decrement $S.\text{retryBudgets.latex}$
+      \item Switch to \texttt{latex\_fallback} profile (restricts to basic \LaTeX{})
+    \end{itemize}
+  \textbf{Rule 5:} Track figure count from Python results\;
+  \textbf{Rule 6:} Track section word counts from written sections\;
+  \textbf{Rule 7:} On successful tool execution, recover confidence by 0.05\;
+}
+
+Sort actions by priority: \texttt{force\_finalize} $>$ \texttt{block\_publication} $>$ \texttt{switch\_profile} $>$ \texttt{inject\_directive} $>$ \texttt{continue}\;
+
+\Return{Evaluation with prioritized actions, updated state}\;
+\end{algorithm}
+
+\subsection{Prompt Profiles}
+
+The \governor can switch between 7 prompt profiles (\file{governor/promptProfiles.ts}, 160 lines):
+
+\begin{table}[H]
+\centering
+\caption{Governor prompt profiles.}
+\label{tab:governor-profiles}
+\begin{tabularx}{\textwidth}{lXcc}
+\toprule
+\textbf{Profile} & \textbf{Trigger} & \textbf{Max Figs} & \textbf{Simple?} \\
+\midrule
+\texttt{default} & Initial state & 15 & No \\
+\texttt{debug\_recovery} & Python errors & 8 & Yes \\
+\texttt{conservative} & Data quality issues & 10 & Yes \\
+\texttt{latex\_fallback} & Compilation failures & 10 & No \\
+\texttt{revision\_mode} & Weak Popper review & 12 & No \\
+\texttt{jf\_rewrite} & Writing phase & 15 & No \\
+\texttt{academic\_figures} & Analysis phase & 15 & No \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Publication Verdict}
+
+The \governor issues the final publication verdict based on Popper review scores:
+
+\begin{equation}
+\text{verdict} = \begin{cases}
+  \text{allow} & \text{if score} \geq 80 \\
+  \text{allow\_with\_note} & \text{if } 65 \leq \text{score} < 80 \\
+  \text{revise} & \text{if } 45 \leq \text{score} < 65 \\
+  \text{block} & \text{if score} < 45 \\
+  \text{block\_fatal} & \text{if confidence} < 0.2
+\end{cases}
+\label{eq:pub-verdict}
+\end{equation}
+
+\subsection{Decision Logging}
+
+All \governor decisions are recorded in a \texttt{DecisionLog} (\file{governor/decisionLog.ts}, 68 lines), an in-memory accumulator that:
+\begin{itemize}
+  \item Assigns each decision a UUID and timestamp.
+  \item Records the pipeline stage, trigger, action, reasoning, and confidence delta.
+  \item Supports serialization to/from JSON for database persistence.
+  \item Tracks intervention count (excluding ``continue'' decisions).
+\end{itemize}
+
+\section{Popper --- The Peer Reviewer}
+\label{sec:agents:popper}
+
+\subsection{Role and Responsibilities}
+
+\popper conducts AI-powered academic peer review, named after Karl Popper and his philosophy of falsificationism.
+It evaluates papers across 6 dimensions and issues a publication recommendation.
+
+\subsection{Review Process}
+
+Implemented in \file{peerReviewService.ts} (204 lines):
+
+\begin{enumerate}
+  \item The full paper content (title, abstract, \LaTeX{} sections, BibTeX) is submitted to Claude.
+  \item A detailed system prompt emulates a top-tier finance journal reviewer.
+  \item Claude evaluates 6 dimensions on a 0--100 scale:
+  \begin{itemize}
+    \item \textbf{Originality} --- Novelty of the research question and approach.
+    \item \textbf{Methodology} --- Rigor and appropriateness of methods.
+    \item \textbf{Results} --- Strength and interpretation of findings.
+    \item \textbf{Writing Quality} --- Clarity, organization, and prose quality.
+    \item \textbf{References} --- Completeness and relevance of citations.
+    \item \textbf{Reproducibility} --- Whether the paper can be replicated.
+  \end{itemize}
+  \item An overall score (0--100) and recommendation are produced:
+  \begin{itemize}
+    \item \textbf{Accept} ($\geq 80$)
+    \item \textbf{Minor Revision} ($65$--$79$)
+    \item \textbf{Major Revision} ($45$--$64$)
+    \item \textbf{Reject} ($< 45$)
+  \end{itemize}
+  \item Section-by-section feedback identifies specific strengths and weaknesses.
+\end{enumerate}
+
+\subsection{Configuration}
+
+\popper uses low temperature (0.3) for evaluation consistency and is called via the Anthropic API with the same model (\claude) as the main research pipeline.
+The minimum publication threshold (default 45/100) is configurable via the admin interface.
+
+\subsection{Failure Modes}
+
+\begin{itemize}
+  \item \textbf{Inconsistent scoring:} Despite low temperature, LLM evaluations can vary across runs.
+  \item \textbf{Self-evaluation bias:} The same model generates and reviews the paper, creating potential positive bias.
+  \item \textbf{Superficial review:} With limited context, \popper may miss methodological errors that a domain expert would catch.
+\end{itemize}
+
+\section{Agent Interaction Patterns}
+\label{sec:agents:interaction}
+
+\subsection{Sequential Handoff}
+
+The primary interaction pattern is \textbf{sequential handoff}: agents execute in order (Gauss $\to$ Turing $\to$ Newton $\to$ Fisher $\to$ Euler) with each agent's output becoming the next agent's context.
+Since all agents share a single Claude context window, there is no explicit message passing---the accumulated conversation history serves as the shared memory.
+
+\subsection{Governor Intervention}
+
+The \governor can interrupt the sequential flow by injecting directives.
+For example, if \fisher encounters a Python convergence failure, the \governor may:
+\begin{enumerate}
+  \item Switch the profile to \texttt{debug\_recovery}.
+  \item Inject a directive: ``Simplify analysis. Use basic OLS instead of GMM. Limit figures to 8.''
+  \item If retries are exhausted, emit \texttt{force\_finalize} to skip remaining analysis and proceed to writing.
+\end{enumerate}
+
+\subsection{Popper Feedback Loop}
+
+In revision mode, \popper's feedback can trigger a second pass:
+\begin{enumerate}
+  \item \popper reviews the paper and scores it $<65$.
+  \item The \governor switches to \texttt{revision\_mode} profile.
+  \item \euler re-enters writing mode to address specific criticisms.
+  \item The paper is recompiled and re-reviewed.
+\end{enumerate}
+
+However, the current implementation limits revision to a single pass to prevent infinite loops.

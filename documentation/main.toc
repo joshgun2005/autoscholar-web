@@ -1,0 +1,525 @@
+\babel@toc {english}{}\relax 
+\contentsline {chapter}{List of Acronyms}{19}{section*.5}%
+\contentsline {chapter}{\numberline {1}System Overview}{20}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Introduction}{20}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Motivation and Vision}{20}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Technology Stack}{21}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Scale and Metrics}{21}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Repository Structure}{22}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Key Design Decisions}{24}{section.1.6}%
+\contentsline {section}{\numberline {1.7}Document Organization}{24}{section.1.7}%
+\contentsline {chapter}{\numberline {2}System Architecture}{26}{chapter.2}%
+\contentsline {section}{\numberline {2.1}High-Level Architecture}{26}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Component Map}{27}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Entry Points and Configuration}{27}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Route Handlers}{27}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Service Layer}{27}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}Storage Layer}{28}{subsection.2.2.4}%
+\contentsline {subsection}{\numberline {2.2.5}Shared Types and Schema}{29}{subsection.2.2.5}%
+\contentsline {section}{\numberline {2.3}Data Flow Architecture}{29}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Interactive Chat Flow}{29}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Auto-Paper Pipeline Flow}{30}{subsection.2.3.2}%
+\contentsline {section}{\numberline {2.4}Execution Model}{30}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Streaming SSE Protocol}{30}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Token Management}{30}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Concurrency Model}{31}{subsection.2.4.3}%
+\contentsline {section}{\numberline {2.5}Dependency Graph}{31}{section.2.5}%
+\contentsline {section}{\numberline {2.6}Security Architecture}{32}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Configuration Management}{32}{section.2.7}%
+\contentsline {section}{\numberline {2.8}Deployment Model}{32}{section.2.8}%
+\contentsline {chapter}{\numberline {3}Agentic Architecture}{33}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Overview of the Multi-Agent System}{33}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Euler --- The Global Orchestrator}{33}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Role and Responsibilities}{33}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Decision-Making Process}{34}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}State Transitions}{34}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}Writing Mode}{35}{subsection.3.2.4}%
+\contentsline {subsection}{\numberline {3.2.5}Tool Access}{35}{subsection.3.2.5}%
+\contentsline {section}{\numberline {3.3}Gauss --- The Gap Finder}{35}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Role and Responsibilities}{35}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}The 7-Step Gap Discovery Pipeline}{35}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Robust JSON Parsing}{36}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.4}External Tools Used}{37}{subsection.3.3.4}%
+\contentsline {subsection}{\numberline {3.3.5}Failure Modes}{37}{subsection.3.3.5}%
+\contentsline {section}{\numberline {3.4}Turing --- The Data Collector}{37}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Role and Responsibilities}{37}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Data Source Hierarchy}{37}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Data Collection Methods}{38}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Data Validation}{38}{subsection.3.4.4}%
+\contentsline {subsection}{\numberline {3.4.5}Failure Modes}{38}{subsection.3.4.5}%
+\contentsline {section}{\numberline {3.5}Newton --- The Data Preparer}{39}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Role and Responsibilities}{39}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Data Preparation Pipeline}{39}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Automatic Error Patching}{39}{subsection.3.5.3}%
+\contentsline {subsection}{\numberline {3.5.4}Failure Modes}{40}{subsection.3.5.4}%
+\contentsline {section}{\numberline {3.6}Fisher --- The Analysis Engine}{40}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Role and Responsibilities}{40}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Methodology Tracks}{40}{subsection.3.6.2}%
+\contentsline {subsubsection}{Track 1: Econometrics}{40}{subsubsection*.13}%
+\contentsline {subsubsection}{Track 2: Statistics}{40}{subsubsection*.14}%
+\contentsline {subsubsection}{Track 3: Machine Learning}{40}{subsubsection*.15}%
+\contentsline {subsubsection}{Track 4: AI/Deep Learning}{41}{subsubsection*.16}%
+\contentsline {subsection}{\numberline {3.6.3}Pre-Built Analysis Services}{41}{subsection.3.6.3}%
+\contentsline {subsection}{\numberline {3.6.4}Figure Generation}{41}{subsection.3.6.4}%
+\contentsline {subsection}{\numberline {3.6.5}Failure Modes}{42}{subsection.3.6.5}%
+\contentsline {section}{\numberline {3.7}Governor --- The Pipeline Supervisor}{42}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}Architecture}{42}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}State Model}{42}{subsection.3.7.2}%
+\contentsline {subsection}{\numberline {3.7.3}Decision Rules}{43}{subsection.3.7.3}%
+\contentsline {subsection}{\numberline {3.7.4}Prompt Profiles}{43}{subsection.3.7.4}%
+\contentsline {subsection}{\numberline {3.7.5}Publication Verdict}{44}{subsection.3.7.5}%
+\contentsline {subsection}{\numberline {3.7.6}Decision Logging}{44}{subsection.3.7.6}%
+\contentsline {section}{\numberline {3.8}Popper --- The Peer Reviewer}{44}{section.3.8}%
+\contentsline {subsection}{\numberline {3.8.1}Role and Responsibilities}{44}{subsection.3.8.1}%
+\contentsline {subsection}{\numberline {3.8.2}Review Process}{44}{subsection.3.8.2}%
+\contentsline {subsection}{\numberline {3.8.3}Configuration}{45}{subsection.3.8.3}%
+\contentsline {subsection}{\numberline {3.8.4}Failure Modes}{45}{subsection.3.8.4}%
+\contentsline {section}{\numberline {3.9}Agent Interaction Patterns}{45}{section.3.9}%
+\contentsline {subsection}{\numberline {3.9.1}Sequential Handoff}{45}{subsection.3.9.1}%
+\contentsline {subsection}{\numberline {3.9.2}Governor Intervention}{45}{subsection.3.9.2}%
+\contentsline {subsection}{\numberline {3.9.3}Popper Feedback Loop}{45}{subsection.3.9.3}%
+\contentsline {chapter}{\numberline {4}Paper Generation Pipeline}{47}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Pipeline Overview}{47}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Phase 1: Trigger and Initialization}{47}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Trigger Mechanisms}{47}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Prompt Selection}{47}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Surprise Prompt Generation}{48}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}Pipeline Run Initialization}{48}{subsection.4.2.4}%
+\contentsline {section}{\numberline {4.3}Phase 2: Research Prompt Enhancement}{49}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Research Detection}{49}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Methodology Detection}{49}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Prompt Upgrading}{49}{subsection.4.3.3}%
+\contentsline {section}{\numberline {4.4}Phase 3: Literature Review (Gauss Phase)}{49}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}System Prompt Activation}{49}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Execution Sequence}{50}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Outputs}{50}{subsection.4.4.3}%
+\contentsline {section}{\numberline {4.5}Phase 4: Data Acquisition (Turing Phase)}{50}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Data Strategy}{50}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Typical Tool Sequences}{50}{subsection.4.5.2}%
+\contentsline {subsection}{\numberline {4.5.3}Data Provenance}{51}{subsection.4.5.3}%
+\contentsline {section}{\numberline {4.6}Phase 5: Data Engineering (Newton Phase)}{51}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}Execution}{51}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}Script Management}{51}{subsection.4.6.2}%
+\contentsline {section}{\numberline {4.7}Phase 6: Empirical Analysis (Fisher Phase)}{51}{section.4.7}%
+\contentsline {subsection}{\numberline {4.7.1}Model Selection Logic}{51}{subsection.4.7.1}%
+\contentsline {subsection}{\numberline {4.7.2}Robustness Checks}{52}{subsection.4.7.2}%
+\contentsline {subsection}{\numberline {4.7.3}Figure Generation}{52}{subsection.4.7.3}%
+\contentsline {section}{\numberline {4.8}Phase 7: Paper Writing (Euler Write Phase)}{52}{section.4.8}%
+\contentsline {subsection}{\numberline {4.8.1}Section-by-Section Generation}{52}{subsection.4.8.1}%
+\contentsline {subsubsection}{Empirical Paper Sections}{53}{subsubsection*.19}%
+\contentsline {subsubsection}{Theoretical Paper Sections}{53}{subsubsection*.20}%
+\contentsline {subsection}{\numberline {4.8.2}Writing Style Enforcement}{53}{subsection.4.8.2}%
+\contentsline {subsection}{\numberline {4.8.3}Section Rejection Tracking}{53}{subsection.4.8.3}%
+\contentsline {section}{\numberline {4.9}Phase 8: LaTeX Compilation}{54}{section.4.9}%
+\contentsline {subsection}{\numberline {4.9.1}Section Assembly}{54}{subsection.4.9.1}%
+\contentsline {subsection}{\numberline {4.9.2}Template Selection}{54}{subsection.4.9.2}%
+\contentsline {subsection}{\numberline {4.9.3}Compilation Pipeline}{55}{subsection.4.9.3}%
+\contentsline {subsection}{\numberline {4.9.4}LaTeX Sanitization}{55}{subsection.4.9.4}%
+\contentsline {subsection}{\numberline {4.9.5}Iterative Repair}{55}{subsection.4.9.5}%
+\contentsline {section}{\numberline {4.10}Phase 9: Packaging}{56}{section.4.10}%
+\contentsline {section}{\numberline {4.11}Phase 10: Validation (Popper Phase)}{56}{section.4.11}%
+\contentsline {subsection}{\numberline {4.11.1}Review Trigger}{57}{subsection.4.11.1}%
+\contentsline {subsection}{\numberline {4.11.2}Publication Decision}{57}{subsection.4.11.2}%
+\contentsline {section}{\numberline {4.12}Phase 11: Publication}{57}{section.4.12}%
+\contentsline {subsection}{\numberline {4.12.1}ASID Assignment}{57}{subsection.4.12.1}%
+\contentsline {subsection}{\numberline {4.12.2}Storage}{57}{subsection.4.12.2}%
+\contentsline {subsection}{\numberline {4.12.3}Domain Classification}{58}{subsection.4.12.3}%
+\contentsline {section}{\numberline {4.13}Checkpoint and Resume System}{58}{section.4.13}%
+\contentsline {subsection}{\numberline {4.13.1}Motivation}{58}{subsection.4.13.1}%
+\contentsline {subsection}{\numberline {4.13.2}Checkpoint Structure}{58}{subsection.4.13.2}%
+\contentsline {subsection}{\numberline {4.13.3}Checkpoint Lifecycle}{58}{subsection.4.13.3}%
+\contentsline {section}{\numberline {4.14}Pipeline Metrics}{59}{section.4.14}%
+\contentsline {chapter}{\numberline {5}Autonomous Journal System}{60}{chapter.5}%
+\contentsline {section}{\numberline {5.1}What Makes It a Journal}{60}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Scheduling Architecture}{60}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}The AutoPaper Scheduler}{60}{subsection.5.2.1}%
+\contentsline {subsubsection}{Configuration}{60}{subsubsection*.22}%
+\contentsline {subsubsection}{Lifecycle States}{61}{subsubsection*.24}%
+\contentsline {subsubsection}{Parallel Execution}{61}{subsubsection*.26}%
+\contentsline {subsection}{\numberline {5.2.2}Heartbeat Monitoring}{61}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Admin Controls}{62}{subsection.5.2.3}%
+\contentsline {section}{\numberline {5.3}Quality Control}{62}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Multi-Layer Quality Assurance}{62}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Quality Metrics}{62}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}Publication Threshold}{63}{subsection.5.3.3}%
+\contentsline {section}{\numberline {5.4}Publication Mechanics}{63}{section.5.4}%
+\contentsline {subsection}{\numberline {5.4.1}ASID System}{63}{subsection.5.4.1}%
+\contentsline {subsubsection}{Format}{63}{subsubsection*.27}%
+\contentsline {subsubsection}{Generation}{63}{subsubsection*.28}%
+\contentsline {subsubsection}{Resolution}{63}{subsubsection*.29}%
+\contentsline {subsection}{\numberline {5.4.2}Paper Storage}{64}{subsection.5.4.2}%
+\contentsline {subsection}{\numberline {5.4.3}Repository Browser}{64}{subsection.5.4.3}%
+\contentsline {section}{\numberline {5.5}Journal Analytics}{64}{section.5.5}%
+\contentsline {section}{\numberline {5.6}Continuous Generation Model}{65}{section.5.6}%
+\contentsline {section}{\numberline {5.7}Comparison with Traditional Journals}{65}{section.5.7}%
+\contentsline {chapter}{\numberline {6}Data and Storage Architecture}{66}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Overview}{66}{section.6.1}%
+\contentsline {section}{\numberline {6.2}External Data Sources}{66}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}Financial Market Data}{66}{subsection.6.2.1}%
+\contentsline {subsubsection}{Financial Modeling Prep (FMP)}{66}{subsubsection*.31}%
+\contentsline {subsubsection}{EODHD (End of Day Historical Data)}{67}{subsubsection*.32}%
+\contentsline {subsubsection}{Financial Data API (Real Options)}{67}{subsubsection*.33}%
+\contentsline {subsection}{\numberline {6.2.2}Macroeconomic Data}{68}{subsection.6.2.2}%
+\contentsline {subsubsection}{FRED (Federal Reserve Economic Data)}{68}{subsubsection*.34}%
+\contentsline {subsubsection}{World Bank}{68}{subsubsection*.35}%
+\contentsline {subsubsection}{IMF (International Monetary Fund)}{68}{subsubsection*.36}%
+\contentsline {subsubsection}{OECD}{68}{subsubsection*.37}%
+\contentsline {subsection}{\numberline {6.2.3}Academic Data Sources}{68}{subsection.6.2.3}%
+\contentsline {subsection}{\numberline {6.2.4}Web Intelligence}{69}{subsection.6.2.4}%
+\contentsline {subsection}{\numberline {6.2.5}Prediction Markets}{69}{subsection.6.2.5}%
+\contentsline {section}{\numberline {6.3}Transient Computational Data}{70}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Python Execution Environment}{70}{subsection.6.3.1}%
+\contentsline {subsubsection}{Pre-Loaded API Clients}{70}{subsubsection*.39}%
+\contentsline {subsubsection}{Embedded Databases}{70}{subsubsection*.41}%
+\contentsline {subsubsection}{Data Flow Through Python}{70}{subsubsection*.43}%
+\contentsline {subsection}{\numberline {6.3.2}Generated Data Files}{71}{subsection.6.3.2}%
+\contentsline {section}{\numberline {6.4}Persistent Storage}{71}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Database Schema}{71}{subsection.6.4.1}%
+\contentsline {subsubsection}{User and Authentication Tables}{71}{subsubsection*.44}%
+\contentsline {subsubsection}{Content Tables}{71}{subsubsection*.45}%
+\contentsline {subsubsection}{Research Output Tables}{71}{subsubsection*.46}%
+\contentsline {subsubsection}{Pipeline Management Tables}{72}{subsubsection*.47}%
+\contentsline {subsubsection}{Analytics Tables}{72}{subsubsection*.48}%
+\contentsline {subsubsection}{Administrative Tables}{72}{subsubsection*.49}%
+\contentsline {subsection}{\numberline {6.4.2}Storage Layer Implementation}{72}{subsection.6.4.2}%
+\contentsline {subsection}{\numberline {6.4.3}Database Migrations}{73}{subsection.6.4.3}%
+\contentsline {section}{\numberline {6.5}File System Usage}{73}{section.6.5}%
+\contentsline {section}{\numberline {6.6}Data Lifecycle}{73}{section.6.6}%
+\contentsline {chapter}{\numberline {7}Modeling and Scientific Computation Layer}{74}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Overview}{74}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Python Execution Architecture}{74}{section.7.2}%
+\contentsline {subsection}{\numberline {7.2.1}The TypeScript--Python Bridge Pattern}{74}{subsection.7.2.1}%
+\contentsline {subsection}{\numberline {7.2.2}Custom Python Executor}{75}{subsection.7.2.2}%
+\contentsline {subsubsection}{Pre-Installed Libraries}{75}{subsubsection*.51}%
+\contentsline {subsubsection}{Utility Functions}{75}{subsubsection*.52}%
+\contentsline {subsubsection}{Automatic Error Patching}{75}{subsubsection*.53}%
+\contentsline {section}{\numberline {7.3}Dedicated Analysis Services}{76}{section.7.3}%
+\contentsline {subsection}{\numberline {7.3.1}GARCH Volatility Modeling}{76}{subsection.7.3.1}%
+\contentsline {subsubsection}{Implementation Details}{76}{subsubsection*.55}%
+\contentsline {subsubsection}{Validation}{76}{subsubsection*.56}%
+\contentsline {subsection}{\numberline {7.3.2}Value at Risk (VaR)}{77}{subsection.7.3.2}%
+\contentsline {subsubsection}{Historical VaR}{77}{subsubsection*.57}%
+\contentsline {subsubsection}{Parametric VaR}{77}{subsubsection*.58}%
+\contentsline {subsubsection}{Monte Carlo VaR}{77}{subsubsection*.59}%
+\contentsline {subsubsection}{Conditional VaR (Expected Shortfall)}{77}{subsubsection*.60}%
+\contentsline {subsubsection}{Outputs}{77}{subsubsection*.61}%
+\contentsline {subsection}{\numberline {7.3.3}Monte Carlo Simulation}{77}{subsection.7.3.3}%
+\contentsline {subsubsection}{Features}{77}{subsubsection*.62}%
+\contentsline {subsection}{\numberline {7.3.4}Portfolio Optimization}{78}{subsection.7.3.4}%
+\contentsline {subsubsection}{Outputs}{78}{subsubsection*.63}%
+\contentsline {subsection}{\numberline {7.3.5}Risk Metrics}{78}{subsection.7.3.5}%
+\contentsline {subsection}{\numberline {7.3.6}Options Pricing}{79}{subsection.7.3.6}%
+\contentsline {subsubsection}{Greeks}{79}{subsubsection*.64}%
+\contentsline {subsubsection}{Implied Volatility}{79}{subsubsection*.65}%
+\contentsline {subsection}{\numberline {7.3.7}Volatility Surface}{79}{subsection.7.3.7}%
+\contentsline {section}{\numberline {7.4}Scientific Computing Libraries}{79}{section.7.4}%
+\contentsline {subsection}{\numberline {7.4.1}Econometric Modeling with Statsmodels}{79}{subsection.7.4.1}%
+\contentsline {subsection}{\numberline {7.4.2}Machine Learning with Scikit-learn}{80}{subsection.7.4.2}%
+\contentsline {subsection}{\numberline {7.4.3}Gradient Boosting with XGBoost/LightGBM}{80}{subsection.7.4.3}%
+\contentsline {subsection}{\numberline {7.4.4}Convex Optimization with CVXPY}{80}{subsection.7.4.4}%
+\contentsline {subsection}{\numberline {7.4.5}Volatility Modeling with ARCH}{80}{subsection.7.4.5}%
+\contentsline {section}{\numberline {7.5}Figure Generation Pipeline}{80}{section.7.5}%
+\contentsline {subsection}{\numberline {7.5.1}Style Configuration}{80}{subsection.7.5.1}%
+\contentsline {subsection}{\numberline {7.5.2}Figure Capture}{81}{subsection.7.5.2}%
+\contentsline {subsection}{\numberline {7.5.3}Vision Analysis}{81}{subsection.7.5.3}%
+\contentsline {section}{\numberline {7.6}Script Management and Repair}{81}{section.7.6}%
+\contentsline {subsection}{\numberline {7.6.1}Script Lifecycle}{81}{subsection.7.6.1}%
+\contentsline {subsection}{\numberline {7.6.2}Diff Engine}{82}{subsection.7.6.2}%
+\contentsline {subsection}{\numberline {7.6.3}Structured Error Parsing}{82}{subsection.7.6.3}%
+\contentsline {chapter}{\numberline {8}Paper Generation Engine}{83}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Overview}{83}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Text Generation}{83}{section.8.2}%
+\contentsline {subsection}{\numberline {8.2.1}Section-by-Section Writing}{83}{subsection.8.2.1}%
+\contentsline {subsubsection}{Empirical Paper Sections}{83}{subsubsection*.66}%
+\contentsline {subsubsection}{Section Rejection and Retry}{84}{subsubsection*.67}%
+\contentsline {subsection}{\numberline {8.2.2}Citation Handling}{84}{subsection.8.2.2}%
+\contentsline {subsection}{\numberline {8.2.3}Figure Integration}{84}{subsection.8.2.3}%
+\contentsline {section}{\numberline {8.3}LaTeX Templates}{84}{section.8.3}%
+\contentsline {subsection}{\numberline {8.3.1}Common Preamble}{84}{subsection.8.3.1}%
+\contentsline {subsection}{\numberline {8.3.2}Article Template}{85}{subsection.8.3.2}%
+\contentsline {subsection}{\numberline {8.3.3}Working Paper Template}{85}{subsection.8.3.3}%
+\contentsline {subsection}{\numberline {8.3.4}Econometrica Template}{85}{subsection.8.3.4}%
+\contentsline {section}{\numberline {8.4}Content Sanitization}{85}{section.8.4}%
+\contentsline {subsection}{\numberline {8.4.1}Special Character Escaping}{86}{subsection.8.4.1}%
+\contentsline {subsection}{\numberline {8.4.2}Table Auto-Fitting}{86}{subsection.8.4.2}%
+\contentsline {subsection}{\numberline {8.4.3}Blank Figure Detection}{86}{subsection.8.4.3}%
+\contentsline {section}{\numberline {8.5}Compilation Pipeline}{86}{section.8.5}%
+\contentsline {subsection}{\numberline {8.5.1}Binary Discovery}{86}{subsection.8.5.1}%
+\contentsline {subsection}{\numberline {8.5.2}Multi-Pass Compilation}{87}{subsection.8.5.2}%
+\contentsline {subsection}{\numberline {8.5.3}Error Classification}{87}{subsection.8.5.3}%
+\contentsline {subsection}{\numberline {8.5.4}Iterative Repair Loop}{87}{subsection.8.5.4}%
+\contentsline {section}{\numberline {8.6}Document Export}{88}{section.8.6}%
+\contentsline {subsection}{\numberline {8.6.1}PDF via Puppeteer}{88}{subsection.8.6.1}%
+\contentsline {subsection}{\numberline {8.6.2}DOCX via Pandoc}{88}{subsection.8.6.2}%
+\contentsline {subsection}{\numberline {8.6.3}HTML Export}{88}{subsection.8.6.3}%
+\contentsline {section}{\numberline {8.7}Reproducible Project Packaging}{89}{section.8.7}%
+\contentsline {subsection}{\numberline {8.7.1}Directory Structure}{89}{subsection.8.7.1}%
+\contentsline {subsection}{\numberline {8.7.2}Automatic Dependency Detection}{89}{subsection.8.7.2}%
+\contentsline {subsection}{\numberline {8.7.3}Master Pipeline Script}{89}{subsection.8.7.3}%
+\contentsline {chapter}{\numberline {9}Memory and State System}{91}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Overview}{91}{section.9.1}%
+\contentsline {section}{\numberline {9.2}Context Window as Working Memory}{91}{section.9.2}%
+\contentsline {subsection}{\numberline {9.2.1}The 1M Token Context}{91}{subsection.9.2.1}%
+\contentsline {subsection}{\numberline {9.2.2}Token Budget Management}{91}{subsection.9.2.2}%
+\contentsline {subsection}{\numberline {9.2.3}Implications}{92}{subsection.9.2.3}%
+\contentsline {section}{\numberline {9.3}Session State}{92}{section.9.3}%
+\contentsline {subsection}{\numberline {9.3.1}Conversation Sessions}{92}{subsection.9.3.1}%
+\contentsline {subsection}{\numberline {9.3.2}Real-Time State Broadcasting}{92}{subsection.9.3.2}%
+\contentsline {subsection}{\numberline {9.3.3}Session Persistence}{92}{subsection.9.3.3}%
+\contentsline {section}{\numberline {9.4}Pipeline State}{93}{section.9.4}%
+\contentsline {subsection}{\numberline {9.4.1}Governor State}{93}{subsection.9.4.1}%
+\contentsline {subsection}{\numberline {9.4.2}Decision Log}{93}{subsection.9.4.2}%
+\contentsline {subsection}{\numberline {9.4.3}Checkpoint State}{94}{subsection.9.4.3}%
+\contentsline {section}{\numberline {9.5}Cross-Paper Memory}{94}{section.9.5}%
+\contentsline {subsection}{\numberline {9.5.1}Current State: No Cross-Paper Memory}{94}{subsection.9.5.1}%
+\contentsline {subsection}{\numberline {9.5.2}Implications}{94}{subsection.9.5.2}%
+\contentsline {subsection}{\numberline {9.5.3}Implicit Memory via Prompt Bank}{95}{subsection.9.5.3}%
+\contentsline {section}{\numberline {9.6}Platform State}{95}{section.9.6}%
+\contentsline {subsection}{\numberline {9.6.1}Site Configuration}{95}{subsection.9.6.1}%
+\contentsline {subsection}{\numberline {9.6.2}Analytics Accumulation}{95}{subsection.9.6.2}%
+\contentsline {subsection}{\numberline {9.6.3}Published Paper Corpus}{95}{subsection.9.6.3}%
+\contentsline {section}{\numberline {9.7}State Consistency and Recovery}{96}{section.9.7}%
+\contentsline {subsection}{\numberline {9.7.1}Crash Recovery}{96}{subsection.9.7.1}%
+\contentsline {subsection}{\numberline {9.7.2}Data Integrity}{96}{subsection.9.7.2}%
+\contentsline {chapter}{\numberline {10}Failure Handling and Recovery}{97}{chapter.10}%
+\contentsline {section}{\numberline {10.1}Overview}{97}{section.10.1}%
+\contentsline {section}{\numberline {10.2}Claude API Failure Handling}{97}{section.10.2}%
+\contentsline {subsection}{\numberline {10.2.1}Retry with Exponential Backoff}{97}{subsection.10.2.1}%
+\contentsline {subsection}{\numberline {10.2.2}Transient Error Categories}{98}{subsection.10.2.2}%
+\contentsline {subsection}{\numberline {10.2.3}Token Overflow Prevention}{98}{subsection.10.2.3}%
+\contentsline {section}{\numberline {10.3}Python Execution Failure Handling}{98}{section.10.3}%
+\contentsline {subsection}{\numberline {10.3.1}Pre-Execution Patching}{98}{subsection.10.3.1}%
+\contentsline {subsection}{\numberline {10.3.2}Error Classification}{98}{subsection.10.3.2}%
+\contentsline {subsection}{\numberline {10.3.3}Script Repair Loop}{99}{subsection.10.3.3}%
+\contentsline {subsection}{\numberline {10.3.4}Retry Budget System}{99}{subsection.10.3.4}%
+\contentsline {section}{\numberline {10.4}LaTeX Compilation Failure Handling}{99}{section.10.4}%
+\contentsline {subsection}{\numberline {10.4.1}Error Detection}{99}{subsection.10.4.1}%
+\contentsline {subsection}{\numberline {10.4.2}Compilation Fallback Strategies}{100}{subsection.10.4.2}%
+\contentsline {subsection}{\numberline {10.4.3}Repair Budget}{100}{subsection.10.4.3}%
+\contentsline {section}{\numberline {10.5}External API Failure Handling}{100}{section.10.5}%
+\contentsline {subsection}{\numberline {10.5.1}Rate Limiting}{100}{subsection.10.5.1}%
+\contentsline {subsection}{\numberline {10.5.2}Data Source Fallback Chains}{100}{subsection.10.5.2}%
+\contentsline {subsection}{\numberline {10.5.3}Timeout Configuration}{101}{subsection.10.5.3}%
+\contentsline {section}{\numberline {10.6}Pipeline-Level Failure Handling}{101}{section.10.6}%
+\contentsline {subsection}{\numberline {10.6.1}Heartbeat Monitoring}{101}{subsection.10.6.1}%
+\contentsline {subsection}{\numberline {10.6.2}Consecutive Failure Detection}{101}{subsection.10.6.2}%
+\contentsline {subsection}{\numberline {10.6.3}Server Restart Recovery}{101}{subsection.10.6.3}%
+\contentsline {subsection}{\numberline {10.6.4}Stale Cleanup}{102}{subsection.10.6.4}%
+\contentsline {section}{\numberline {10.7}LLM Output Failure Handling}{102}{section.10.7}%
+\contentsline {subsection}{\numberline {10.7.1}Malformed JSON}{102}{subsection.10.7.1}%
+\contentsline {subsection}{\numberline {10.7.2}Tool Call Failures}{102}{subsection.10.7.2}%
+\contentsline {subsection}{\numberline {10.7.3}Infinite Loop Prevention}{102}{subsection.10.7.3}%
+\contentsline {section}{\numberline {10.8}Error Reporting and Observability}{103}{section.10.8}%
+\contentsline {subsection}{\numberline {10.8.1}Logging}{103}{subsection.10.8.1}%
+\contentsline {subsection}{\numberline {10.8.2}SSE Error Events}{103}{subsection.10.8.2}%
+\contentsline {subsection}{\numberline {10.8.3}Admin Dashboard}{103}{subsection.10.8.3}%
+\contentsline {chapter}{\numberline {11}Performance and Scalability}{104}{chapter.11}%
+\contentsline {section}{\numberline {11.1}Overview}{104}{section.11.1}%
+\contentsline {section}{\numberline {11.2}Latency Analysis}{104}{section.11.2}%
+\contentsline {subsection}{\numberline {11.2.1}End-to-End Pipeline Latency}{104}{subsection.11.2.1}%
+\contentsline {subsection}{\numberline {11.2.2}Claude API Latency}{104}{subsection.11.2.2}%
+\contentsline {subsection}{\numberline {11.2.3}Python Execution Latency}{105}{subsection.11.2.3}%
+\contentsline {subsection}{\numberline {11.2.4}External API Latency}{105}{subsection.11.2.4}%
+\contentsline {section}{\numberline {11.3}Throughput}{105}{section.11.3}%
+\contentsline {subsection}{\numberline {11.3.1}Paper Generation Rate}{105}{subsection.11.3.1}%
+\contentsline {subsection}{\numberline {11.3.2}Bottlenecks}{106}{subsection.11.3.2}%
+\contentsline {section}{\numberline {11.4}Memory Usage}{106}{section.11.4}%
+\contentsline {subsection}{\numberline {11.4.1}Node.js Process}{106}{subsection.11.4.1}%
+\contentsline {subsection}{\numberline {11.4.2}Python Subprocesses}{106}{subsection.11.4.2}%
+\contentsline {subsection}{\numberline {11.4.3}Database}{106}{subsection.11.4.3}%
+\contentsline {section}{\numberline {11.5}Compute Constraints}{106}{section.11.5}%
+\contentsline {subsection}{\numberline {11.5.1}API Cost Model}{106}{subsection.11.5.1}%
+\contentsline {subsection}{\numberline {11.5.2}External API Costs}{107}{subsection.11.5.2}%
+\contentsline {section}{\numberline {11.6}Scalability Assessment}{107}{section.11.6}%
+\contentsline {subsection}{\numberline {11.6.1}Horizontal Scaling Limitations}{107}{subsection.11.6.1}%
+\contentsline {subsection}{\numberline {11.6.2}Vertical Scaling Opportunities}{107}{subsection.11.6.2}%
+\contentsline {subsection}{\numberline {11.6.3}Scaling Recommendations}{108}{subsection.11.6.3}%
+\contentsline {section}{\numberline {11.7}Monitoring and Observability}{108}{section.11.7}%
+\contentsline {subsection}{\numberline {11.7.1}Built-in Metrics}{108}{subsection.11.7.1}%
+\contentsline {subsection}{\numberline {11.7.2}Metrics Access}{108}{subsection.11.7.2}%
+\contentsline {chapter}{\numberline {12}Design Patterns and Architecture Philosophy}{109}{chapter.12}%
+\contentsline {section}{\numberline {12.1}Overview}{109}{section.12.1}%
+\contentsline {section}{\numberline {12.2}The Monolithic Streaming Loop}{109}{section.12.2}%
+\contentsline {subsection}{\numberline {12.2.1}Pattern Description}{109}{subsection.12.2.1}%
+\contentsline {subsection}{\numberline {12.2.2}Rationale}{109}{subsection.12.2.2}%
+\contentsline {subsection}{\numberline {12.2.3}Trade-offs}{109}{subsection.12.2.3}%
+\contentsline {section}{\numberline {12.3}Prompt-Based Agent Architecture}{110}{section.12.3}%
+\contentsline {subsection}{\numberline {12.3.1}Pattern Description}{110}{subsection.12.3.1}%
+\contentsline {subsection}{\numberline {12.3.2}Rationale}{110}{subsection.12.3.2}%
+\contentsline {subsection}{\numberline {12.3.3}Trade-offs}{110}{subsection.12.3.3}%
+\contentsline {section}{\numberline {12.4}The TypeScript--Python Bridge}{110}{section.12.4}%
+\contentsline {subsection}{\numberline {12.4.1}Pattern Description}{110}{subsection.12.4.1}%
+\contentsline {subsection}{\numberline {12.4.2}Rationale}{110}{subsection.12.4.2}%
+\contentsline {subsection}{\numberline {12.4.3}Trade-offs}{111}{subsection.12.4.3}%
+\contentsline {section}{\numberline {12.5}The Governor as a Pure Rule Engine}{111}{section.12.5}%
+\contentsline {subsection}{\numberline {12.5.1}Pattern Description}{111}{subsection.12.5.1}%
+\contentsline {subsection}{\numberline {12.5.2}Rationale}{111}{subsection.12.5.2}%
+\contentsline {subsection}{\numberline {12.5.3}Trade-offs}{111}{subsection.12.5.3}%
+\contentsline {section}{\numberline {12.6}Tool-Rich Agent Paradigm}{111}{section.12.6}%
+\contentsline {subsection}{\numberline {12.6.1}Pattern Description}{111}{subsection.12.6.1}%
+\contentsline {subsection}{\numberline {12.6.2}Rationale}{111}{subsection.12.6.2}%
+\contentsline {subsection}{\numberline {12.6.3}Trade-offs}{112}{subsection.12.6.3}%
+\contentsline {section}{\numberline {12.7}Barrel Re-Export Pattern}{112}{section.12.7}%
+\contentsline {subsection}{\numberline {12.7.1}Pattern Description}{112}{subsection.12.7.1}%
+\contentsline {subsection}{\numberline {12.7.2}Rationale}{112}{subsection.12.7.2}%
+\contentsline {section}{\numberline {12.8}Defensive Sanitization}{112}{section.12.8}%
+\contentsline {subsection}{\numberline {12.8.1}Pattern Description}{112}{subsection.12.8.1}%
+\contentsline {subsection}{\numberline {12.8.2}Rationale}{113}{subsection.12.8.2}%
+\contentsline {section}{\numberline {12.9}Implicit Convention Enforcement}{113}{section.12.9}%
+\contentsline {subsection}{\numberline {12.9.1}Pattern Description}{113}{subsection.12.9.1}%
+\contentsline {subsection}{\numberline {12.9.2}Rationale}{113}{subsection.12.9.2}%
+\contentsline {subsection}{\numberline {12.9.3}Trade-offs}{113}{subsection.12.9.3}%
+\contentsline {section}{\numberline {12.10}Design Philosophy Summary}{113}{section.12.10}%
+\contentsline {chapter}{\numberline {13}Critical Evaluation and Weaknesses}{115}{chapter.13}%
+\contentsline {section}{\numberline {13.1}Scientific Rigor}{115}{section.13.1}%
+\contentsline {subsection}{\numberline {13.1.1}Identification Strategy}{115}{subsection.13.1.1}%
+\contentsline {subsection}{\numberline {13.1.2}Statistical Inference}{115}{subsection.13.1.2}%
+\contentsline {subsection}{\numberline {13.1.3}Data Quality}{115}{subsection.13.1.3}%
+\contentsline {section}{\numberline {13.2}Reproducibility}{116}{section.13.2}%
+\contentsline {subsection}{\numberline {13.2.1}Strengths}{116}{subsection.13.2.1}%
+\contentsline {subsection}{\numberline {13.2.2}Weaknesses}{116}{subsection.13.2.2}%
+\contentsline {section}{\numberline {13.3}Robustness}{116}{section.13.3}%
+\contentsline {subsection}{\numberline {13.3.1}Single Point of Failure: Claude API}{116}{subsection.13.3.1}%
+\contentsline {subsection}{\numberline {13.3.2}Monolithic Architecture}{116}{subsection.13.3.2}%
+\contentsline {subsection}{\numberline {13.3.3}File System Dependency}{117}{subsection.13.3.3}%
+\contentsline {section}{\numberline {13.4}Quality Control Limitations}{117}{section.13.4}%
+\contentsline {subsection}{\numberline {13.4.1}Self-Review Bias}{117}{subsection.13.4.1}%
+\contentsline {subsection}{\numberline {13.4.2}Low Rejection Threshold}{117}{subsection.13.4.2}%
+\contentsline {subsection}{\numberline {13.4.3}No Human Review}{117}{subsection.13.4.3}%
+\contentsline {section}{\numberline {13.5}Security Concerns}{117}{section.13.5}%
+\contentsline {subsection}{\numberline {13.5.1}Python Sandbox}{117}{subsection.13.5.1}%
+\contentsline {subsection}{\numberline {13.5.2}Admin Authentication}{118}{subsection.13.5.2}%
+\contentsline {subsection}{\numberline {13.5.3}API Key Storage}{118}{subsection.13.5.3}%
+\contentsline {section}{\numberline {13.6}Scalability Weaknesses}{118}{section.13.6}%
+\contentsline {section}{\numberline {13.7}Content Quality Weaknesses}{118}{section.13.7}%
+\contentsline {subsection}{\numberline {13.7.1}Hallucination Risk}{118}{subsection.13.7.1}%
+\contentsline {subsection}{\numberline {13.7.2}Template Repetitiveness}{119}{subsection.13.7.2}%
+\contentsline {subsection}{\numberline {13.7.3}Depth vs. Breadth}{119}{subsection.13.7.3}%
+\contentsline {section}{\numberline {13.8}Ethical Considerations}{119}{section.13.8}%
+\contentsline {chapter}{\numberline {14}Proposed Improvements}{120}{chapter.14}%
+\contentsline {section}{\numberline {14.1}AutoScholar v2: Deep Search Architecture}{120}{section.14.1}%
+\contentsline {subsection}{\numberline {14.1.1}Motivation}{120}{subsection.14.1.1}%
+\contentsline {subsection}{\numberline {14.1.2}Proposed Architecture}{120}{subsection.14.1.2}%
+\contentsline {subsection}{\numberline {14.1.3}Benefits}{121}{subsection.14.1.3}%
+\contentsline {section}{\numberline {14.2}Journal++ Model}{121}{section.14.2}%
+\contentsline {subsection}{\numberline {14.2.1}Multi-Tier Publication}{121}{subsection.14.2.1}%
+\contentsline {subsection}{\numberline {14.2.2}Multi-Pass Review}{121}{subsection.14.2.2}%
+\contentsline {subsection}{\numberline {14.2.3}Citation Network}{121}{subsection.14.2.3}%
+\contentsline {subsection}{\numberline {14.2.4}Revision Workflow}{122}{subsection.14.2.4}%
+\contentsline {section}{\numberline {14.3}Better Memory System}{122}{section.14.3}%
+\contentsline {subsection}{\numberline {14.3.1}Cross-Paper Knowledge Base}{122}{subsection.14.3.1}%
+\contentsline {subsection}{\numberline {14.3.2}Implementation}{122}{subsection.14.3.2}%
+\contentsline {section}{\numberline {14.4}True Novelty Detection}{122}{section.14.4}%
+\contentsline {subsection}{\numberline {14.4.1}Current Limitation}{123}{subsection.14.4.1}%
+\contentsline {subsection}{\numberline {14.4.2}Proposed System}{123}{subsection.14.4.2}%
+\contentsline {subsection}{\numberline {14.4.3}Technical Requirements}{123}{subsection.14.4.3}%
+\contentsline {section}{\numberline {14.5}Dataset Versioning}{123}{section.14.5}%
+\contentsline {subsection}{\numberline {14.5.1}Problem}{123}{subsection.14.5.1}%
+\contentsline {subsection}{\numberline {14.5.2}Proposed System}{123}{subsection.14.5.2}%
+\contentsline {section}{\numberline {14.6}Reproducibility Layer}{124}{section.14.6}%
+\contentsline {subsection}{\numberline {14.6.1}Enhanced Project Archives}{124}{subsection.14.6.1}%
+\contentsline {subsection}{\numberline {14.6.2}Verification Service}{124}{subsection.14.6.2}%
+\contentsline {section}{\numberline {14.7}Additional Improvements}{124}{section.14.7}%
+\contentsline {subsection}{\numberline {14.7.1}Governor v2: Hybrid Rule-LLM}{124}{subsection.14.7.1}%
+\contentsline {subsection}{\numberline {14.7.2}Interactive Revision Mode}{124}{subsection.14.7.2}%
+\contentsline {subsection}{\numberline {14.7.3}Multi-Language Support}{125}{subsection.14.7.3}%
+\contentsline {subsection}{\numberline {14.7.4}Real-Time Data Integration}{125}{subsection.14.7.4}%
+\contentsline {subsection}{\numberline {14.7.5}Performance Optimization}{125}{subsection.14.7.5}%
+\contentsline {chapter}{\numberline {15}System Visualizations}{126}{chapter.15}%
+\contentsline {section}{\numberline {15.1}Full System Diagram}{126}{section.15.1}%
+\contentsline {section}{\numberline {15.2}Pipeline Flow Diagram}{127}{section.15.2}%
+\contentsline {section}{\numberline {15.3}Agent Interaction Diagram}{127}{section.15.3}%
+\contentsline {section}{\numberline {15.4}Data Flow Diagram}{128}{section.15.4}%
+\contentsline {section}{\numberline {15.5}Governor Decision Flow}{128}{section.15.5}%
+\contentsline {section}{\numberline {15.6}Storage Schema Diagram}{129}{section.15.6}%
+\contentsline {section}{\numberline {15.7}Tool Ecosystem Map}{129}{section.15.7}%
+\contentsline {chapter}{\numberline {16}Frontend Architecture}{130}{chapter.16}%
+\contentsline {section}{\numberline {16.1}Overview}{130}{section.16.1}%
+\contentsline {section}{\numberline {16.2}Technology Stack}{130}{section.16.2}%
+\contentsline {section}{\numberline {16.3}Application Structure}{130}{section.16.3}%
+\contentsline {subsection}{\numberline {16.3.1}Routing}{130}{subsection.16.3.1}%
+\contentsline {subsection}{\numberline {16.3.2}Context Providers}{131}{subsection.16.3.2}%
+\contentsline {section}{\numberline {16.4}Core Components}{131}{section.16.4}%
+\contentsline {subsection}{\numberline {16.4.1}Research Interface ({\texttt {\color {adark}pages/home.tsx}})}{131}{subsection.16.4.1}%
+\contentsline {subsection}{\numberline {16.4.2}Streaming Answer ({\texttt {\color {adark}components/streaming-answer.tsx}})}{132}{subsection.16.4.2}%
+\contentsline {subsection}{\numberline {16.4.3}Agent Steps ({\texttt {\color {adark}components/chat/agent-steps.tsx}})}{132}{subsection.16.4.3}%
+\contentsline {subsection}{\numberline {16.4.4}Search Bar ({\texttt {\color {adark}components/chat/search-bar.tsx}})}{132}{subsection.16.4.4}%
+\contentsline {subsection}{\numberline {16.4.5}Python Figure Gallery ({\texttt {\color {adark}components/chat/custom-python-figure.tsx}})}{133}{subsection.16.4.5}%
+\contentsline {section}{\numberline {16.5}State Management}{133}{section.16.5}%
+\contentsline {subsection}{\numberline {16.5.1}Chat Session Hook ({\texttt {\color {adark}hooks/useChatSession.ts}})}{133}{subsection.16.5.1}%
+\contentsline {subsection}{\numberline {16.5.2}Chat Mutation Hook ({\texttt {\color {adark}hooks/useChatMutation.ts}})}{134}{subsection.16.5.2}%
+\contentsline {subsection}{\numberline {16.5.3}Analytics Hook ({\texttt {\color {adark}hooks/useAnalytics.ts}})}{134}{subsection.16.5.3}%
+\contentsline {section}{\numberline {16.6}Document Export}{134}{section.16.6}%
+\contentsline {subsection}{\numberline {16.6.1}Server-Side Export}{134}{subsection.16.6.1}%
+\contentsline {subsection}{\numberline {16.6.2}Client-Side Export}{134}{subsection.16.6.2}%
+\contentsline {section}{\numberline {16.7}Configuration}{134}{section.16.7}%
+\contentsline {section}{\numberline {16.8}Build and Development}{135}{section.16.8}%
+\contentsline {subsection}{\numberline {16.8.1}Development}{135}{subsection.16.8.1}%
+\contentsline {subsection}{\numberline {16.8.2}Production Build}{135}{subsection.16.8.2}%
+\contentsline {chapter}{\numberline {17}Public REST API}{136}{chapter.17}%
+\contentsline {section}{\numberline {17.1}Overview}{136}{section.17.1}%
+\contentsline {section}{\numberline {17.2}Authentication}{136}{section.17.2}%
+\contentsline {subsection}{\numberline {17.2.1}API Key Management}{136}{subsection.17.2.1}%
+\contentsline {subsection}{\numberline {17.2.2}Authentication Methods}{136}{subsection.17.2.2}%
+\contentsline {subsection}{\numberline {17.2.3}Scopes}{136}{subsection.17.2.3}%
+\contentsline {subsection}{\numberline {17.2.4}Rate Limiting}{137}{subsection.17.2.4}%
+\contentsline {section}{\numberline {17.3}Response Format}{137}{section.17.3}%
+\contentsline {section}{\numberline {17.4}Endpoints}{137}{section.17.4}%
+\contentsline {subsection}{\numberline {17.4.1}Papers}{137}{subsection.17.4.1}%
+\contentsline {subsection}{\numberline {17.4.2}Reviews}{138}{subsection.17.4.2}%
+\contentsline {subsection}{\numberline {17.4.3}Reports}{138}{subsection.17.4.3}%
+\contentsline {subsection}{\numberline {17.4.4}Search}{138}{subsection.17.4.4}%
+\contentsline {subsection}{\numberline {17.4.5}Pipeline}{139}{subsection.17.4.5}%
+\contentsline {subsection}{\numberline {17.4.6}Statistics}{139}{subsection.17.4.6}%
+\contentsline {subsection}{\numberline {17.4.7}Sessions}{139}{subsection.17.4.7}%
+\contentsline {subsection}{\numberline {17.4.8}Prompts}{139}{subsection.17.4.8}%
+\contentsline {section}{\numberline {17.5}Pagination}{140}{section.17.5}%
+\contentsline {section}{\numberline {17.6}Error Codes}{140}{section.17.6}%
+\contentsline {section}{\numberline {17.7}Internal API Endpoints}{140}{section.17.7}%
+\contentsline {subsection}{\numberline {17.7.1}Admin Endpoints}{141}{subsection.17.7.1}%
+\contentsline {chapter}{Appendices}{142}{section*.87}%
+\contentsline {chapter}{\numberline {A}Complete Tool Catalog}{143}{appendix.1.A}%
+\contentsline {section}{\numberline {A.1}Financial Tools (Part 1 --- Core)}{143}{section.1.A.1}%
+\contentsline {section}{\numberline {A.2}Financial Tools (Part 2 --- Market)}{144}{section.1.A.2}%
+\contentsline {section}{\numberline {A.3}Financial Tools (Parts 3--4 --- Extended \& Advanced)}{145}{section.1.A.3}%
+\contentsline {section}{\numberline {A.4}Academic Tools}{145}{section.1.A.4}%
+\contentsline {section}{\numberline {A.5}Web Tools}{145}{section.1.A.5}%
+\contentsline {section}{\numberline {A.6}Macroeconomic Data Tools}{146}{section.1.A.6}%
+\contentsline {section}{\numberline {A.7}Python Tools}{146}{section.1.A.7}%
+\contentsline {section}{\numberline {A.8}Research Paper Tools}{146}{section.1.A.8}%
+\contentsline {section}{\numberline {A.9}Polymarket Tools}{147}{section.1.A.9}%
+\contentsline {chapter}{\numberline {B}Prompt Bank Specification}{148}{appendix.1.B}%
+\contentsline {section}{\numberline {B.1}Construction Algorithm}{148}{section.1.B.1}%
+\contentsline {section}{\numberline {B.2}Research Domains}{148}{section.1.B.2}%
+\contentsline {section}{\numberline {B.3}Methodological Approaches}{149}{section.1.B.3}%
+\contentsline {section}{\numberline {B.4}Domain--Method Compatibility Matrix}{150}{section.1.B.4}%
+\contentsline {section}{\numberline {B.5}Topic Examples}{150}{section.1.B.5}%
+\contentsline {subsection}{\numberline {B.5.1}Market Microstructure Topics}{150}{subsection.1.B.5.1}%
+\contentsline {subsection}{\numberline {B.5.2}ESG \& Sustainable Finance Topics}{151}{subsection.1.B.5.2}%
+\contentsline {section}{\numberline {B.6}Prompt Format}{151}{section.1.B.6}%
+\contentsline {chapter}{\numberline {C}Database Schema Reference}{152}{appendix.1.C}%
+\contentsline {section}{\numberline {C.1}User Tables}{152}{section.1.C.1}%
+\contentsline {subsection}{\numberline {C.1.1}\texttt {users}}{152}{subsection.1.C.1.1}%
+\contentsline {subsection}{\numberline {C.1.2}\texttt {emailVerificationTokens}}{152}{subsection.1.C.1.2}%
+\contentsline {subsection}{\numberline {C.1.3}\texttt {passwordResetTokens}}{153}{subsection.1.C.1.3}%
+\contentsline {section}{\numberline {C.2}Content Tables}{153}{section.1.C.2}%
+\contentsline {subsection}{\numberline {C.2.1}\texttt {messages}}{153}{subsection.1.C.2.1}%
+\contentsline {subsection}{\numberline {C.2.2}\texttt {sharedReports}}{153}{subsection.1.C.2.2}%
+\contentsline {section}{\numberline {C.3}Research Output Tables}{153}{section.1.C.3}%
+\contentsline {subsection}{\numberline {C.3.1}\texttt {publishedPapers}}{153}{subsection.1.C.3.1}%
+\contentsline {subsection}{\numberline {C.3.2}\texttt {peerReviews}}{154}{subsection.1.C.3.2}%
+\contentsline {section}{\numberline {C.4}Pipeline Management Tables}{154}{section.1.C.4}%
+\contentsline {subsection}{\numberline {C.4.1}\texttt {paperRuns}}{154}{subsection.1.C.4.1}%
+\contentsline {subsection}{\numberline {C.4.2}\texttt {governorDecisions}}{155}{subsection.1.C.4.2}%
+\contentsline {subsection}{\numberline {C.4.3}\texttt {asidCounters}}{155}{subsection.1.C.4.3}%
+\contentsline {section}{\numberline {C.5}Analytics Tables}{155}{section.1.C.5}%
+\contentsline {subsection}{\numberline {C.5.1}\texttt {conversationSessions}}{155}{subsection.1.C.5.1}%
+\contentsline {subsection}{\numberline {C.5.2}\texttt {activeUsers}}{156}{subsection.1.C.5.2}%
+\contentsline {subsection}{\numberline {C.5.3}\texttt {analyticsMetrics}}{156}{subsection.1.C.5.3}%
+\contentsline {subsection}{\numberline {C.5.4}\texttt {requestLogs}}{156}{subsection.1.C.5.4}%
+\contentsline {section}{\numberline {C.6}Administrative Tables}{156}{section.1.C.6}%
+\contentsline {subsection}{\numberline {C.6.1}\texttt {siteConfig}}{156}{subsection.1.C.6.1}%
+\contentsline {subsection}{\numberline {C.6.2}\texttt {donations}}{156}{subsection.1.C.6.2}%
+\contentsline {subsection}{\numberline {C.6.3}\texttt {apiKeys}}{156}{subsection.1.C.6.3}%
+\contentsline {section}{\numberline {C.7}Schema Differences: SQLite vs PostgreSQL}{157}{section.1.C.7}%
+\contentsfinish 

@@ -1,601 +1,580 @@
 <div align="center">
 
-# VibeQuant
+<br/>
 
-### AI-Powered Institutional-Grade Financial Intelligence Platform
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/AutoScholar-AI_Research_Agent-ffffff?style=for-the-badge&labelColor=0d1117&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiI+PHBhdGggZD0iTTIgM2g2YTQgNCAwIDAgMSA0IDR2MTRhMyAzIDAgMCAwLTMtM0gyeiIvPjxwYXRoIGQ9Ik0yMiAzaC02YTQgNCAwIDAgMC00IDR2MTRhMyAzIDAgMCAxIDMtM2g3eiIvPjwvc3ZnPg==">
+  <img alt="AutoScholar" src="https://img.shields.io/badge/AutoScholar-AI_Research_Agent-000000?style=for-the-badge&labelColor=f8f9fa&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiI+PHBhdGggZD0iTTIgM2g2YTQgNCAwIDAgMSA0IDR2MTRhMyAzIDAgMCAwLTMtM0gyeiIvPjxwYXRoIGQ9Ik0yMiAzaC02YTQgNCAwIDAgMC00IDR2MTRhMyAzIDAgMCAxIDMtM2g3eiIvPjwvc3ZnPg==">
+</picture>
+
+# AutoScholar
+
+### Open-Source AI Research Agent That Writes Publication-Quality Papers
+
+**From question to 60-page PDF with figures, BibTeX, and peer review -- fully autonomous.**
 
 <br/>
 
-[![Live](https://img.shields.io/badge/Live-www.vquant.ai-00c853?style=for-the-badge&logo=googlechrome&logoColor=white)](https://www.vquant.ai)
-[![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](./LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.2.0-blue?style=for-the-badge)](./)
+[![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](./LICENSE)
+[![Version](https://img.shields.io/badge/v2.2.0-stable-blue?style=for-the-badge)](./)
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-ff69b4?style=for-the-badge)](./)
 
 <br/>
 
-**Stack**
+<sub>
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.3-61dafb?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Express](https://img.shields.io/badge/Express-4.21-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-
-**AI & Data**
-
-[![Claude AI](https://img.shields.io/badge/Claude-Opus_4.6_(1M_ctx)-d97706?style=flat-square&logo=anthropic&logoColor=white)](https://anthropic.com/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org/)
-[![NumPy](https://img.shields.io/badge/NumPy-013243?style=flat-square&logo=numpy&logoColor=white)](https://numpy.org/)
-[![Pandas](https://img.shields.io/badge/Pandas-150458?style=flat-square&logo=pandas&logoColor=white)](https://pandas.pydata.org/)
-[![SciPy](https://img.shields.io/badge/SciPy-8caae6?style=flat-square&logo=scipy&logoColor=white)](https://scipy.org/)
-[![scikit--learn](https://img.shields.io/badge/scikit--learn-f7931e?style=flat-square&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
-
-**Database & ORM**
-
+**Core** &nbsp;
+[![TypeScript](https://img.shields.io/badge/TypeScript_5.6-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React_18-61dafb?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Express](https://img.shields.io/badge/Express_4-000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
+[![Vite](https://img.shields.io/badge/Vite_5-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+&nbsp;&nbsp;**AI** &nbsp;
+[![Claude](https://img.shields.io/badge/Claude_Opus_4.6-d97706?style=flat-square&logo=anthropic&logoColor=white)](https://anthropic.com/)
+[![Python](https://img.shields.io/badge/Python_3.11+-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org/)
+&nbsp;&nbsp;**Data** &nbsp;
 [![SQLite](https://img.shields.io/badge/SQLite-003b57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169e1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org/)
-[![Drizzle](https://img.shields.io/badge/Drizzle_ORM-c5f74f?style=flat-square&logo=drizzle&logoColor=black)](https://orm.drizzle.team/)
-[![Zod](https://img.shields.io/badge/Zod-3e67b1?style=flat-square&logo=zod&logoColor=white)](https://zod.dev/)
+[![Drizzle](https://img.shields.io/badge/Drizzle-c5f74f?style=flat-square&logo=drizzle&logoColor=black)](https://orm.drizzle.team/)
 
-**Quality & Testing**
+</sub>
 
-[![ESLint](https://img.shields.io/badge/ESLint-4b32c3?style=flat-square&logo=eslint&logoColor=white)](https://eslint.org/)
-[![Prettier](https://img.shields.io/badge/Prettier-f7b93e?style=flat-square&logo=prettier&logoColor=black)](https://prettier.io/)
-[![Vitest](https://img.shields.io/badge/Vitest-6e9f18?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
-[![Testing Library](https://img.shields.io/badge/Testing_Library-e33332?style=flat-square&logo=testinglibrary&logoColor=white)](https://testing-library.com/)
-
-**Metrics**
-
-[![Lines of Code](https://img.shields.io/badge/Lines_of_Code-40,000+-0969da?style=flat-square)](./)
-[![Source Files](https://img.shields.io/badge/Source_Files-155+-0969da?style=flat-square)](./)
-[![API Endpoints](https://img.shields.io/badge/API_Endpoints-270+-8b5cf6?style=flat-square)](./)
-[![Claude Tools](https://img.shields.io/badge/Claude_Tools-213-d97706?style=flat-square)](./)
-[![Python Libs](https://img.shields.io/badge/Python_Libs-17-3776ab?style=flat-square)](./)
-[![Tests](https://img.shields.io/badge/Tests-41_passing-22c55e?style=flat-square)](./)
-[![Test Suites](https://img.shields.io/badge/Test_Suites-6-22c55e?style=flat-square)](./)
-[![Components](https://img.shields.io/badge/React_Components-60-61dafb?style=flat-square)](./)
-[![Hooks](https://img.shields.io/badge/Custom_Hooks-5-61dafb?style=flat-square)](./)
-[![Route Modules](https://img.shields.io/badge/Route_Modules-6-000000?style=flat-square)](./)
+<br/>
 
 ---
 
-[**Getting Started**](#-getting-started) &nbsp;&bull;&nbsp; [**Features**](#-features) &nbsp;&bull;&nbsp; [**Architecture**](#-architecture) &nbsp;&bull;&nbsp; [**API Reference**](#-api-reference) &nbsp;&bull;&nbsp; [**Contributing**](#-contributing)
+[**Why AutoScholar**](#-why-autoscolar) · [**How It Works**](#-how-it-works) · [**Quick Start**](#-quick-start) · [**Features**](#-features) · [**Architecture**](#-architecture) · [**API**](#-api-reference) · [**Contributing**](#-contributing)
+
+---
 
 </div>
 
----
+<br/>
 
-## Overview
+## Why AutoScholar
 
-VibeQuant is a production-grade full-stack financial analysis platform that combines **Claude AI (Opus 4.6, 1M token context)** with **270+ financial data endpoints** (FMP + EODHD), **quantitative Python analysis** (Monte Carlo, GARCH, VaR, Black-Scholes, portfolio optimization), and **multi-source web research** (Tavily, Firecrawl, Exa, SerpAPI) to deliver institutional-grade insights through a real-time streaming conversational interface.
+Most AI tools help you *write*. AutoScholar helps you **do research**.
 
-Built with a modern TypeScript stack (React 18 + Vite + Express + Drizzle ORM), validated with Zod schemas, tested with Vitest, and linted with ESLint + Prettier. Export results as **Corporate Reports, Presentation Slides, PDF, Word, HTML,** or shareable links — all generated on the fly by Claude AI.
+It doesn't just generate text -- it runs a full scientific pipeline: identifies a literature gap, collects real data from 270+ financial endpoints, cleans and prepares datasets, runs econometric and ML models, generates publication-quality figures, writes LaTeX sections with proper citations, compiles to PDF, and then peer-reviews its own work.
 
----
+All of this happens through a conversational interface with real-time streaming, so you can watch the entire process unfold step by step.
 
-## Features
+```
+You: "Analyze the impact of Federal Reserve rate decisions on FAANG stock volatility using GARCH modeling"
 
-### Financial Data Engine
+AutoScholar:
+  Gauss  → Finds literature gap, builds bibliography of 40+ papers
+  Turing → Pulls 5 years of daily prices + Fed rate data from FRED & FMP
+  Newton → Merges datasets, computes returns, constructs event windows
+  Fisher → Fits GARCH(1,1), runs DiD regression, generates 8 figures
+  Euler  → Writes 12 LaTeX sections, compiles 62-page PDF with BibTeX
+  Popper → Peer reviews: methodology score 84/100, "minor revision"
+```
 
-[![FMP API](https://img.shields.io/badge/FMP_API-230_endpoints-8b5cf6?style=flat-square)](https://financialmodelingprep.com/)
-[![EODHD API](https://img.shields.io/badge/EODHD_API-Intraday_%26_Options-16a34a?style=flat-square)](https://eodhd.com/)
+<br/>
 
-| Category | Endpoints | Details |
-|----------|-----------|---------|
-| **Company Fundamentals** | 40+ | Profiles, income statements, balance sheets, cash flows, key metrics, financial ratios, growth rates |
-| **Market Data** | 30+ | Real-time quotes, historical prices, intraday data, batch quotes, market hours, gainers/losers/actives |
-| **Technical Analysis** | 15+ | RSI, MACD, EMA, SMA, ADX, Williams %R, CCI, Stochastic, WMA, DEMA, TEMA, Bollinger Bands |
-| **Analyst & Ratings** | 20+ | Estimates, price targets, upgrades/downgrades, consensus, historical grades, ratings snapshots |
-| **Insider & Institutional** | 15+ | Insider trading, institutional holders, 13F filings, Senate/House trading, beneficial ownership |
-| **Economic & Macro** | 15+ | Economic calendar, Treasury rates, economic indicators, market risk premium, COT reports |
-| **SEC & Compliance** | 25+ | SEC filings (8-K, 10-K, 10-Q), EDGAR search, company notes, earnings transcripts |
-| **Alternative Data** | 20+ | ESG scores, social sentiment, Congressional trading, crowdfunding, equity offerings |
-| **ETFs & Indices** | 15+ | ETF holdings, sector weightings, S&P 500/NASDAQ/Dow Jones constituents |
-| **Valuation** | 10+ | DCF, levered DCF, custom DCF, enterprise values, owner earnings, financial scores |
-| **Forex & Crypto** | 15+ | Forex pairs, crypto quotes, commodity prices, historical forex data |
-| **Events** | 10+ | Earnings calendar, IPO calendar, dividend history, stock splits, mergers & acquisitions |
-| **EODHD Intraday** | — | Sub-minute intraday OHLCV data with robust date-format normalization and ticker mapping |
-| **EODHD Options Chain** | — | Full options chain with Black-Scholes Greeks (delta, gamma, theta, vega, rho) for any symbol |
+## How It Works
 
-### Quantitative Analysis Engine
+AutoScholar uses a **multi-agent pipeline** orchestrated by Claude Opus 4.6 (1M token context). Five named agents collaborate in sequence, each with a specialized role:
 
-[![Python](https://img.shields.io/badge/Python-17_scientific_libraries-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org/)
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│   EULER (Orchestrator)                                              │
+│   Coordinates the full pipeline, writes LaTeX, compiles PDF         │
+│                                                                     │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
+│   │  GAUSS   │→ │  TURING  │→ │  NEWTON  │→ │  FISHER  │          │
+│   │ Lit. Gap │  │   Data   │  │  Dataset │  │ Analysis │          │
+│   │ Analysis │  │ Collect  │  │   Prep   │  │ & Figs   │          │
+│   └──────────┘  └──────────┘  └──────────┘  └──────────┘          │
+│                                                                     │
+│   ┌──────────┐                                                      │
+│   │  POPPER  │  Peer review against top-tier journal standards      │
+│   └──────────┘                                                      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-| Model | Description | Libraries |
-|-------|-------------|-----------|
-| **Monte Carlo Simulation** | Price path simulation with customizable parameters (10k+ paths, configurable horizon) | `numpy`, `scipy` |
-| **Options Pricing** | Black-Scholes model with full Greeks (delta, gamma, theta, vega, rho) | `scipy.stats` |
-| **GARCH Volatility** | Volatility modeling and forecasting with GARCH(1,1) | `arch`, `statsmodels` |
-| **Value at Risk (VaR)** | Historical, parametric, and Monte Carlo VaR at multiple confidence levels | `numpy`, `scipy` |
-| **Portfolio Optimization** | Mean-variance optimization (Modern Portfolio Theory), efficient frontier | `cvxpy`, `scipy.optimize` |
-| **Risk Metrics** | Sharpe, Sortino, Calmar, max drawdown, beta, alpha, information ratio | `numpy`, `pandas` |
-| **Custom Python** | Arbitrary Python code execution with access to 17 libraries and FMP data | All libraries |
+| Agent | Role | What It Does |
+|-------|------|-------------|
+| **Gauss** | Literature Gap Analysis | Searches OpenAlex, arXiv, CrossRef, Google Scholar. Identifies 6-8 gaps with novelty/feasibility scores. Selects the most promising direction. |
+| **Turing** | Data Collection | Fetches raw datasets from FMP (230+ endpoints), EODHD, FRED, World Bank, IMF, OECD, Polymarket. Scrapes web via Firecrawl/Tavily/Exa. Saves with provenance metadata. |
+| **Newton** | Dataset Preparation | Cleans, merges, normalizes. Constructs variables, handles missing values, computes lags and interaction terms. Stores with lineage tracking. |
+| **Fisher** | Empirical Analysis | Runs OLS, IV, DiD, RDD, panel FE/RE, GMM, GARCH. Trains RandomForest, XGBoost, LightGBM, ElasticNet. Generates publication-quality matplotlib figures. |
+| **Euler** | Orchestrator & Writer | Coordinates the pipeline, writes each LaTeX section (intro, lit review, methodology, data, results, discussion, conclusion), compiles to PDF with BibTeX. |
+| **Popper** | Peer Reviewer | Reviews against Journal of Finance / Econometrica standards. Scores on originality, methodology, results, writing, reproducibility. Verdict: accept / minor / major revision / reject. |
 
-<details>
-<summary><b>Full Python library list (17 packages)</b></summary>
+### The Governor
 
-| Library | Version | Purpose |
-|---------|---------|---------|
-| `numpy` | latest | Numerical computing |
-| `pandas` | latest | Data manipulation |
-| `scipy` | latest | Scientific computing |
-| `scikit-learn` | latest | Machine learning |
-| `statsmodels` | latest | Statistical models |
-| `matplotlib` | latest | Plotting & charts |
-| `seaborn` | latest | Statistical visualization |
-| `plotly` | latest | Interactive charts |
-| `arch` | latest | GARCH models |
-| `cvxpy` | latest | Convex optimization |
-| `yfinance` | latest | Market data |
-| `ta` | latest | Technical analysis |
-| `quantstats` | latest | Portfolio analytics |
-| `beautifulsoup4` | latest | Web scraping |
-| `requests` | latest | HTTP client |
-| `lxml` | latest | XML/HTML parsing |
-| `Pillow` | latest | Image processing |
+A runtime governance layer monitors the entire pipeline:
+- Detects Python errors and injects recovery directives
+- Tracks confidence (0.0-1.0) -- degrades on failures, recovers on successes
+- Enforces figure counts and section word targets
+- Switches to conservative mode when data is sparse
+- Falls back gracefully when LaTeX compilation fails
 
-</details>
+<br/>
 
-### Web Research Engine
-
-| Source | Capabilities | Badge |
-|--------|-------------|-------|
-| **Tavily** | AI-powered search with generated answers, time filters, domain filtering | [![Tavily](https://img.shields.io/badge/Tavily-AI_Search-4f46e5?style=flat-square)](https://tavily.com/) |
-| **Firecrawl** | Web scraping, PDF extraction (up to 750 pages), intelligent crawling, structured extraction, autonomous agents | [![Firecrawl](https://img.shields.io/badge/Firecrawl-Web_Extraction-f97316?style=flat-square)](https://firecrawl.dev/) |
-| **Exa** | Semantic neural search, content retrieval, similar page discovery | [![Exa](https://img.shields.io/badge/Exa-Semantic_Search-6366f1?style=flat-square)](https://exa.ai/) |
-| **SerpAPI** | Google Search, Images, Shopping, Finance, Trends, Scholar, Videos, Flights, Hotels | [![SerpAPI](https://img.shields.io/badge/SerpAPI-Google_Search-34a853?style=flat-square)](https://serpapi.com/) |
-
-### AI Agent
-
-[![Claude](https://img.shields.io/badge/Claude_Opus_4.6-1M_token_context-d97706?style=flat-square&logo=anthropic&logoColor=white)](https://anthropic.com/)
-
-| Feature | Details |
-|---------|---------|
-| **Model** | Claude Opus 4.6 with 1 million token context window |
-| **Tools** | 213 specialized financial tools |
-| **Batching** | Intelligent tool batching (5 tools per batch with 500ms pauses) |
-| **Streaming** | Real-time Server-Sent Events (SSE) with automatic retry on ECONNRESET |
-| **History** | Persistent conversation sessions with token tracking |
-| **Vision** | Image analysis support for charts, screenshots, and documents |
-| **Figure Vision** | Claude Haiku automatically analyses generated Python figures and adds descriptive captions |
-| **Cost Tracking** | Per-session input/output token counting and cost estimation |
-| **Loading Overlay** | Animated VQuant overlay during AI generation with live status messages |
-
-### Export & Reports
-
-| Format | Description | Badge |
-|--------|-------------|-------|
-| **Corporate Report PDF** | Institutional-grade A4 report — Claude extracts executive summary + key metrics, renders in LaTeX-style typography (Crimson Pro serif), includes all figures, running headers/footers, conclusion section | [![Report](https://img.shields.io/badge/Corporate_Report-A4_PDF-119993?style=flat-square)](./) |
-| **Presentation Slides PDF** | HTML/CSS slide deck (16:9) generated by Claude Opus 4.6, cover slide, stats cards, figure slides, TOC, rendered to PDF by Puppeteer | [![Slides](https://img.shields.io/badge/Slides-HTML%2FCSS_PDF-2072B2?style=flat-square)](./) |
-| **PDF** | Markdown-to-PDF report with KaTeX math rendering, VQuant cover page, and base64-embedded figures | [![PDF](https://img.shields.io/badge/PDF-Puppeteer-ea4335?style=flat-square&logo=googlechrome&logoColor=white)](./) |
-| **HTML** | Standalone HTML file with full styles, KaTeX, and embedded images (no server needed) | [![HTML](https://img.shields.io/badge/HTML-Standalone-f97316?style=flat-square)](./) |
-| **DOCX** | Word document via Pandoc conversion | [![DOCX](https://img.shields.io/badge/DOCX-Pandoc-2b579a?style=flat-square&logo=microsoftword&logoColor=white)](./) |
-| **Markdown** | Raw markdown download of the analysis | [![MD](https://img.shields.io/badge/Markdown-Raw-6b7280?style=flat-square)](./) |
-| **Data Files** | CSV, XLSX, JSON, TXT downloads of analysis data | [![Data](https://img.shields.io/badge/Data-CSV_XLSX_JSON-217346?style=flat-square&logo=microsoftexcel&logoColor=white)](./) |
-| **Share Links** | Shareable report URLs with unique IDs | [![Share](https://img.shields.io/badge/Share-Unique_Links-0ea5e9?style=flat-square)](./) |
-
-### Community Showcase
-
-| Feature | Details |
-|---------|---------|
-| **Public Gallery** | Browse all shared analyses from the community with search and tool filters |
-| **Continue Analysis** | "Continuer cette analyse" button on every showcase card and shared report — loads the previous Q&A as conversation context and returns to the chat interface ready for a follow-up |
-| **Tool Badges** | Click any tool badge to filter the showcase by that data source |
-
----
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org/)
-[![npm](https://img.shields.io/badge/npm-9+-cb3837?style=flat-square&logo=npm&logoColor=white)](https://npmjs.com/)
+- **Node.js 18+** with npm 9+
+- **Python 3.11+** (for quantitative analysis)
+- **Git**
 
-### Installation
+### 1. Clone & Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/simonpierreboucher02/vquant.git
-cd vquant
+git clone https://github.com/simonpierreboucher02/autoscholar.git
+cd autoscholar
 
-# Install Node.js dependencies
+# Node dependencies
 npm install
 
-# Set up Python virtual environment
+# Python environment
 python3 -m venv .venv
-source .venv/bin/activate        # macOS/Linux
-# .venv\Scripts\activate          # Windows
+source .venv/bin/activate          # macOS/Linux
+# .venv\Scripts\activate           # Windows
 pip install -r requirements-safe.txt
+```
 
-# Configure environment variables
+### 2. Configure API Keys
+
+```bash
 cp .env.example .env
-# Edit .env with your API keys
+```
 
-# Start development server
+Edit `.env` with your keys:
+
+| Key | Service | Free Tier | Required |
+|-----|---------|-----------|----------|
+| `ANTHROPIC_API_KEY` | [Anthropic](https://console.anthropic.com) | $5 credit | **Yes** |
+| `FMP_API_KEY` | [Financial Modeling Prep](https://financialmodelingprep.com) | 250 calls/day | **Yes** |
+| `FRED_API_KEY` | [FRED](https://fred.stlouisfed.org/docs/api/api_key.html) | Unlimited | **Yes** |
+| `FIRECRAWL_API_KEY` | [Firecrawl](https://firecrawl.dev) | 500 credits | Recommended |
+| `TAVILY_API_KEY` | [Tavily](https://app.tavily.com) | 1,000 calls/mo | Recommended |
+| `EXA_API_KEY` | [Exa](https://exa.ai) | 1,000 searches/mo | Optional |
+| `SERPAPI_API_KEY` | [SerpAPI](https://serpapi.com) | 100 searches/mo | Optional |
+| `EODHD_API_KEY` | [EODHD](https://eodhd.com) | Limited | Optional |
+| `OPENAI_API_KEY` | [OpenAI](https://platform.openai.com) | Pay-as-you-go | Optional (embeddings) |
+| `ELEVENLABS_API_KEY` | [ElevenLabs](https://elevenlabs.io) | Free tier | Optional (speech) |
+
+### 3. Run
+
+```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5000`.
+Open **http://localhost:5000** -- you're ready to go.
 
-### API Keys
+<br/>
 
-All services offer generous free tiers:
+## Features
 
-| Service | Sign Up | Free Tier | Required |
-|---------|---------|-----------|----------|
-| [![Anthropic](https://img.shields.io/badge/Anthropic-d97706?style=flat-square&logo=anthropic&logoColor=white)](https://console.anthropic.com) | [console.anthropic.com](https://console.anthropic.com) | $5 credit | **Yes** |
-| [![FMP](https://img.shields.io/badge/FMP-0969da?style=flat-square)](https://financialmodelingprep.com) | [financialmodelingprep.com](https://financialmodelingprep.com) | 250 calls/day | **Yes** |
-| [![Firecrawl](https://img.shields.io/badge/Firecrawl-f97316?style=flat-square)](https://firecrawl.dev) | [firecrawl.dev](https://firecrawl.dev) | 500 credits | Recommended |
-| [![Tavily](https://img.shields.io/badge/Tavily-4f46e5?style=flat-square)](https://app.tavily.com) | [app.tavily.com](https://app.tavily.com) | 1000 calls/month | Recommended |
-| [![Exa](https://img.shields.io/badge/Exa-6366f1?style=flat-square)](https://exa.ai) | [exa.ai](https://exa.ai) | 1000 searches/month | Optional |
-| [![SerpAPI](https://img.shields.io/badge/SerpAPI-34a853?style=flat-square)](https://serpapi.com) | [serpapi.com](https://serpapi.com) | 100 searches/month | Optional |
+### 213 AI Tools Across 8 Categories
 
----
+AutoScholar equips Claude with **213 specialized tools** that it can call autonomously during research:
 
-## Scripts
+<details>
+<summary><b>Financial Data Engine -- 270+ endpoints</b></summary>
 
-| Command | Description |
+| Category | Endpoints | Covers |
+|----------|-----------|--------|
+| Company Fundamentals | 40+ | Profiles, income statements, balance sheets, cash flows, key metrics, ratios, growth |
+| Market Data | 30+ | Real-time quotes, historical prices, intraday, batch quotes, gainers/losers/actives |
+| Technical Analysis | 15+ | RSI, MACD, EMA, SMA, ADX, Williams %R, CCI, Stochastic, Bollinger Bands |
+| Analyst & Ratings | 20+ | Estimates, price targets, upgrades/downgrades, consensus, historical grades |
+| Insider & Institutional | 15+ | Insider trading, 13F filings, Senate/House trading, beneficial ownership |
+| Economic & Macro | 15+ | Economic calendar, Treasury rates, indicators, market risk premium, COT |
+| SEC & Compliance | 25+ | 8-K, 10-K, 10-Q filings, EDGAR search, earnings transcripts |
+| Alternative Data | 20+ | ESG scores, social sentiment, Congressional trading, crowdfunding |
+| ETFs & Indices | 15+ | Holdings, sector weightings, S&P 500/NASDAQ/Dow constituents |
+| Valuation | 10+ | DCF, levered DCF, enterprise values, financial scores |
+| Forex & Crypto | 15+ | Forex pairs, crypto quotes, commodities, historical data |
+| Events | 10+ | Earnings calendar, IPO calendar, dividends, stock splits, M&A |
+| EODHD Intraday | -- | Sub-minute OHLCV with date normalization and ticker mapping |
+| EODHD Options | -- | Full options chain with Black-Scholes Greeks (delta, gamma, theta, vega, rho) |
+
+**Data providers:** FMP (230+ endpoints), EODHD (intraday + options), FRED (840,000+ series), World Bank, IMF, OECD, Polymarket
+
+</details>
+
+<details>
+<summary><b>Quantitative Analysis Engine -- 17 Python libraries</b></summary>
+
+| Model | Description | Libraries |
+|-------|-------------|-----------|
+| Monte Carlo | Price path simulation (10k+ paths, configurable horizon) | `numpy`, `scipy` |
+| Options Pricing | Black-Scholes with full Greeks (delta, gamma, theta, vega, rho) | `scipy.stats` |
+| GARCH Volatility | Volatility modeling and forecasting with GARCH(1,1) | `arch`, `statsmodels` |
+| Value at Risk | Historical, parametric, and Monte Carlo VaR at multiple confidence levels | `numpy`, `scipy` |
+| Portfolio Optimization | Mean-variance (Modern Portfolio Theory), efficient frontier | `cvxpy`, `scipy.optimize` |
+| Risk Metrics | Sharpe, Sortino, Calmar, max drawdown, beta, alpha, information ratio | `numpy`, `pandas` |
+| Custom Python | Arbitrary code with all 17 libraries + API access | Everything |
+
+**Libraries:** numpy, pandas, scipy, scikit-learn, statsmodels, matplotlib, seaborn, plotly, arch, cvxpy, yfinance, ta, quantstats, beautifulsoup4, requests, lxml, Pillow
+
+**Pre-loaded datasets:** SDC Platinum IPO Database (452K IPOs, 1963-2024) and US Housing Database (839K properties, 50 states)
+
+</details>
+
+<details>
+<summary><b>Academic Research Tools</b></summary>
+
+| Source | Coverage |
+|--------|----------|
+| **OpenAlex** | 250M+ academic works (primary source) |
+| **arXiv** | Preprints in q-fin, econ, stat.ML, cs.LG |
+| **CrossRef** | 140M+ articles with DOI validation + BibTeX |
+| **Google Scholar** | Via SerpAPI integration |
+| **Multi-source search** | All sources simultaneously with deduplication |
+
+Tools: `academic_search`, `academic_literature_review`, `arxiv_search`, `crossref_lookup`, `openalex_search`, `academic_search_multi`
+
+</details>
+
+<details>
+<summary><b>Web Research Engine</b></summary>
+
+| Service | Capabilities |
 |---------|-------------|
-| `npm run dev` | Start development server (Vite HMR + Express) |
-| `npm run build` | Build for production (client + server) |
-| `npm start` | Start production server |
-| `npm run typecheck` | TypeScript type checking (`tsc --noEmit`) |
-| `npm run lint` | ESLint check |
-| `npm run lint:fix` | ESLint auto-fix |
-| `npm run format` | Prettier format all files |
-| `npm run format:check` | Prettier check (CI-friendly) |
-| `npm test` | Run all tests (Vitest) |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with coverage report |
-| `npm run db:push` | Push database schema changes (Drizzle Kit) |
+| **Tavily** | AI-powered search, content extraction, research mode, crawling, sitemapping |
+| **Firecrawl** | Web scraping, PDF extraction (750+ pages), structured extraction, agent mode, batch (100+ URLs) |
+| **Exa** | Semantic neural search, content retrieval, similar page discovery |
+| **SerpAPI** | Google Search, Images, Scholar, Finance, Trends, Videos |
 
----
+</details>
+
+<details>
+<summary><b>Macro Data Tools</b></summary>
+
+| Provider | Tools |
+|----------|-------|
+| **World Bank** | Indicators, countries, topics, regions, income levels, sources (6 tools) |
+| **IMF** | Indicators, dataflows, data structures, code lists (4 tools) |
+| **OECD** | Dataflows, structures, country/regional data (3 tools) |
+| **FRED** | 840,000+ macroeconomic time series |
+| **Polymarket** | Event markets, price history, trades, order books, leaderboards |
+
+</details>
+
+### Document Generation
+
+AutoScholar generates multiple export formats on the fly:
+
+| Format | Details |
+|--------|---------|
+| **Research Paper PDF** | Full LaTeX compilation with BibTeX, figures, tables -- up to 60-90 pages |
+| **Corporate Report** | Institutional A4 format, Crimson Pro serif, executive summary, figures, headers/footers |
+| **Presentation Slides** | 16:9 HTML/CSS deck with cover, stats cards, TOC -- rendered to PDF via Puppeteer |
+| **PDF** | Markdown-to-PDF with KaTeX math, cover page, embedded figures |
+| **HTML** | Standalone file with styles and base64 images (no server needed) |
+| **DOCX** | Word document via Pandoc |
+| **Data Files** | CSV, XLSX (with formulas), JSON, TXT |
+| **Share Links** | Public URLs with unique IDs + view tracking |
+
+### Real-Time Streaming Interface
+
+- **Server-Sent Events** -- watch the AI think, tool by tool
+- **Agent timeline** -- color-coded progress for each agent (Euler/Gauss/Turing/Newton/Fisher)
+- **Live figures** -- Python-generated charts appear as they're created
+- **Session persistence** -- resume any conversation, restore full context
+- **Image & file input** -- attach screenshots, CSVs, Excel files, PDFs
+- **Voice input** -- speech-to-text via ElevenLabs
+
+### Research Paper Journal
+
+- Browse all generated papers with domain filtering
+- **ASID system** (AutoScholar ID: `ASID-2026-0001`) for paper identification
+- Peer review scores and publication verdicts
+- **"Continue Analysis"** -- load any paper's Q&A context and keep researching
+- Citation export (APA, BibTeX)
+- Public showcase gallery with tool badges
+
+### Memory & Learning
+
+The global memory engine learns from every run:
+- Tracks all papers, methods, and datasets used
+- Identifies failure patterns and suggests alternatives
+- Deduplicates to prevent redundant research
+- Recommends novel method/dataset combinations not yet explored
+- Maintains corpus statistics for guiding future research directions
+
+<br/>
 
 ## Architecture
 
 ```
-vquant/
-├── client/src/                           # Frontend (React + TypeScript)
-│   ├── App.tsx                           # Router + providers + ErrorBoundary
-│   ├── main.tsx                          # Entry point
-│   ├── config.ts                         # App config, endpoints, feature flags
+autoscholar/
+├── client/src/                            # React 18 + TypeScript frontend
+│   ├── App.tsx                            # Router (wouter) + providers
+│   ├── pages/                             # 15+ route pages
+│   │   ├── home.tsx                       #   Main chat interface
+│   │   ├── landing/                       #   Landing page
+│   │   ├── journal/                       #   Research paper journal
+│   │   ├── showcase.tsx                   #   Community gallery
+│   │   ├── live-paper/                    #   Real-time paper viewer
+│   │   └── admin/                         #   Admin dashboard
 │   ├── components/
-│   │   ├── chat/                         # 13 chat-specific components
-│   │   │   ├── search-bar.tsx            #   Query input with image support
-│   │   │   ├── streaming-answer.tsx      #   Real-time markdown rendering
-│   │   │   ├── agent-steps.tsx           #   Tool execution progress
-│   │   │   ├── tool-results.tsx          #   Financial data display
-│   │   │   ├── monte-carlo-results.tsx   #   Simulation visualizations
-│   │   │   ├── share-button.tsx          #   Report sharing
-│   │   │   ├── download-buttons.tsx      #   PDF/DOCX export
-│   │   │   └── ...                       #   + 6 more components
-│   │   ├── explore/                      # 7 stock explorer components
-│   │   ├── financial/                    # Price charts, options pricing
-│   │   ├── ui/                           # 35 shadcn/ui primitives
-│   │   └── error-boundary.tsx            # Global error handler
+│   │   ├── chat/                          # 13 chat UI components
+│   │   │   ├── search-bar.tsx             #   Query input + image/file/voice
+│   │   │   ├── agent-steps.tsx            #   Pipeline visualization
+│   │   │   ├── custom-python-figure.tsx   #   Figure gallery
+│   │   │   ├── download-buttons.tsx       #   Export (PDF/DOCX/HTML/MD)
+│   │   │   └── ...
+│   │   ├── journal/                       # Paper browsing components
+│   │   ├── live-paper/                    # Real-time collaboration
+│   │   └── ui/                            # 35+ shadcn/ui primitives
 │   ├── hooks/
-│   │   ├── useChatSession.ts             # All chat state & business logic
-│   │   ├── useChatMutation.ts            # SSE streaming client
-│   │   ├── useAnalytics.ts              # Heartbeat tracking
-│   │   ├── use-toast.ts                 # Toast notifications
-│   │   └── use-mobile.tsx               # Responsive detection
-│   ├── pages/                            # 11 route pages
-│   │   ├── home.tsx                      #   Main chat interface
-│   │   ├── explore.tsx                   #   Stock explorer
-│   │   ├── admin.tsx                     #   Admin dashboard
-│   │   ├── auth.tsx                      #   Login/register
-│   │   ├── showcase.tsx                  #   Community reports gallery (+ "Continue" button)
-│   │   ├── shared-report.tsx             #   Shared report viewer (+ "Continue" button)
-│   │   ├── slides-generator.tsx          #   HTML/CSS presentation slides generator
-│   │   ├── corporate-report-generator.tsx #  Institutional A4 PDF report generator
-│   │   ├── documentation.tsx             #   API documentation
-│   │   └── ...                           #   + privacy, terms, 404
-│   ├── lib/
-│   │   ├── queryClient.ts               # TanStack Query config
-│   │   └── utils.ts                     # cn() + helpers
-│   └── utils/
-│       ├── chartCapture.ts              # Chart-to-image conversion
-│       └── pdfGenerator.ts              # Client-side PDF generation
+│   │   ├── useChatMutation.ts             # SSE streaming client
+│   │   ├── sseEventHandlers.ts            # 20+ event type handlers
+│   │   └── useAnalytics.ts               # Activity tracking
+│   └── contexts/
+│       └── active-session-context.tsx     # Central state provider
 │
-├── server/                               # Backend (Express + TypeScript)
-│   ├── index.ts                          # Server bootstrap, CORS, sessions
-│   ├── routes.ts                         # /api/chat (SSE streaming) + speech-to-text
+├── server/                                # Express 4 + TypeScript backend
+│   ├── index.ts                           # Server bootstrap, CORS, sessions
 │   ├── routes/
-│   │   ├── auth.ts                       # /api/auth/* (register, login, logout, me)
-│   │   ├── admin.ts                      # /api/admin/* (database, CRUD) + requireAdmin
-│   │   ├── analytics.ts                  # /api/analytics/* (heartbeat, active users, metrics)
-│   │   ├── fmp.ts                        # /api/fmp/* (23 financial data endpoints)
-│   │   ├── reports.ts                    # /api/share/*, sessions, PDF/DOCX/slides, download
-│   │   └── validation.ts                # Zod request schemas
+│   │   ├── chat.ts                        # POST /api/chat (SSE streaming)
+│   │   ├── reports/                       # Document generation, sharing, journal
+│   │   ├── admin.ts                       # Admin dashboard endpoints
+│   │   ├── analytics.ts                   # Platform telemetry
+│   │   └── api/v1/                        # Public REST API (8 modules)
 │   ├── services/
 │   │   ├── claude/
-│   │   │   ├── toolDefinitions.ts        #   213 tool definitions (4,480 lines)
-│   │   │   └── tokenManagement.ts        #   Context window management
-│   │   ├── claudeService.ts              #   Claude API integration + Haiku figure vision
-│   │   ├── fmpService.ts                 #   230 FMP API wrapper functions
-│   │   ├── eodhd/
-│   │   │   └── intradayClient.ts         #   EODHD intraday + options chain with Greeks
-│   │   ├── python/
-│   │   │   ├── monteCarlo.ts             #   Monte Carlo simulation
-│   │   │   ├── optionsPricing.ts         #   Black-Scholes pricing
-│   │   │   ├── garch.ts                  #   GARCH volatility model
-│   │   │   ├── var.ts                    #   VaR + portfolio + risk metrics
-│   │   │   └── shared.ts                #   Python executor config
-│   │   ├── *.py                          #   11 Python scientific services
-│   │   ├── beamerSlidesService.ts        #   HTML/CSS 16:9 slides → Puppeteer PDF
-│   │   ├── corporateReportService.ts     #   LaTeX-style A4 corporate report → Puppeteer PDF
-│   │   ├── pdfService.ts                 #   Markdown → PDF/HTML/DOCX
-│   │   ├── firecrawlService.ts           #   Web extraction
-│   │   ├── tavilyService.ts              #   AI search
-│   │   ├── exaService.ts                 #   Semantic search
-│   │   └── serpapiService.ts             #   Google search
-│   ├── db.ts                             # Drizzle ORM (SQLite + PostgreSQL)
-│   ├── storage.ts                        # Typed data access layer
-│   ├── types/
-│   │   └── modules.d.ts                 # Module declarations
-│   └── utils/
-│       └── logger.ts                    # Structured logging
+│   │   │   ├── systemPrompt.ts            # 1,800-line agent definitions
+│   │   │   ├── claudeStreaming.ts          # Core streaming orchestration
+│   │   │   ├── tokenManagement.ts         # Context window management
+│   │   │   └── tools/                     # 213 tool definitions
+│   │   │       ├── financialTools-*.ts    #   100+ financial endpoints
+│   │   │       ├── academicTools.ts       #   Academic search tools
+│   │   │       ├── webTools.ts            #   Tavily/Firecrawl/Exa/SerpAPI
+│   │   │       ├── macroDataTools.ts      #   World Bank/IMF/OECD/FRED
+│   │   │       ├── pythonTools.ts         #   Python execution
+│   │   │       └── polymarketTools.ts     #   Prediction markets
+│   │   ├── python/                        # 24 Python services
+│   │   │   ├── monteCarloService.py       #   Monte Carlo simulations
+│   │   │   ├── garchService.py            #   GARCH volatility models
+│   │   │   ├── varService.py              #   Value at Risk
+│   │   │   ├── optionsPricingService.py   #   Black-Scholes pricing
+│   │   │   ├── portfolioOptimizer.py      #   MPT optimization
+│   │   │   └── customPythonExecutor.py    #   Arbitrary code execution
+│   │   ├── governor/                      # Runtime governance layer
+│   │   │   ├── governorEngine.ts          #   7 decision rules
+│   │   │   ├── promptProfiles.ts          #   Academic style injection
+│   │   │   └── decisionLog.ts             #   Audit trail
+│   │   ├── memory/                        # Global research memory
+│   │   │   ├── memoryOrchestrator.ts      #   Briefs + similarity
+│   │   │   ├── researchDirector.ts        #   Next-direction selector
+│   │   │   └── deduplicationService.ts    #   Duplicate detection
+│   │   ├── latex/                         # LaTeX compilation pipeline
+│   │   ├── pdf/                           # PDF/HTML/DOCX generation
+│   │   └── [external services]            # FMP, EODHD, Tavily, Firecrawl, etc.
+│   ├── routes/tool-handlers/              # Tool dispatch (200+ routes)
+│   ├── storage/                           # User/session/paper data access
+│   └── db.ts                              # Drizzle ORM (SQLite or PostgreSQL)
 │
-├── shared/                               # Shared between client & server
-│   ├── schema.ts                         # PostgreSQL schema (Drizzle)
-│   ├── schema-sqlite.ts                  # SQLite schema (Drizzle)
-│   └── types.ts                         # API interfaces (SearchResult, etc.)
+├── shared/                                # Shared types & schemas
+│   ├── schema.ts                          # PostgreSQL Drizzle schema
+│   ├── schema-sqlite.ts                   # SQLite Drizzle schema
+│   └── types.ts                           # API interfaces
 │
-├── vitest.config.ts                      # Test configuration
-├── eslint.config.js                      # ESLint flat config
-├── vite.config.ts                        # Vite build config
-├── tsconfig.json                         # TypeScript config
-├── tailwind.config.ts                    # Tailwind CSS config
-├── .prettierrc                           # Prettier config
-├── .editorconfig                         # Editor config
-├── .env.example                          # Environment template
-└── .gitignore                            # Git ignore rules
+├── documentation/                         # 25-section LaTeX documentation
+├── .env.example                           # Environment template
+├── package.json                           # Monorepo dependencies
+└── LICENSE                                # MIT
 ```
 
-### System Architecture
+### System Flow
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                        CLIENT (React 18)                         │
-│  ┌──────────┐  ┌──────────────┐  ┌────────────┐  ┌───────────┐ │
-│  │ Chat UI  │  │ Explore Page │  │ Admin Panel│  │ Auth/Docs │ │
-│  │ (SSE)    │  │ (FMP data)   │  │ (Analytics)│  │ (Sessions)│ │
-│  └────┬─────┘  └──────┬───────┘  └─────┬──────┘  └─────┬─────┘ │
-│       │               │                │               │        │
-│  ┌────┴───────────────┴────────────────┴───────────────┴─────┐  │
-│  │              TanStack Query + useChatSession              │  │
-│  └───────────────────────────┬───────────────────────────────┘  │
-└──────────────────────────────┼──────────────────────────────────┘
-                               │ HTTP / SSE
-┌──────────────────────────────┼──────────────────────────────────┐
-│                       SERVER (Express 4)                        │
-│  ┌───────────────────────────┴───────────────────────────────┐  │
-│  │                    Route Modules (6)                       │  │
-│  │  auth │ admin │ analytics │ fmp │ reports │ chat (SSE)    │  │
-│  └───┬───────┬──────────┬──────────┬──────────┬──────────────┘  │
-│      │       │          │          │          │                  │
-│  ┌───┴───┐ ┌─┴──────┐ ┌┴────────┐ │   ┌─────┴──────────────┐  │
-│  │Storage│ │Analytics│ │Zod Valid│ │   │  Claude Opus 4.6   │  │
-│  │(Drizzle)│ │Metrics │ │Schemas │ │   │  213 tools         │  │
-│  └───┬───┘ └────────┘ └────────┘ │   │  5-tool batching    │  │
-│      │                           │   └──────────┬──────────┘  │
-│  ┌───┴──────┐              ┌─────┴──────┐ ┌─────┴──────────┐  │
-│  │SQLite/PG │              │ FMP Service│ │ Python Engine  │  │
-│  │(Drizzle) │              │ 230 funcs  │ │ 17 libraries   │  │
-│  └──────────┘              └────────────┘ └────────────────┘  │
-│                                                                 │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │              External APIs                                 │  │
-│  │  Tavily │ Firecrawl │ Exa │ SerpAPI │ ElevenLabs          │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      CLIENT (React 18 + Vite)                           │
+│                                                                         │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────┐  ┌───────────────┐  │
+│  │  Chat UI    │  │   Journal    │  │  Showcase  │  │   Admin       │  │
+│  │  (SSE)      │  │  (Papers)    │  │  (Gallery) │  │  (Analytics)  │  │
+│  └──────┬──────┘  └──────┬───────┘  └──────┬─────┘  └───────┬──────┘  │
+│         │                │                 │                 │          │
+│  ┌──────┴────────────────┴─────────────────┴─────────────────┴───────┐  │
+│  │          React Query + ActiveSessionProvider + SSE Streaming      │  │
+│  └──────────────────────────────────┬────────────────────────────────┘  │
+└─────────────────────────────────────┼──────────────────────────────────┘
+                                      │ HTTP / SSE
+┌─────────────────────────────────────┼──────────────────────────────────┐
+│                      SERVER (Express 4)                                 │
+│  ┌──────────────────────────────────┴────────────────────────────────┐  │
+│  │                      Route Layer                                  │  │
+│  │  chat (SSE) │ reports │ admin │ analytics │ auth │ api/v1         │  │
+│  └──────┬──────────────┬──────────────┬──────────────┬───────────────┘  │
+│         │              │              │              │                   │
+│  ┌──────┴──────┐  ┌────┴─────┐  ┌────┴─────┐  ┌────┴──────────────┐   │
+│  │ Claude      │  │ Governor │  │ Memory   │  │ Storage           │   │
+│  │ Opus 4.6    │  │ Engine   │  │ Engine   │  │ (Drizzle ORM)     │   │
+│  │ 213 tools   │  │ 7 rules  │  │ Learning │  │ SQLite / Postgres │   │
+│  │ 1M context  │  │          │  │          │  │                   │   │
+│  └──────┬──────┘  └──────────┘  └──────────┘  └───────────────────┘   │
+│         │                                                               │
+│  ┌──────┴──────────────────────────────────────────────────────────┐    │
+│  │                    Tool Execution Layer                          │    │
+│  │                                                                  │    │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │    │
+│  │  │  FMP     │ │  Python  │ │  Web     │ │ Academic │           │    │
+│  │  │  230+    │ │  Engine  │ │ Research │ │ Search   │           │    │
+│  │  │endpoints │ │ 17 libs  │ │ Tavily+  │ │ OpenAlex │           │    │
+│  │  │          │ │          │ │ Firecrawl│ │ arXiv    │           │    │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │    │
+│  │                                                                  │    │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │    │
+│  │  │  Macro   │ │  LaTeX   │ │ Peer     │ │  EODHD   │           │    │
+│  │  │ WB/IMF/  │ │ Compiler │ │ Review   │ │ Intraday │           │    │
+│  │  │ OECD/FRED│ │ pdflatex │ │ (Popper) │ │ Options  │           │    │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │    │
+│  └──────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+<br/>
 
 ## API Reference
 
-### Chat (SSE Streaming)
+### Core Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/chat` | Main AI chat with streaming (Server-Sent Events) |
+| `POST` | `/api/chat` | Main research chat with SSE streaming |
 | `POST` | `/api/speech-to-text` | Audio transcription (ElevenLabs Scribe) |
-
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/auth/register` | Create account (generates unique token) |
-| `POST` | `/api/auth/login` | Authenticate with token |
-| `POST` | `/api/auth/logout` | End session |
-| `GET` | `/api/auth/me` | Get current user |
-
-### Shared Reports & Sessions
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/shared-reports` | List all shared reports |
-| `POST` | `/api/share` | Create shareable report |
-| `GET` | `/api/share/:shareId` | Get shared report |
-| `GET` | `/api/sessions` | List user sessions |
-| `GET` | `/api/sessions/:id` | Get session with messages |
+| `POST` | `/api/upload-data` | CSV/Excel/Parquet file upload |
+| `POST` | `/api/chatbot` | Lightweight AI assistant with RAG |
 
 ### Document Generation
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/generate-corporate-report` | Institutional A4 PDF — Claude extracts metadata, LaTeX-style HTML/CSS, figures embedded, Puppeteer render |
-| `POST` | `/api/convert-to-slides` | 16:9 HTML/CSS slide deck PDF — Claude structures content into slides, Puppeteer render |
-| `POST` | `/api/generate-pdf` | Markdown to A4 PDF with KaTeX + cover page (Puppeteer) |
-| `POST` | `/api/generate-html` | Markdown to standalone HTML with embedded styles and images |
-| `POST` | `/api/generate-docx` | Markdown to DOCX (Pandoc) |
-| `GET` | `/api/download/:filename` | Download data file (CSV, XLSX, PDF, etc.) |
+| `POST` | `/api/generate-corporate-report` | Institutional A4 PDF (Puppeteer) |
+| `POST` | `/api/convert-to-slides` | 16:9 slide deck PDF (Puppeteer) |
+| `POST` | `/api/generate-pdf` | Markdown to PDF with KaTeX + cover |
+| `POST` | `/api/generate-html` | Standalone HTML with embedded assets |
+| `POST` | `/api/generate-docx` | Word document (Pandoc) |
+| `GET` | `/api/download/:filename` | Download data files |
 
-### Financial Data (FMP)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/fmp/quote/:symbol` | Real-time stock quote |
-| `GET` | `/api/fmp/company-profile/:symbol` | Company profile |
-| `GET` | `/api/fmp/historical-price/:symbol` | Historical prices |
-| `GET` | `/api/fmp/intraday/:symbol` | Intraday price data |
-| `GET` | `/api/fmp/income-statement/:symbol` | Income statement |
-| `GET` | `/api/fmp/balance-sheet/:symbol` | Balance sheet |
-| `GET` | `/api/fmp/cash-flow/:symbol` | Cash flow statement |
-| `GET` | `/api/fmp/key-metrics/:symbol` | Key financial metrics |
-| `GET` | `/api/fmp/financial-ratios/:symbol` | Financial ratios |
-| `GET` | `/api/fmp/analyst-estimates/:symbol` | Analyst estimates |
-| `GET` | `/api/fmp/price-target/:symbol` | Price targets |
-| `GET` | `/api/fmp/insider-trading/:symbol` | Insider trades |
-| `GET` | `/api/fmp/institutional-holders/:symbol` | Institutional holders |
-| `GET` | `/api/fmp/earnings-surprises/:symbol` | Earnings surprises |
-| `GET` | `/api/fmp/dividend-history/:symbol` | Dividend history |
-| `GET` | `/api/fmp/esg-score/:symbol` | ESG score |
-| `GET` | `/api/fmp/financial-news/:symbol` | Financial news |
-| `GET` | `/api/fmp/upgrades-downgrades/:symbol` | Analyst upgrades/downgrades |
-| `GET` | `/api/fmp/gainers` | Top market gainers |
-| `GET` | `/api/fmp/losers` | Top market losers |
-| `GET` | `/api/fmp/actives` | Most active stocks |
-| `GET` | `/api/fmp/market-hours` | Market hours |
-| `GET` | `/api/fmp/chart/light/:symbol` | Lightweight chart data |
-
-### Analytics & Admin
+### Sessions & Reports
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/analytics/heartbeat` | Update user activity |
-| `GET` | `/api/analytics/active-users` | Active users (admin) |
-| `GET` | `/api/analytics/real-time-stats` | Real-time stats |
-| `GET` | `/api/analytics/metrics` | Historical metrics (admin) |
-| `POST` | `/api/admin/login` | Admin login |
-| `GET` | `/api/admin/database` | Full database view (admin) |
-| `DELETE` | `/api/admin/users/:id` | Delete user (admin) |
-| `DELETE` | `/api/admin/sessions/:id` | Delete session (admin) |
-| `DELETE` | `/api/admin/reports/:id` | Delete report (admin) |
+| `GET` | `/api/sessions` | List user sessions |
+| `GET` | `/api/sessions/:id` | Get session with full history |
+| `GET` | `/api/shared-reports` | List all shared reports |
+| `POST` | `/api/share` | Create shareable link |
+| `GET` | `/api/share/:shareId` | Get shared report |
 
----
+### Public API (v1)
 
-## Usage Examples
+All `/api/v1/*` endpoints require API key authentication.
 
-### Financial Analysis
-```
-"Full analysis of NVDA: profile, financials, insider trades, analyst ratings, sector performance"
+| Module | Endpoint | Description |
+|--------|----------|-------------|
+| Papers | `/api/v1/papers` | Paper CRUD operations |
+| Reviews | `/api/v1/reviews` | Peer review queries |
+| Reports | `/api/v1/reports` | Report endpoints |
+| Search | `/api/v1/search` | Full-text cross-resource search |
+| Stats | `/api/v1/stats` | Platform statistics |
+| Pipeline | `/api/v1/pipeline` | Research pipeline status |
+| Sessions | `/api/v1/sessions` | Session management |
+| Keys | `/api/v1/keys` | API key management |
 
-"Compare AAPL, MSFT, GOOGL on: market cap, P/E, revenue growth, ESG scores, analyst consensus"
+### Financial Data (23 FMP proxy endpoints)
 
-"Due diligence on TSLA: DCF valuation, institutional holders, insider trading patterns, earnings surprises"
+| Method | Endpoint |
+|--------|----------|
+| `GET` | `/api/fmp/quote/:symbol` `/api/fmp/company-profile/:symbol` `/api/fmp/historical-price/:symbol` |
+| `GET` | `/api/fmp/income-statement/:symbol` `/api/fmp/balance-sheet/:symbol` `/api/fmp/cash-flow/:symbol` |
+| `GET` | `/api/fmp/key-metrics/:symbol` `/api/fmp/financial-ratios/:symbol` `/api/fmp/analyst-estimates/:symbol` |
+| `GET` | `/api/fmp/price-target/:symbol` `/api/fmp/insider-trading/:symbol` `/api/fmp/institutional-holders/:symbol` |
+| `GET` | `/api/fmp/earnings-surprises/:symbol` `/api/fmp/dividend-history/:symbol` `/api/fmp/esg-score/:symbol` |
+| `GET` | `/api/fmp/financial-news/:symbol` `/api/fmp/upgrades-downgrades/:symbol` |
+| `GET` | `/api/fmp/gainers` `/api/fmp/losers` `/api/fmp/actives` `/api/fmp/market-hours` |
 
-"Show me the top gainers today with their financial ratios and analyst ratings"
-```
+<br/>
 
-### Quantitative Analysis
-```
-"Run a Monte Carlo simulation on AAPL with 10,000 paths over 252 trading days"
+## Scripts
 
-"Calculate the correlation matrix of FAANG stocks and display a heatmap"
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Development server (Vite HMR + Express) |
+| `npm run build` | Production build (client + server) |
+| `npm start` | Start production server |
+| `npm run typecheck` | TypeScript type checking |
+| `npm run lint` | ESLint check |
+| `npm run lint:fix` | ESLint auto-fix |
+| `npm run format` | Prettier format all files |
+| `npm run format:check` | Prettier check (CI) |
+| `npm test` | Run all tests (Vitest) |
+| `npm run test:watch` | Tests in watch mode |
+| `npm run test:coverage` | Tests with coverage |
+| `npm run db:push` | Push DB schema (Drizzle Kit) |
 
-"Backtest an RSI strategy on SPY and show the equity curve with Sharpe ratio"
-
-"Optimize a portfolio of AAPL, MSFT, GOOGL, AMZN for maximum Sharpe ratio"
-
-"Calculate Value at Risk for a $100,000 NVDA position at 95% and 99% confidence"
-
-"Estimate GARCH volatility for TSLA and forecast 30-day ahead volatility"
-
-"Price a call option on AAPL with strike $200, 30 days to expiry, and show all Greeks"
-```
-
-### Web Research
-```
-"Search latest AI industry news this week and summarize key developments"
-
-"Extract the last NVIDIA earnings call transcript and highlight guidance changes"
-
-"Research the impact of Fed rate decisions on tech stocks in 2024-2025"
-
-"Crawl investor.nvidia.com and extract all Q4 financial press releases"
-```
-
----
-
-## Documentation
-
-Exhaustive documentation is available in the [`docs/`](./docs) directory:
-
-| Document | Description |
-|----------|-------------|
-| **[Getting Started](./docs/GETTING_STARTED.md)** | Prerequisites, installation, Python setup, env vars, first run, troubleshooting |
-| **[Architecture](./docs/ARCHITECTURE.md)** | System diagram, directory structure, data flow, design decisions |
-| **[API Reference](./docs/API_REFERENCE.md)** | All 44 endpoints with request/response schemas, SSE event types, query params |
-| **[Python Analysis](./docs/PYTHON_ANALYSIS.md)** | 8 built-in models (Monte Carlo, Black-Scholes, GARCH, VaR, portfolio, risk, plots, custom), all 17 libraries |
-| **[Database Schema](./docs/DATABASE.md)** | All 9 tables with columns, types, constraints, relationships |
-| **[Deployment](./docs/DEPLOYMENT.md)** | Production build, env vars, Docker example, CORS, security checklist |
-| **[Contributing](./docs/CONTRIBUTING.md)** | Dev setup, code conventions, commit format, how to add endpoints/tools |
-| **[`.env.example`](./.env.example)** | All environment variables with categories |
-
----
+<br/>
 
 ## Testing
 
-[![Tests](https://img.shields.io/badge/Tests-41_passing-22c55e?style=flat-square&logo=vitest&logoColor=white)](./)
-[![Vitest](https://img.shields.io/badge/Framework-Vitest_4-6e9f18?style=flat-square)](./)
-[![Duration](https://img.shields.io/badge/Duration-<1s-22c55e?style=flat-square)](./)
+[![Tests](https://img.shields.io/badge/41_passing-22c55e?style=flat-square&logo=vitest&logoColor=white&label=Tests)](./)
+[![Duration](https://img.shields.io/badge/<1s-22c55e?style=flat-square&label=Duration)](./)
 
-| Suite | Tests | What it covers |
-|-------|-------|---------------|
-| `App.test.tsx` | 3 | Smoke test: renders, shows home page, search bar present |
-| `config.test.ts` | 5 | App config: name, domain, endpoints, limits, feature flags |
-| `utils.test.ts` | 5 | `cn()`: class merging, conditionals, dedup, edge cases |
-| `queryClient.test.ts` | 6 | Query defaults: staleTime, gcTime, retry, refetch policy |
-| `useChatSession.test.tsx` | 6 | Hook: initial state, reset, history toggle, mutation shape, handlers |
-| `validation.test.ts` | 16 | All Zod schemas: valid/invalid inputs, missing fields, max lengths |
+| Suite | Tests | Covers |
+|-------|-------|--------|
+| `App.test.tsx` | 3 | Smoke: renders, home page, search bar |
+| `config.test.ts` | 5 | App config: name, domain, endpoints, limits, flags |
+| `utils.test.ts` | 5 | Class merging, conditionals, dedup, edge cases |
+| `queryClient.test.ts` | 6 | Query defaults: staleTime, gcTime, retry, refetch |
+| `useChatSession.test.tsx` | 6 | Hook state, reset, history toggle, mutation, handlers |
+| `validation.test.ts` | 16 | Zod schemas: valid/invalid, missing fields, max lengths |
 
 ```bash
-npm test              # Run once
-npm run test:watch    # Watch mode
-npm run test:coverage # With coverage
+npm test                # Run once
+npm run test:watch      # Watch mode
+npm run test:coverage   # Coverage report
 ```
 
----
+<br/>
 
 ## Deployment
 
 ### Production Build
 
 ```bash
-npm run build         # Builds client (Vite) + server (esbuild)
-npm start             # Starts production server
+npm run build     # Vite (client) + esbuild (server) → dist/
+npm start         # Starts production server on PORT
 ```
 
-### Environment Variables
+### Environment
 
 ```bash
-# Required
 NODE_ENV=production
 PORT=5000
-SESSION_SECRET=<generate-a-strong-random-secret>
+SESSION_SECRET=<strong-random-secret>
 ANTHROPIC_API_KEY=sk-ant-...
-FINANCIAL_MODELING_PREP_API_KEY=...
+FMP_API_KEY=...
+FRED_API_KEY=...
 
-# Database (default: SQLite)
+# Database (default: SQLite, or use PostgreSQL)
 DATABASE_URL=sqlite://local.db
 # DATABASE_URL=postgresql://user:pass@host:5432/db
-
-# Optional APIs
-FIRECRAWL_API_KEY=fc-...
-TAVILY_API_KEY=tvly-...
-EXA_API_KEY=...
-SERPAPI_API_KEY=...
 ```
 
----
+The server supports both **SQLite** (zero-config, great for development and single-server deployments) and **PostgreSQL** (production scale, supports Neon serverless). The database is auto-migrated on startup.
+
+<br/>
 
 ## Contributing
 
+AutoScholar is open source and contributions are welcome.
+
+### Getting Started
+
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
+2. Create a feature branch: `git checkout -b feature/my-feature`
 3. Run checks before committing:
    ```bash
    npm run typecheck && npm run lint && npm test
@@ -607,16 +586,104 @@ SERPAPI_API_KEY=...
 
 | Rule | Enforced By |
 |------|------------|
-| TypeScript `strict` mode | `tsconfig.json` |
+| TypeScript strict mode | `tsconfig.json` |
 | ESLint (typescript-eslint + react-hooks) | `eslint.config.js` |
 | Prettier formatting | `.prettierrc` |
 | Zod validation on all API inputs | `server/routes/validation.ts` |
-| `logger` instead of `console.log` | ESLint `no-console` rule |
-| `@/` path alias (client), `@shared/` (shared) | `tsconfig.json` + `vite.config.ts` |
-| Components grouped by domain | `components/chat/`, `components/explore/`, etc. |
-| One hook per concern | `useChatSession`, `useChatMutation`, etc. |
+| Structured logging (`logger`) | ESLint `no-console` |
+| Path aliases: `@/` (client), `@shared/` (shared) | `tsconfig.json` + `vite.config.ts` |
+| Components grouped by domain | `components/chat/`, `components/journal/`, etc. |
 
----
+### Areas Where Help Is Welcome
+
+- **New data sources** -- integrate additional financial/economic APIs
+- **New quantitative models** -- add Python analysis services
+- **Frontend improvements** -- UI/UX, accessibility, mobile
+- **Testing** -- increase coverage across server services
+- **Documentation** -- improve guides, add tutorials
+- **Internationalization** -- translate the interface
+
+<br/>
+
+## Usage Examples
+
+### Research Paper Generation
+```
+"Write a research paper analyzing the impact of ESG scores on stock returns
+ using panel data from S&P 500 companies over 2019-2024"
+
+"Generate an empirical study on cryptocurrency volatility spillover effects
+ between Bitcoin, Ethereum, and traditional markets using DCC-GARCH"
+
+"Produce a paper on the effectiveness of momentum strategies in emerging
+ markets with transaction cost analysis and risk-adjusted returns"
+```
+
+### Financial Analysis
+```
+"Full analysis of NVDA: profile, financials, insider trades, analyst ratings"
+
+"Compare AAPL, MSFT, GOOGL on market cap, P/E, revenue growth, ESG scores"
+
+"Due diligence on TSLA: DCF valuation, institutional holders, insider patterns"
+```
+
+### Quantitative Analysis
+```
+"Run Monte Carlo on AAPL with 10,000 paths over 252 trading days"
+
+"Optimize a portfolio of AAPL, MSFT, GOOGL, AMZN for max Sharpe ratio"
+
+"Calculate VaR for a $100K NVDA position at 95% and 99% confidence"
+
+"Estimate GARCH volatility for TSLA, forecast 30-day ahead volatility"
+
+"Price a call on AAPL, strike $200, 30 DTE, show all Greeks"
+```
+
+### Web Research
+```
+"Search latest AI industry news and summarize key developments"
+
+"Extract the NVIDIA earnings call transcript, highlight guidance changes"
+
+"Research Fed rate decisions' impact on tech stocks in 2024-2025"
+```
+
+<br/>
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18, TypeScript 5.6, Vite 5, TailwindCSS 3.4, Radix UI / shadcn/ui, Framer Motion, Recharts, React Query, wouter |
+| **Backend** | Express 4, TypeScript 5.6, Drizzle ORM, Zod |
+| **AI** | Claude Opus 4.6 (1M context), Claude Haiku (figure captions), 213 tools |
+| **Python** | numpy, pandas, scipy, scikit-learn, statsmodels, matplotlib, seaborn, plotly, arch, cvxpy, yfinance, ta, quantstats, beautifulsoup4, requests, lxml, Pillow |
+| **Database** | SQLite (dev) / PostgreSQL (prod) with Drizzle ORM |
+| **PDF** | Puppeteer, jsPDF, Pandoc, KaTeX, pdflatex |
+| **Data** | FMP, EODHD, FRED, World Bank, IMF, OECD, Polymarket |
+| **Search** | Tavily, Firecrawl, Exa, SerpAPI, OpenAlex, arXiv, CrossRef |
+| **Quality** | ESLint, Prettier, Vitest, Testing Library |
+
+<br/>
+
+## Project Metrics
+
+| Metric | Value |
+|--------|-------|
+| Lines of Code | 40,000+ |
+| Source Files | 155+ |
+| Claude Tools | 213 |
+| API Endpoints | 270+ |
+| Python Libraries | 17 |
+| React Components | 90+ |
+| Test Suites | 6 (41 tests) |
+| Database Tables | 9+ |
+| Route Modules | 6 + 8 API v1 |
+| Service Modules | 30+ |
+
+<br/>
 
 ## Authors
 
@@ -633,32 +700,32 @@ SERPAPI_API_KEY=...
       <b>Claude Opus 4.6</b><br/>
       <i>AI Pair Programmer</i><br/><br/>
       <a href="https://claude.ai/claude-code"><img src="https://img.shields.io/badge/Claude_Code-Anthropic-d97706?style=flat-square&logo=anthropic&logoColor=white"/></a><br/>
-      <a href="https://anthropic.com"><img src="https://img.shields.io/badge/Model-Opus_4.6_(1M_ctx)-d97706?style=flat-square"/></a><br/>
-      <img src="https://img.shields.io/badge/Contribution-9_commits,_4000+_lines-22c55e?style=flat-square"/>
+      <a href="https://anthropic.com"><img src="https://img.shields.io/badge/Model-Opus_4.6_(1M_ctx)-d97706?style=flat-square"/></a>
     </td>
   </tr>
 </table>
 
-> Full codebase audit, architecture restructuring, TypeScript typing, route modularization, hook extraction, ESLint/Prettier/Vitest setup, ErrorBoundary, Zod validation, and README authored via [Claude Code](https://claude.ai/claude-code).
-
----
+<br/>
 
 ## Acknowledgments
 
 [![Anthropic](https://img.shields.io/badge/Anthropic-Claude_AI-d97706?style=flat-square&logo=anthropic&logoColor=white)](https://anthropic.com/)
-[![FMP](https://img.shields.io/badge/Financial_Modeling_Prep-Financial_Data-0969da?style=flat-square)](https://financialmodelingprep.com/)
-[![Firecrawl](https://img.shields.io/badge/Firecrawl-Web_Extraction-f97316?style=flat-square)](https://firecrawl.dev/)
+[![FMP](https://img.shields.io/badge/Financial_Modeling_Prep-Data-0969da?style=flat-square)](https://financialmodelingprep.com/)
+[![Firecrawl](https://img.shields.io/badge/Firecrawl-Extraction-f97316?style=flat-square)](https://firecrawl.dev/)
 [![Tavily](https://img.shields.io/badge/Tavily-AI_Search-4f46e5?style=flat-square)](https://tavily.com/)
-[![Exa](https://img.shields.io/badge/Exa-Semantic_Search-6366f1?style=flat-square)](https://exa.ai/)
+[![Exa](https://img.shields.io/badge/Exa-Search-6366f1?style=flat-square)](https://exa.ai/)
 [![Radix UI](https://img.shields.io/badge/Radix_UI-Components-161618?style=flat-square)](https://radix-ui.com/)
-[![shadcn/ui](https://img.shields.io/badge/shadcn/ui-Design_System-000000?style=flat-square)](https://ui.shadcn.com/)
-[![Recharts](https://img.shields.io/badge/Recharts-Charts-22b5bf?style=flat-square)](https://recharts.org/)
+[![shadcn/ui](https://img.shields.io/badge/shadcn/ui-Design-000?style=flat-square)](https://ui.shadcn.com/)
 
----
+<br/>
 
 ## License
 
-[![MIT License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](./LICENSE)
+MIT License -- see [LICENSE](./LICENSE) for details.
+
+Copyright (c) 2026 Simon-Pierre Boucher
+
+<br/>
 
 ---
 
@@ -666,15 +733,10 @@ SERPAPI_API_KEY=...
 
 <br/>
 
-[![Website](https://img.shields.io/badge/www.vquant.ai-Visit_Live_Platform-00c853?style=for-the-badge&logo=googlechrome&logoColor=white)](https://www.vquant.ai)
+**AutoScholar** -- *Where AI meets institutional-grade research.*
 
 <br/>
 
-*Where AI Meets Institutional-Grade Financial Analysis*
-
-<br/>
-
-**Built with** &nbsp;
 [![TypeScript](https://img.shields.io/badge/-TypeScript-3178c6?style=flat-square&logo=typescript&logoColor=white)](./)
 [![React](https://img.shields.io/badge/-React-61dafb?style=flat-square&logo=react&logoColor=black)](./)
 [![Claude](https://img.shields.io/badge/-Claude_AI-d97706?style=flat-square&logo=anthropic&logoColor=white)](./)

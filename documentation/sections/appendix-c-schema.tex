@@ -1,0 +1,295 @@
+%% ══════════════════════════════════════════════════════════════
+%%  APPENDIX C — DATABASE SCHEMA REFERENCE
+%% ══════════════════════════════════════════════════════════════
+\chapter{Database Schema Reference}
+\label{app:schema}
+
+This appendix provides the complete database schema for \autoscholar, covering all 20+ tables with column definitions, types, constraints, and relationships.
+The schema is defined in Drizzle ORM format with both SQLite (\file{shared/schema-sqlite.ts}) and PostgreSQL (\file{shared/schema.ts}) variants.
+
+\section{User Tables}
+\label{sec:schema:user}
+
+\subsection{\texttt{users}}
+
+\begin{longtable}{lllp{4cm}}
+\caption{\texttt{users} table schema.} \label{tab:schema-users} \\
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endhead
+\texttt{id} & integer & PK, auto-increment & Unique identifier \\
+\texttt{username} & text & unique, not null & Login username \\
+\texttt{email} & text & & Email address \\
+\texttt{passwordHash} & text & & SHA-256 + salt hash \\
+\texttt{displayName} & text & & Public display name \\
+\texttt{institution} & text & & University or organization \\
+\texttt{department} & text & & Department \\
+\texttt{orcid} & text & & ORCID identifier \\
+\texttt{apiKey} & text & & XOR-obfuscated Anthropic key \\
+\texttt{role} & text & default 'user' & Role (user/admin) \\
+\texttt{token} & text & & Session token \\
+\texttt{createdAt} & timestamp & not null & Creation time \\
+\texttt{updatedAt} & timestamp & & Last update time \\
+\bottomrule
+\end{longtable}
+
+\subsection{\texttt{emailVerificationTokens}}
+
+\begin{tabular}{llll}
+\toprule
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{userId} & integer & FK $\to$ users & Owning user \\
+\texttt{token} & text & not null & Verification token \\
+\texttt{expiresAt} & timestamp & not null & Expiry time \\
+\texttt{createdAt} & timestamp & not null & Creation time \\
+\bottomrule
+\end{tabular}
+
+\subsection{\texttt{passwordResetTokens}}
+
+Same structure as \texttt{emailVerificationTokens}.
+
+\section{Content Tables}
+\label{sec:schema:content}
+
+\subsection{\texttt{messages}}
+
+\begin{longtable}{lllp{4cm}}
+\caption{\texttt{messages} table schema.} \label{tab:schema-messages} \\
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{sessionId} & text & not null & Conversation session ID \\
+\texttt{role} & text & not null & 'user' or 'assistant' \\
+\texttt{content} & text & not null & Message content \\
+\texttt{sources} & text & & JSON-serialized sources \\
+\texttt{createdAt} & timestamp & not null & Creation time \\
+\bottomrule
+\end{longtable}
+
+\subsection{\texttt{sharedReports}}
+
+\begin{longtable}{lllp{4cm}}
+\caption{\texttt{sharedReports} table schema.} \label{tab:schema-shared} \\
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{shareId} & text & unique, not null & Public share identifier \\
+\texttt{question} & text & not null & Research question \\
+\texttt{answer} & text & not null & AI-generated answer \\
+\texttt{sources} & text & & JSON sources array \\
+\texttt{toolResults} & text & & JSON tool results \\
+\texttt{pythonFigures} & text & & JSON figure data \\
+\texttt{userId} & integer & FK $\to$ users & Creating user \\
+\texttt{createdAt} & timestamp & not null & Creation time \\
+\bottomrule
+\end{longtable}
+
+\section{Research Output Tables}
+\label{sec:schema:output}
+
+\subsection{\texttt{publishedPapers}}
+
+\begin{longtable}{lllp{4cm}}
+\caption{\texttt{publishedPapers} table schema.} \label{tab:schema-papers} \\
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endhead
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{title} & text & not null & Paper title \\
+\texttt{abstract} & text & & Abstract text \\
+\texttt{authors} & text & & Author (Euler agent) \\
+\texttt{domain} & text & & Auto-classified domain \\
+\texttt{template} & text & & article / working\_paper / econometrica \\
+\texttt{latexSections} & text & & JSON: section name $\to$ LaTeX \\
+\texttt{bibtexContent} & text & & Full BibTeX string \\
+\texttt{figureCount} & integer & default 0 & Number of figures \\
+\texttt{wordCount} & integer & default 0 & Total word count \\
+\texttt{sectionCount} & integer & default 0 & Number of sections \\
+\texttt{latexLineCount} & integer & default 0 & Total LaTeX lines \\
+\texttt{peerReviewScore} & integer & & Popper score (0--100) \\
+\texttt{peerReviewRecommendation} & text & & accept/minor/major/reject \\
+\texttt{projectZipPath} & text & & Path to project ZIP \\
+\texttt{asid} & text & unique & AutoScholar Identifier \\
+\texttt{sessionId} & text & & Associated session (for cost) \\
+\texttt{isVisible} & boolean & default true & Publication visibility \\
+\texttt{createdAt} & timestamp & not null & Publication time \\
+\texttt{updatedAt} & timestamp & & Last update time \\
+\bottomrule
+\end{longtable}
+
+\subsection{\texttt{peerReviews}}
+
+\begin{longtable}{lllp{4cm}}
+\caption{\texttt{peerReviews} table schema.} \label{tab:schema-reviews} \\
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{paperId} & integer & FK $\to$ publishedPapers & Reviewed paper \\
+\texttt{overallScore} & integer & not null & Overall score (0--100) \\
+\texttt{recommendation} & text & not null & Publication recommendation \\
+\texttt{strengths} & text & & JSON strengths array \\
+\texttt{weaknesses} & text & & JSON weaknesses array \\
+\texttt{detailedScores} & text & & JSON: 6-dimension scores \\
+\texttt{sectionReviews} & text & & JSON: per-section feedback \\
+\texttt{fullReport} & text & & Complete review text \\
+\texttt{createdAt} & timestamp & not null & Review time \\
+\bottomrule
+\end{longtable}
+
+\section{Pipeline Management Tables}
+\label{sec:schema:pipeline}
+
+\subsection{\texttt{paperRuns}}
+
+\begin{longtable}{lllp{4cm}}
+\caption{\texttt{paperRuns} table schema.} \label{tab:schema-runs} \\
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{status} & text & not null & queued/researching/analyzing/ drafting/validating/published/ rejected/failed \\
+\texttt{prompt} & text & & Research prompt used \\
+\texttt{sessionId} & text & & Associated conversation session \\
+\texttt{paperId} & integer & & Published paper (if successful) \\
+\texttt{heartbeat} & timestamp & & Last heartbeat time \\
+\texttt{popperScore} & integer & & Peer review score \\
+\texttt{governorState} & text & & Serialized JSON state \\
+\texttt{errorMessage} & text & & Failure reason \\
+\texttt{startedAt} & timestamp & & Pipeline start time \\
+\texttt{completedAt} & timestamp & & Pipeline completion time \\
+\texttt{createdAt} & timestamp & not null & Record creation time \\
+\bottomrule
+\end{longtable}
+
+\subsection{\texttt{governorDecisions}}
+
+\begin{tabular}{lllp{4cm}}
+\toprule
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{runId} & integer & FK $\to$ paperRuns & Parent pipeline run \\
+\texttt{stage} & text & & Pipeline stage \\
+\texttt{trigger} & text & & What triggered the decision \\
+\texttt{action} & text & & Action taken \\
+\texttt{reasoning} & text & & Explanation \\
+\texttt{confidence} & real & & Confidence at decision time \\
+\texttt{createdAt} & timestamp & & Decision timestamp \\
+\bottomrule
+\end{tabular}
+
+\subsection{\texttt{asidCounters}}
+
+\begin{tabular}{lllp{4cm}}
+\toprule
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{year} & integer & unique, not null & Calendar year \\
+\texttt{counter} & integer & not null, default 0 & Next sequence number \\
+\bottomrule
+\end{tabular}
+
+\section{Analytics Tables}
+\label{sec:schema:analytics}
+
+\subsection{\texttt{conversationSessions}}
+
+\begin{longtable}{lllp{4cm}}
+\caption{\texttt{conversationSessions} table schema.} \label{tab:schema-sessions} \\
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{userId} & integer & FK $\to$ users & Owning user \\
+\texttt{sessionId} & text & unique, not null & UUID session identifier \\
+\texttt{title} & text & & Session title \\
+\texttt{messageCount} & integer & default 0 & Number of messages \\
+\texttt{totalTokens} & integer & default 0 & Total tokens consumed \\
+\texttt{totalCost} & real & default 0 & Total API cost (USD) \\
+\texttt{createdAt} & timestamp & not null & Creation time \\
+\texttt{updatedAt} & timestamp & & Last update time \\
+\bottomrule
+\end{longtable}
+
+\subsection{\texttt{activeUsers}}
+
+Heartbeat-based active user tracking with 2-minute activity window.
+
+\subsection{\texttt{analyticsMetrics}}
+
+Time-series platform metrics with configurable period (minute/hour/day).
+
+\subsection{\texttt{requestLogs}}
+
+API request audit log with method, path, status, duration, user agent.
+
+\section{Administrative Tables}
+\label{sec:schema:admin}
+
+\subsection{\texttt{siteConfig}}
+
+Key-value configuration store with upsert semantics.
+
+\subsection{\texttt{donations}}
+
+Crypto and fiat donation records with status tracking.
+
+\subsection{\texttt{apiKeys}}
+
+\begin{longtable}{lllp{4cm}}
+\caption{\texttt{apiKeys} table schema.} \label{tab:schema-apikeys} \\
+\toprule
+\textbf{Column} & \textbf{Type} & \textbf{Constraint} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{id} & integer & PK & Unique identifier \\
+\texttt{keyHash} & text & unique, not null & SHA-256 hash of raw key \\
+\texttt{keyPrefix} & text & & First 8 chars for display \\
+\texttt{label} & text & & User-provided label \\
+\texttt{scopes} & text & & JSON array of scopes \\
+\texttt{rateLimit} & integer & default 100 & Requests per hour \\
+\texttt{usageCount} & integer & default 0 & Lifetime usage counter \\
+\texttt{lastUsedAt} & timestamp & & Last usage time \\
+\texttt{userId} & text & & Creating user ID \\
+\texttt{isRevoked} & boolean & default false & Revocation status \\
+\texttt{createdAt} & timestamp & not null & Creation time \\
+\bottomrule
+\end{longtable}
+
+\section{Schema Differences: SQLite vs PostgreSQL}
+\label{sec:schema:diff}
+
+\begin{table}[H]
+\centering
+\caption{Key differences between SQLite and PostgreSQL schemas.}
+\label{tab:schema-diff}
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+\textbf{Feature} & \textbf{SQLite} & \textbf{PostgreSQL} \\
+\midrule
+Timestamps & \texttt{integer} (Unix epoch, mode: 'timestamp') & \texttt{timestamp} (native) \\
+Booleans & \texttt{integer} (mode: 'boolean') & \texttt{boolean} (native) \\
+Vectors & \texttt{text} (JSON string) & \texttt{vector(1536)} (pgvector) \\
+Serial IDs & \texttt{integer} (auto-increment) & \texttt{serial} \\
+Text types & \texttt{text} (all sizes) & \texttt{varchar(N)} / \texttt{text} \\
+API Keys table & Included (\texttt{apiKeys}) & Not in schema.ts (added at runtime) \\
+Write concurrency & Single-writer (WAL mode) & Full MVCC \\
+\bottomrule
+\end{tabularx}
+\end{table}

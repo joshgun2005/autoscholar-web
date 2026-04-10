@@ -2,14 +2,10 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { PYTHON_PATH, PYTHON_ENV } from './shared';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Determine Python executable path - use venv if available
-const PYTHON_PATH = process.env.PYTHON_PATH ||
-                    path.join(process.cwd(), '.venv', 'bin', 'python') ||
-                    'python3';
 
 export interface MonteCarloInput {
   symbol?: string;  // NEW: Automatically fetch data from FMP API
@@ -122,7 +118,8 @@ export async function executeMonteCarloSimulation(
     return new Promise((resolve) => {
       // Use spawn without shell to prevent command injection
       const pythonProcess = spawn(PYTHON_PATH, [pythonScriptPath], {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: PYTHON_ENV
       });
       
       let stdout = '';

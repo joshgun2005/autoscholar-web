@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   chatBodySchema,
-  registerBodySchema,
-  loginBodySchema,
   heartbeatBodySchema,
   shareBodySchema,
 } from "./validation";
@@ -43,36 +41,7 @@ describe("chatBodySchema", () => {
   });
 
   it("rejects query exceeding max length", () => {
-    const result = chatBodySchema.safeParse({ query: "x".repeat(10001) });
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("registerBodySchema", () => {
-  it("accepts valid name", () => {
-    const result = registerBodySchema.safeParse({ name: "Alice" });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects name shorter than 2 chars", () => {
-    const result = registerBodySchema.safeParse({ name: "A" });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects missing name", () => {
-    const result = registerBodySchema.safeParse({});
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("loginBodySchema", () => {
-  it("accepts valid token", () => {
-    const result = loginBodySchema.safeParse({ token: "vquant-abc1234" });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects empty token", () => {
-    const result = loginBodySchema.safeParse({ token: "" });
+    const result = chatBodySchema.safeParse({ query: "x".repeat(1000001) });
     expect(result.success).toBe(false);
   });
 });

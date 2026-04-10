@@ -1,0 +1,240 @@
+%% ══════════════════════════════════════════════════════════════
+%%  APPENDIX A — COMPLETE TOOL CATALOG
+%% ══════════════════════════════════════════════════════════════
+\chapter{Complete Tool Catalog}
+\label{app:tools}
+
+This appendix provides a comprehensive catalog of all 213 Claude-callable tools available in \autoscholar, organized by category.
+Each entry lists the tool name, a brief description, and the external service or module it invokes.
+
+\section{Financial Tools (Part 1 --- Core)}
+\label{sec:tools:fin-core}
+
+\begin{longtable}{p{5cm}p{8cm}}
+\caption{Financial tools --- Core (55+ tools).} \label{tab:tools-fin-core} \\
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endhead
+\texttt{get\_company\_profile} & Company overview (sector, market cap, description) \\
+\texttt{get\_income\_statement} & Income statement (annual/quarterly) \\
+\texttt{get\_balance\_sheet} & Balance sheet (annual/quarterly) \\
+\texttt{get\_cash\_flow} & Cash flow statement (annual/quarterly) \\
+\texttt{get\_key\_metrics} & Key financial metrics (PE, PB, EV/EBITDA, ...) \\
+\texttt{get\_financial\_ratios} & Profitability, liquidity, leverage ratios \\
+\texttt{get\_stock\_quote} & Real-time stock quote \\
+\texttt{get\_historical\_price} & Historical daily OHLCV \\
+\texttt{search\_companies} & Search by name or ticker \\
+\texttt{get\_stock\_peers} & Related companies \\
+\texttt{get\_financial\_news} & Company-specific news \\
+\texttt{get\_rsi} & Relative Strength Index \\
+\texttt{get\_macd} & Moving Average Convergence Divergence \\
+\texttt{get\_ema} & Exponential Moving Average \\
+\texttt{get\_sma} & Simple Moving Average \\
+\texttt{get\_adx} & Average Directional Index \\
+\texttt{get\_williams\_r} & Williams \%R oscillator \\
+\texttt{get\_cci} & Commodity Channel Index \\
+\texttt{get\_stochastic} & Stochastic oscillator \\
+\texttt{calculate\_options\_price} & Black-Scholes pricing with Greeks \\
+\texttt{get\_economic\_calendar} & Upcoming economic events \\
+\texttt{get\_treasury\_rates} & US Treasury yield curve \\
+\texttt{get\_economic\_indicator} & Economic indicator data \\
+\texttt{get\_insider\_trading} & Corporate insider transactions \\
+\texttt{get\_earnings\_calendar} & Upcoming earnings dates \\
+\texttt{get\_analyst\_estimates} & EPS/revenue estimates \\
+\texttt{get\_forex\_quote} & Real-time forex rates \\
+\texttt{get\_commodity\_quotes} & Commodity prices \\
+\texttt{get\_cot\_report} & Commitment of Traders report \\
+\texttt{get\_congressional\_trading} & Congressional stock trades \\
+\texttt{get\_senate\_trading} & Senate member trades \\
+\texttt{get\_esg\_score} & ESG ratings \\
+\texttt{get\_social\_sentiment} & Social media sentiment \\
+\texttt{get\_stock\_screener} & Multi-criteria stock screening \\
+\texttt{get\_etf\_holdings} & ETF constituent holdings \\
+\texttt{get\_financial\_growth} & Revenue/earnings growth rates \\
+\texttt{get\_company\_outlook} & Comprehensive company overview \\
+\bottomrule
+\end{longtable}
+
+\section{Financial Tools (Part 2 --- Market)}
+\label{sec:tools:fin-market}
+
+\begin{longtable}{p{5cm}p{8cm}}
+\caption{Financial tools --- Market data, options, discovery.} \label{tab:tools-fin-market} \\
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endhead
+\texttt{get\_stock\_news\_sentiment} & News with sentiment scores \\
+\texttt{get\_crypto\_quote} & Cryptocurrency prices \\
+\texttt{get\_crypto\_list} & Available cryptocurrencies \\
+\texttt{get\_forex\_historical} & Historical forex rates \\
+\texttt{get\_sec\_filings} & SEC filing documents \\
+\texttt{get\_earnings\_call\_transcript} & Earnings call text \\
+\texttt{get\_option\_chain} & Options chain (Financial Data API) \\
+\texttt{get\_option\_prices} & Individual option pricing \\
+\texttt{get\_option\_greeks} & Option Greeks ($\delta$, $\gamma$, $\theta$, $\nu$, $\rho$) \\
+\texttt{download\_fmp\_data} & Export any FMP data to CSV/XLSX/JSON \\
+\texttt{get\_eodhd\_eod} & EODHD end-of-day prices (back to IPO) \\
+\texttt{get\_eodhd\_intraday} & EODHD intraday bars (1m/5m/1h) \\
+\texttt{get\_eodhd\_options} & EODHD US options with Greeks \\
+\texttt{search\_symbols} & Symbol search (multiple methods) \\
+\texttt{get\_stock\_list} & Full stock listing \\
+\texttt{get\_etf\_list} & Full ETF listing \\
+\texttt{batch\_quote\_*} & Batch quotes (stocks, ETFs, mutual funds, commodities, crypto, forex, indices) \\
+\texttt{get\_delisted\_companies} & Historical delisted companies \\
+\texttt{get\_employee\_count} & Company employee data \\
+\texttt{get\_shares\_float} & Public float data \\
+\texttt{get\_mergers\_acquisitions} & M\&A transactions \\
+\texttt{get\_executive\_compensation} & Executive pay data \\
+\bottomrule
+\end{longtable}
+
+\section{Financial Tools (Parts 3--4 --- Extended \& Advanced)}
+\label{sec:tools:fin-ext}
+
+Additional tools covering TTM financial statements, Altman Z-Score, Piotroski F-Score, revenue segmentation, Form 13F institutional ownership, earnings transcripts, sector/industry performance, advanced SEC filings, index constituents (S\&P 500, NASDAQ, Dow Jones with historical changes), DCF valuation models, ESG benchmarks, crowdfunding, equity offerings, and market movers (gainers, losers, most active).
+
+\emph{Due to the extensive nature of these tools ($\sim$100 additional entries), refer to \file{server/services/claude/tools/financialTools-extended.ts} and \file{financialTools-advanced.ts} for complete specifications.}
+
+\section{Academic Tools}
+\label{sec:tools:academic}
+
+\begin{longtable}{p{5cm}p{8cm}}
+\caption{Academic research tools.} \label{tab:tools-academic} \\
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{academic\_search} & Single-source academic search \\
+\texttt{academic\_literature\_review} & Structured literature review \\
+\texttt{semantic\_scholar\_search} & Semantic Scholar API search \\
+\texttt{arxiv\_search} & arXiv preprint search \\
+\texttt{crossref\_lookup} & CrossRef DOI and metadata lookup \\
+\texttt{openalex\_search} & OpenAlex bibliographic search \\
+\texttt{academic\_search\_multi} & Parallel search across all 5 databases \\
+\texttt{literature\_gap\_finder} & 7-step gap discovery pipeline \\
+\texttt{web\_dataset\_collector} & SWDES v3 large-scale web data extraction \\
+\bottomrule
+\end{longtable}
+
+\section{Web Tools}
+\label{sec:tools:web}
+
+\begin{longtable}{p{5cm}p{8cm}}
+\caption{Web search, scraping, and extraction tools.} \label{tab:tools-web} \\
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{web\_search\_exa} & Exa semantic web search \\
+\texttt{get\_contents\_exa} & Exa URL content extraction \\
+\texttt{firecrawl\_scrape} & Single-page scraping (PDF support) \\
+\texttt{firecrawl\_search} & Web search with auto-scraping \\
+\texttt{firecrawl\_crawl} & Multi-page crawling (async) \\
+\texttt{firecrawl\_extract} & AI-powered structured extraction \\
+\texttt{firecrawl\_map} & URL discovery/mapping \\
+\texttt{firecrawl\_agent} & Autonomous AI extraction agent \\
+\texttt{firecrawl\_batch\_scrape} & Parallel multi-URL scraping \\
+\texttt{tavily\_search} & AI-enhanced web search \\
+\texttt{tavily\_extract} & URL content extraction \\
+\texttt{tavily\_crawl} & Graph-based multi-page crawling \\
+\texttt{tavily\_map} & Site structure mapping \\
+\texttt{tavily\_research} & Autonomous research agent \\
+\bottomrule
+\end{longtable}
+
+\section{Macroeconomic Data Tools}
+\label{sec:tools:macro}
+
+\begin{longtable}{p{5cm}p{8cm}}
+\caption{Macroeconomic data tools (all free, no API key).} \label{tab:tools-macro} \\
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{get\_wb\_indicator\_data} & World Bank indicator data (16K+ indicators) \\
+\texttt{get\_wb\_countries} & WB country metadata \\
+\texttt{search\_wb\_indicators} & WB indicator keyword search \\
+\texttt{get\_wb\_topics} & WB topic categories \\
+\texttt{get\_wb\_regions} & WB geographic regions \\
+\texttt{get\_wb\_income\_levels} & WB income level classifications \\
+\texttt{get\_wb\_sources} & WB data sources \\
+\texttt{get\_imf\_indicator\_data} & IMF DataMapper indicators \\
+\texttt{get\_imf\_indicators} & IMF indicator metadata \\
+\texttt{get\_imf\_countries} & IMF country list \\
+\texttt{get\_imf\_dataflows} & IMF SDMX dataflows \\
+\texttt{get\_imf\_sdmx\_data} & IMF SDMX multi-dimensional queries \\
+\texttt{get\_imf\_data\_structure} & IMF dataset structure inspection \\
+\texttt{get\_imf\_codelist} & IMF codelist retrieval \\
+\texttt{get\_oecd\_data} & OECD data query \\
+\texttt{search\_oecd\_dataflows} & OECD dataflow search \\
+\texttt{get\_oecd\_dataflow\_structure} & OECD dimension structure \\
+\texttt{get\_oecd\_dataflows} & OECD dataflow listing \\
+\bottomrule
+\end{longtable}
+
+\section{Python Tools}
+\label{sec:tools:python}
+
+\begin{longtable}{p{5.5cm}p{7.5cm}}
+\caption{Python execution and repair tools.} \label{tab:tools-python} \\
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{execute\_custom\_python\_analysis} & Run arbitrary Python with 17 libraries, 5 API clients, 4 embedded DBs \\
+\texttt{read\_python\_script} & Read a previously saved script by ID \\
+\texttt{apply\_patch} & Apply a unified diff or search-replace patch to a script \\
+\texttt{run\_python\_script} & Re-execute a (possibly patched) script \\
+\texttt{inspect\_python\_logs} & View structured error logs for a script \\
+\bottomrule
+\end{longtable}
+
+\section{Research Paper Tools}
+\label{sec:tools:paper}
+
+\begin{longtable}{p{5cm}p{8cm}}
+\caption{Research paper generation and compilation tools.} \label{tab:tools-paper} \\
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{generate\_research\_paper} & Single-call paper generation (legacy) \\
+\texttt{write\_paper\_section} & Write individual \LaTeX{} section \\
+\texttt{compile\_research\_paper} & Assemble sections and compile PDF \\
+\texttt{read\_latex\_source} & Read compiled \LaTeX{} source \\
+\texttt{inspect\_latex\_errors} & Parse \LaTeX{} compilation log \\
+\texttt{patch\_latex} & Apply diff to \LaTeX{} source \\
+\texttt{recompile\_latex} & Re-run pdflatex + bibtex \\
+\texttt{install\_python\_package} & Install a Python package via pip \\
+\bottomrule
+\end{longtable}
+
+\section{Polymarket Tools}
+\label{sec:tools:polymarket}
+
+\begin{longtable}{p{5.5cm}p{7.5cm}}
+\caption{Prediction market tools (all public, no auth).} \label{tab:tools-polymarket} \\
+\toprule
+\textbf{Tool Name} & \textbf{Description} \\
+\midrule
+\endfirsthead
+\texttt{get\_polymarket\_events} & List prediction market events \\
+\texttt{get\_polymarket\_markets} & List individual markets \\
+\texttt{search\_polymarket} & Keyword search across markets \\
+\texttt{get\_polymarket\_price\_history} & Historical token prices \\
+\texttt{get\_polymarket\_order\_book} & Full order book (bids/asks) \\
+\texttt{get\_polymarket\_tags} & Category tags \\
+\texttt{get\_polymarket\_trades} & Recent trade history \\
+\texttt{get\_polymarket\_leaderboard} & Trader leaderboard \\
+\bottomrule
+\end{longtable}

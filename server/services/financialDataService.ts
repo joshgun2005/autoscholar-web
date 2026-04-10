@@ -78,7 +78,7 @@ async function financialDataRequest<T>(endpoint: string, params: Record<string, 
         ...params,
         key: FINANCIAL_DATA_API_KEY,
       },
-      timeout: 15000,
+      timeout: 60000,
     });
 
     console.log(`[Financial Data API] Response for ${endpoint}:`,
